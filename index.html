@@ -242,16 +242,22 @@
             flex-direction: column;
             align-items: center;
         }
+        .footer-action-row {
+            display: flex;
+            gap: 15px;
+            margin-top: 5px;
+        }
         .footer-toggle {
             color: var(--success);
             text-decoration: none;
             font-weight: bold;
             padding: 5px 10px;
-            margin-top: 5px;
             cursor: pointer;
             border-radius: 5px;
             transition: 0.2s;
         }
+        .footer-toggle:active { background: #333; }
+        
         .contact-links {
             display: none; 
             flex-direction: row;
@@ -317,6 +323,27 @@
             font-size: 14px;
             line-height: 1.5;
         }
+
+        /* 🌟 設定選單專屬按鈕樣式 */
+        .setting-btn {
+            background: #2c2c2c; 
+            color: white; 
+            border: none;
+            width: 100%; 
+            padding: 15px; 
+            border-radius: 10px;
+            margin-bottom: 10px; 
+            cursor: pointer; 
+            font-size: 16px;
+            text-align: left; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .setting-btn:active { background: #444; transform: scale(0.98); }
+        .setting-arrow { color: #888; font-size: 20px; }
     </style>
 </head>
 <body>
@@ -344,7 +371,7 @@
         </div>
     </div>
 
-    <button class="advanced-toggle-btn" onclick="openAdvancedSheet()">⛙ 加入中繼轉乘站 (進階模式)</button>
+    <button class="advanced-toggle-btn" onclick="openSheet('advanced-sheet')">⛙ 加入中繼轉乘站 (進階模式)</button>
 
     <div class="location-block">
         <label>目的地</label>
@@ -397,8 +424,11 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.31)</span>
-        <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
+        <span>本服務由綠茶地瓜維護 (v1.32)</span>
+        <div class="footer-action-row">
+            <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
+            <a class="footer-toggle" onclick="openSheet('settings-sheet')">⚙️ 設定</a>
+        </div>
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
             <a href="https://discord.gg/vUeBcsf" target="_blank" class="contact-btn btn-discord">💬 Discord</a>
@@ -406,11 +436,12 @@
     </div>
 </div>
 
-<div class="overlay" id="overlay" onclick="closeAdvancedSheet()"></div>
+<div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
+
 <div class="bottom-sheet" id="advanced-sheet">
     <div class="sheet-header">
         <h3>進階轉乘路線設定</h3>
-        <button class="close-sheet-btn" onclick="closeAdvancedSheet()">完成</button>
+        <button class="close-sheet-btn" onclick="closeAllSheets()">完成</button>
     </div>
     <div class="sheet-content">
         <p>在這裡，您可以打造像「中山 ➡️ 北車 ➡️ 客運1815」這種多段極限轉乘任務。</p>
@@ -422,6 +453,25 @@
         </div>
         <div style="padding: 15px; background: #222; border-radius: 8px;">
             <strong>終點：</strong>國光客運 1815
+        </div>
+    </div>
+</div>
+
+<div class="bottom-sheet" id="settings-sheet">
+    <div class="sheet-header">
+        <h3>系統設定</h3>
+        <button class="close-sheet-btn" onclick="closeAllSheets()">關閉</button>
+    </div>
+    <div class="sheet-content">
+        <button class="setting-btn" onclick="showHelp()">
+            <span>📖 使用方法</span><span class="setting-arrow">›</span>
+        </button>
+        <button class="setting-btn" onclick="shareApp()">
+            <span>🔗 分享網站給朋友</span><span class="setting-arrow">›</span>
+        </button>
+        
+        <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #666; letter-spacing: 1px;">
+            更多進階功能開發中...<br>Stay tuned!
         </div>
     </div>
 </div>
@@ -445,7 +495,6 @@
     const speedModeText = document.getElementById('speed-mode');
     const planBContainer = document.getElementById('plan-b-container'); 
 
-    // 🌟 在地化大腦：各交通工具的預設代表車站
     const defaultStations = {
         'trtc': '台北車站',
         'tymetro': '台北車站',
@@ -654,7 +703,6 @@
         const typeSelect = document.getElementById(point + '-type');
         const selectedType = typeSelect.value;
         
-        // 🌟 智慧預設：切換交通工具時，自動填入該系統的代表車站
         document.getElementById(point + '-station-input').value = defaultStations[selectedType] || '';
         renderCustomDropdown(point);
     }
@@ -845,14 +893,36 @@
         links.style.display = (links.style.display === "flex") ? "none" : "flex";
     }
 
-    function openAdvancedSheet() {
+    // 🌟 控制所有視窗開啟與關閉的統整器
+    function openSheet(sheetId) {
         document.getElementById('overlay').classList.add('active');
-        document.getElementById('advanced-sheet').classList.add('active');
+        document.getElementById(sheetId).classList.add('active');
     }
 
-    function closeAdvancedSheet() {
+    function closeAllSheets() {
         document.getElementById('overlay').classList.remove('active');
         document.getElementById('advanced-sheet').classList.remove('active');
+        document.getElementById('settings-sheet').classList.remove('active');
+    }
+
+    // 🌟 設定內的按鈕功能
+    function showHelp() {
+        alert("【使用指南】\n\n1. 選擇起迄站：輸入關鍵字或從選單挑選。\n2. 加入最愛：點擊站名旁邊的 ☆ 即可置頂。\n3. 開始倒數：點擊綠色大按鈕，我們會為您連線交通部抓取真實發車時間。\n4. 緊急備案：如果來不及了，我們會自動幫你叫車！");
+    }
+
+    function shareApp() {
+        if (navigator.share) {
+            navigator.share({
+                title: '末班車生存戰',
+                text: '趕不上末班車？一鍵查詢真實末班車發車倒數，專屬夜歸人的極限生存指南。',
+                url: window.location.href
+            }).catch((error) => console.log('分享取消或發生錯誤:', error));
+        } else {
+            // 如果是在電腦版瀏覽器，沒有原生分享，就幫他複製網址
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert("🔗 網址已複製到剪貼簿！趕快貼給朋友吧！");
+            });
+        }
     }
 </script>
 </body>
