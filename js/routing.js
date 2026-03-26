@@ -28,17 +28,24 @@ function calculateOfflineTime(offlineTimetableData, startName, endName, type) {
             const eLine = eKey.match(/[A-Z]+/)[0];
 
             if (sLine === eLine) {
+                const sData = table[sKey];
+
+                // 🌟 終極防禦：不管方向，只要出發站的 up 或 down 裡面有「專屬目標代碼」，直接抓時間！
+                if (sData.up && typeof sData.up === 'object' && sData.up[eKey] && sData.up[eKey] !== "00:00") return sData.up[eKey];
+                if (sData.down && typeof sData.down === 'object' && sData.down[eKey] && sData.down[eKey] !== "00:00") return sData.down[eKey];
+
+                // 如果不是專屬月台，再用傳統的數字比大小來算方向
                 const sNum = parseInt(sKey.match(/\d+/)[0]);
                 const eNum = parseInt(eKey.match(/\d+/)[0]);
                 
                 const direction = sNum < eNum ? 'up' : 'down';
-                const timeData = table[sKey][direction];
+                const timeData = sData[direction];
                 
                 if (!timeData || timeData === "00:00") continue;
 
                 if (typeof timeData === 'string') {
                     return timeData;
-                } 
+                }
                 else if (typeof timeData === 'object') {
                     // 🌟 支線精確制導：如果目的地代碼直接就在這個物件裡，直接拿時間！
                     if (timeData[eKey]) return timeData[eKey];
