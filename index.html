@@ -128,6 +128,7 @@
             margin-top: 5px;
         }
         #action-btn:active { transform: scale(0.98); }
+        #action-btn:disabled { background-color: #555; cursor: not-allowed; transform: none; }
         
         #action-btn.btn-danger { background-color: var(--danger); }
         #action-btn.btn-danger:active { background-color: #d50000; }
@@ -251,29 +252,6 @@
             font-size: 14px;
             line-height: 1.5;
         }
-        .add-node-btn {
-            background: #2c2c2c; color: white; border: 1px dashed #666;
-            width: 100%; padding: 12px; border-radius: 8px;
-            margin-top: 15px; cursor: pointer; font-size: 15px;
-        }
-
-        /* 測試按鈕專屬樣式 */
-        .btn-test-api {
-            background: transparent;
-            color: #888;
-            border: 1px dashed #555;
-            padding: 8px;
-            border-radius: 8px;
-            width: 100%;
-            margin-top: 10px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: 0.2s;
-        }
-        .btn-test-api:active {
-            background: #333;
-            color: white;
-        }
     </style>
 </head>
 <body>
@@ -320,12 +298,10 @@
     <div class="time-area">
         <div class="status" id="status-text">現在時間</div>
         <div class="time-display" id="time-display">00:00:00</div>
-        <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00; opacity:0.8;">00:42</span></div>
+        <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00; opacity:0.8;">待查驗...</span></div>
     </div>
     
     <button id="action-btn" onclick="handleAction()">開始計算轉乘</button>
-
-    <button class="btn-test-api" id="test-api-btn" onclick="testTdxConnection()">🔌 測試黑衣人連線 (抓取 TDX Token)</button>
 
     <div id="plan-b-container" class="plan-b-container">
         <button class="plan-b-option btn-uber vehicle-option" onclick="openWeb('Uber')">
@@ -363,7 +339,6 @@
     </div>
     <div class="sheet-content">
         <p>在這裡，您可以打造像「中山 ➡️ 北車 ➡️ 客運1815」這種多段極限轉乘任務。</p>
-        
         <div style="padding: 15px; background: #222; border-radius: 8px; margin-bottom: 10px;">
             <strong>起點：</strong>捷運 中山站
         </div>
@@ -373,8 +348,6 @@
         <div style="padding: 15px; background: #222; border-radius: 8px;">
             <strong>終點：</strong>國光客運 1815
         </div>
-
-        <button class="add-node-btn">➕ 新增下一個中繼站</button>
     </div>
 </div>
 
@@ -382,35 +355,71 @@
     let isCountingDown = false;
     let timeLeft = 0; 
     let timer; 
+    let cachedTdxToken = ""; // 存通行證的地方
+    
+    // 建立一個台北捷運的真實代碼字典
+    const trtcStationMap = {
+        'Zhongshan': 'G14',
+        'TaipeiMain': 'R10',
+        'Xindian': 'G01'
+    };
+
     const display = document.getElementById('time-display');
     const statusText = document.getElementById('status-text');
     const actionBtn = document.getElementById('action-btn');
+    const speedModeText = document.getElementById('speed-mode');
     const planBContainer = document.getElementById('plan-b-container'); 
 
-    // --- 全新：呼叫 Vercel 黑衣人的測試魔法 ---
-    async function testTdxConnection() {
-        const testBtn = document.getElementById('test-api-btn');
-        const originalText = testBtn.innerHTML;
-        
-        try {
-            // 讓按鈕顯示載入中，提升體驗
-            testBtn.innerHTML = "⏳ 呼叫黑衣人中...";
-            
-            // 去敲我們在 api/get-token.js 寫好的後端大門
-            const response = await fetch('/api/get-token');
-            const data = await response.json();
-            
-            if (data.access_token) {
-                alert("🎉 太神啦！成功拿到 TDX 通行證！\n\n通行證開頭：" + data.access_token.substring(0, 15) + "...");
-            } else {
-                alert("❌ 黑衣人任務失敗，檢查一下 Vercel 環境變數有沒有設定對喔！\n\n錯誤訊息：" + JSON.stringify(data));
-            }
-        } catch (error) {
-            alert("🚨 發生錯誤，黑衣人失聯了：" + error);
-        } finally {
-            // 測試完把按鈕文字改回來
-            testBtn.innerHTML = originalText;
+    // --- 【全新核心魔法】去交通部拿真實末班車時間 ---
+    async function fetchRealLastTrainTime(origin, destination) {
+        // 1. 檢查有沒有通行證，沒有就去 Vercel 要
+        if (!cachedTdxToken) {
+            const tokenRes = await fetch('/api/get-token');
+            const tokenData = await tokenRes.json();
+            cachedTdxToken = tokenData.access_token;
         }
+
+        // 2. 決定「今天」是幾號 (如果是凌晨 00~03點，大眾運輸算昨天)
+        const queryDate = new Date();
+        if (queryDate.getHours() < 4) {
+            queryDate.setDate(queryDate.getDate() - 1);
+        }
+        const yyyy = queryDate.getFullYear();
+        const mm = String(queryDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(queryDate.getDate()).padStart(2, '0');
+        const dateStr = `${yyyy}-${mm}-${dd}`; // 組合出 2026-03-26 格式
+
+        // 3. 呼叫 TDX 的 OD (起迄站) API
+        const originCode = trtcStationMap[origin];
+        const destCode = trtcStationMap[destination];
+        const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/DailyTimetable/OD/TRTC/from/${originCode}/to/${destCode}/${dateStr}?%24format=JSON`;
+
+        const res = await fetch(apiUrl, {
+            headers: { 'Authorization': `Bearer ${cachedTdxToken}` }
+        });
+        const data = await res.json();
+
+        // 4. 解析資料，找出最後一班車！
+        if (data && data.length > 0 && data[0].ODTimetables) {
+            const timetables = data[0].ODTimetables;
+            let maxMinutes = -1;
+            let lastTrainTimeStr = "";
+
+            timetables.forEach(t => {
+                const timeStr = t.OriginStationDepartureTime; // 例如 "00:42" 或 "23:50"
+                const [h, m] = timeStr.split(':').map(Number);
+                // 為了比較大小，把跨夜的 00 點到 03 點加 24 小時
+                let adjustedH = h < 4 ? h + 24 : h;
+                let totalMins = adjustedH * 60 + m;
+
+                if (totalMins > maxMinutes) {
+                    maxMinutes = totalMins;
+                    lastTrainTimeStr = timeStr;
+                }
+            });
+            return lastTrainTimeStr;
+        }
+        return null; // 如果查不到就回傳 null
     }
 
     // 處理選單連動
@@ -418,9 +427,7 @@
         const typeSelect = document.getElementById(point + '-type');
         const stationSelect = document.getElementById(point + '-station');
         const selectedType = typeSelect.value;
-
         stationSelect.innerHTML = '';
-
         if (selectedType === 'mrt') {
             stationSelect.innerHTML = `
                 <option value="Zhongshan">中山</option>
@@ -447,15 +454,9 @@
                 display.innerHTML = "來不及了💸";
                 display.style.fontSize = "50px"; 
                 display.style.color = "#ff5252";
-                
                 actionBtn.style.display = "none";
-                document.getElementById('test-api-btn').style.display = "none"; // 來不及的時候把測試按鈕也藏起來
                 planBContainer.style.display = "flex";
-                
-                document.querySelectorAll('.vehicle-option').forEach(btn => {
-                    btn.style.display = "flex";
-                });
-                
+                document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex");
                 statusText.innerHTML = "人生不是只有末班車...";
                 return;
             }
@@ -475,82 +476,106 @@
     updateClock();
     timer = setInterval(updateClock, 1000);
 
-    function handleAction() {
+    // --- 把呼叫 API 的邏輯融合進行動按鈕 ---
+    async function handleAction() {
         const startType = document.getElementById('start-type').value;
         const startStation = document.getElementById('start-station').value;
         const endType = document.getElementById('end-type').value;
         const endStation = document.getElementById('end-station').value;
 
+        // 1. 同站防呆
         if (startType === endType && startStation === endStation) {
             clearInterval(timer); 
             isCountingDown = false; 
-            
             display.innerHTML = "恭喜到達🎉";
             display.style.fontSize = "40px"; 
             display.style.color = "#4caf50";
             statusText.innerHTML = "你根本不用搭車，早點回家洗洗睡！";
-            
             actionBtn.style.display = "none";
-            document.getElementById('test-api-btn').style.display = "none";
             planBContainer.style.display = "flex";
-            
-            document.querySelectorAll('.vehicle-option').forEach(btn => {
-                btn.style.display = "none";
-            });
+            document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "none");
             return;
         }
 
+        // 2. 如果已經在求生倒數中，就是加 60 秒
+        if (isCountingDown) {
+            timeLeft += 60; 
+            display.style.color = '#ffea00';
+            setTimeout(() => { display.style.color = '#4caf50'; }, 150);
+            return;
+        }
+
+        // 3. 準備開始查資料 (UI 切換為載入狀態)
         let transferPenaltySeconds = 0;
         if (startStation === endStation && startType !== endType) {
             transferPenaltySeconds = 20 * 60; 
-            alert("⚠️ 偵測到「同站跨系統轉乘」。\n大車站就像迷宮，系統已自動為您預留 20 分鐘的步行轉乘時間！");
+            alert("⚠️ 偵測到「同站跨系統轉乘」。\n系統已自動為您預留 20 分鐘步行時間！");
         }
 
-        if (!isCountingDown) {
+        actionBtn.innerHTML = "⏳ 連線交通部 TDX 中...";
+        actionBtn.disabled = true;
+
+        try {
+            let finalTargetTimeString = "00:42"; // 預設防呆時間
+
+            // 如果都是捷運，我們就真的去敲 TDX
+            if (startType === 'mrt' && endType === 'mrt') {
+                const realTime = await fetchRealLastTrainTime(startStation, endStation);
+                if (realTime) {
+                    finalTargetTimeString = realTime;
+                } else {
+                    alert("⚠️ 交通部查無今日時刻表，將使用系統預設 00:42 估算。");
+                }
+            } else {
+                // 如果是火車客運，因為我們還沒建代碼，先跳個提示並用預設
+                alert("目前火車與客運尚未連線 TDX，將使用系統預設 00:42 估算。");
+            }
+
+            // 算時間的數學魔法
             isCountingDown = true;
             statusText.innerHTML = "距離末班車發車還剩";
             display.style.color = "#4caf50";
+            speedModeText.innerHTML = `${finalTargetTimeString} <span style="font-size:10px; color:#aaa;">(即時連線)</span>`;
             actionBtn.innerHTML = "開啟極限求生模式！";
             actionBtn.classList.add('btn-danger');
 
             const now = new Date();
             let target = new Date();
-            target.setHours(0, 42, 0, 0); 
+            const [hh, mm] = finalTargetTimeString.split(':').map(Number);
+            target.setHours(hh, mm, 0, 0); 
 
-            if (now.getHours() >= 4) {
-                target.setDate(target.getDate() + 1);
+            // 超嚴謹的跨夜邏輯
+            if (now.getHours() >= 4 && hh < 4) {
+                target.setDate(target.getDate() + 1); // 目標是明天凌晨
+            } else if (now.getHours() < 4 && hh >= 4) {
+                target.setDate(target.getDate() - 1); // 目標是昨天深夜 (剛過完)
             }
 
             timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenaltySeconds;
-            
             if (timeLeft < 0) timeLeft = 0;
             updateClock(); 
-        } else {
-            timeLeft += 60; 
-            display.style.color = '#ffea00';
-            setTimeout(() => { display.style.color = '#4caf50'; }, 150);
+
+        } catch (error) {
+            alert("連線 TDX 發生錯誤，請稍後再試！");
+            isCountingDown = false;
+        } finally {
+            actionBtn.disabled = false;
+            if (!isCountingDown) actionBtn.innerHTML = "開始計算轉乘";
         }
     }
 
     function resetPlan() {
         clearInterval(timer);
         isCountingDown = false;
-        
         planBContainer.style.display = "none";    
         actionBtn.style.display = "block";        
         actionBtn.innerHTML = "開始計算轉乘";     
         actionBtn.classList.remove('btn-danger'); 
-        
-        document.getElementById('test-api-btn').style.display = "block"; // 重設時把測試按鈕叫回來
-        
         statusText.innerHTML = "現在時間";        
+        speedModeText.innerHTML = "待查驗...";
         display.style.color = "#e0e0e0"; 
         display.style.fontSize = "50px"; 
-        
-        document.querySelectorAll('.vehicle-option').forEach(btn => {
-            btn.style.display = "flex";
-        });
-                 
+        document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex");
         updateClock();
         timer = setInterval(updateClock, 1000);
     }
