@@ -386,23 +386,18 @@
     const display = document.getElementById('time-display');
     const statusText = document.getElementById('status-text');
     const actionBtn = document.getElementById('action-btn');
-    const cancelBtn = document.getElementById('cancel-btn'); // 抓取煞車按鈕
+    const cancelBtn = document.getElementById('cancel-btn'); 
     const speedModeText = document.getElementById('speed-mode');
     const planBContainer = document.getElementById('plan-b-container'); 
 
-    // --- 智慧代碼導航器：自動判斷要走哪條線、或要搭到哪個轉乘站 ---
+    // 智慧代碼導航器
     function getSmartStationIds(origin, dest) {
         if (origin === 'Zhongshan' && dest === 'TaipeiMain') return ['R11', 'R10']; 
         if (origin === 'TaipeiMain' && dest === 'Zhongshan') return ['R10', 'R11']; 
         if (origin === 'Zhongshan' && dest === 'Xindian') return ['G14', 'G01'];   
         if (origin === 'Xindian' && dest === 'Zhongshan') return ['G01', 'G14'];   
-        
-        if (origin === 'TaipeiMain' && dest === 'Xindian') {
-            return ['R10', 'R08']; 
-        }
-        if (origin === 'Xindian' && dest === 'TaipeiMain') {
-            return ['G01', 'G10']; 
-        }
+        if (origin === 'TaipeiMain' && dest === 'Xindian') return ['R10', 'R08']; // 先搭紅線到中正紀念堂
+        if (origin === 'Xindian' && dest === 'TaipeiMain') return ['G01', 'G10']; // 先搭綠線到中正紀念堂
         return null;
     }
 
@@ -425,22 +420,13 @@
         }
     }
 
-    // --- 去交通部拿真實末班車時間 ---
-    async function fetchRealLastTrainTime(origin, destination) {
+    // --- 強化版：去交通部拿真實末班車時間 ---
+    async function fetchRealLastTrainTime(origin, destination, retryCount = 0) {
         if (!cachedTdxToken) {
             const tokenRes = await fetch('/api/get-token');
             const tokenData = await tokenRes.json();
             cachedTdxToken = tokenData.access_token;
         }
-
-        const queryDate = new Date();
-        if (queryDate.getHours() < 4) {
-            queryDate.setDate(queryDate.getDate() - 1);
-        }
-        const yyyy = queryDate.getFullYear();
-        const mm = String(queryDate.getMonth() + 1).padStart(2, '0');
-        const dd = String(queryDate.getDate()).padStart(2, '0');
-        const dateStr = `${yyyy}-${mm}-${dd}`; 
 
         const stationIds = getSmartStationIds(origin, destination);
         if (!stationIds) return null;
@@ -448,32 +434,48 @@
         const originCode = stationIds[0];
         const destCode = stationIds[1];
 
-        const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/DailyTimetable/OD/TRTC/from/${originCode}/to/${destCode}/${dateStr}?%24format=JSON`;
+        // 🌟 秘訣：把日期參數拿掉！讓 TDX 直接回傳通用班表，避開「查無今日資料」的陷阱
+        const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/DailyTimetable/OD/TRTC/from/${originCode}/to/${destCode}?%24format=JSON`;
 
-        const res = await fetch(apiUrl, {
-            headers: { 'Authorization': `Bearer ${cachedTdxToken}` }
-        });
-        const data = await res.json();
-
-        if (data && data.length > 0 && data[0].ODTimetables) {
-            const timetables = data[0].ODTimetables;
-            let maxMinutes = -1;
-            let lastTrainTimeStr = "";
-
-            timetables.forEach(t => {
-                const timeStr = t.OriginStationDepartureTime; 
-                const [h, m] = timeStr.split(':').map(Number);
-                let adjustedH = h < 4 ? h + 24 : h;
-                let totalMins = adjustedH * 60 + m;
-
-                if (totalMins > maxMinutes) {
-                    maxMinutes = totalMins;
-                    lastTrainTimeStr = timeStr;
-                }
+        try {
+            const res = await fetch(apiUrl, {
+                headers: { 'Authorization': `Bearer ${cachedTdxToken}` }
             });
-            return lastTrainTimeStr;
+            const data = await res.json();
+
+            // 如果 TDX 說認證失敗，代表 Token 可能過期，我們清掉重試一次
+            if ((data.message === 'Unauthorized' || res.status === 401) && retryCount === 0) {
+                console.log("Token 失效，自動重新索取...");
+                cachedTdxToken = "";
+                return fetchRealLastTrainTime(origin, destination, 1);
+            }
+
+            if (data && data.length > 0 && data[0].ODTimetables) {
+                const timetables = data[0].ODTimetables;
+                let maxMinutes = -1;
+                let lastTrainTimeStr = "";
+
+                timetables.forEach(t => {
+                    const timeStr = t.OriginStationDepartureTime; 
+                    const [h, m] = timeStr.split(':').map(Number);
+                    let adjustedH = h < 4 ? h + 24 : h;
+                    let totalMins = adjustedH * 60 + m;
+
+                    if (totalMins > maxMinutes) {
+                        maxMinutes = totalMins;
+                        lastTrainTimeStr = timeStr;
+                    }
+                });
+                return lastTrainTimeStr;
+            } else {
+                // 若仍為空，把回傳資料印在主控台供我們 debug
+                console.error("TDX 依然回傳空資料：", data);
+                return null;
+            }
+        } catch (error) {
+            console.error("連線發生異常：", error);
+            return null;
         }
-        return null; 
     }
 
     function updateStationOptions(point) {
@@ -509,7 +511,7 @@
                 display.style.color = "#ff5252";
                 
                 actionBtn.style.display = "none";
-                cancelBtn.style.display = "none"; // 來不及了就收起煞車按鈕
+                cancelBtn.style.display = "none"; 
                 document.getElementById('test-api-btn').style.display = "none"; 
                 planBContainer.style.display = "flex";
                 
@@ -578,7 +580,8 @@
                 if (realTime) {
                     finalTargetTimeString = realTime;
                 } else {
-                    alert("⚠️ 交通部查無今日時刻表，將使用系統預設 00:42 估算。");
+                    // 如果再抓不到，我們就老實跟使用者道歉並用預設值
+                    alert("⚠️ 交通部今日班表更新異常，將使用系統預設 00:42 估算。");
                 }
             } else {
                 alert("目前火車與客運尚未連線 TDX，將使用系統預設 00:42 估算。");
@@ -591,7 +594,6 @@
             actionBtn.innerHTML = "開啟極限求生模式！";
             actionBtn.classList.add('btn-danger');
             
-            // 🌟 倒數開始，叫出「終止求生」的煞車按鈕，隱藏測試按鈕
             cancelBtn.style.display = "flex";
             document.getElementById('test-api-btn').style.display = "none";
 
@@ -611,7 +613,7 @@
             updateClock(); 
 
         } catch (error) {
-            alert("連線 TDX 發生錯誤，請稍後再試！");
+            alert("連線發生錯誤，請稍後再試！");
             isCountingDown = false;
         } finally {
             actionBtn.disabled = false;
@@ -619,13 +621,12 @@
         }
     }
 
-    // --- 全面強化的重置功能 ---
     function resetPlan() {
         clearInterval(timer);
         isCountingDown = false;
         
         planBContainer.style.display = "none";    
-        cancelBtn.style.display = "none"; // 把煞車按鈕收起來
+        cancelBtn.style.display = "none"; 
         
         actionBtn.style.display = "block";        
         actionBtn.innerHTML = "開始計算轉乘";     
