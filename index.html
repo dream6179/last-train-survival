@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>末班車生存戰</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-main: #ffffff;
+            --text-sub: #aaaaaa;
+            --danger: #ff5252;
+            --success: #4caf50;
+        }
+
+        html, body {
+            overflow: hidden; 
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            overscroll-behavior: none; 
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            height: 92vh; 
+            max-height: 680px;
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            padding: 0 20px; 
+            box-sizing: border-box;
+            gap: 6px; 
+            position: relative; 
+        }
+
+        h1 { font-size: 22px; color: var(--danger); margin: 0 0 10px 0; }
+        
+        .location-block {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 2px;
+        }
+        .location-block label {
+            font-size: 12px;
+            color: var(--text-sub);
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+        .select-group {
+            display: flex;
+            gap: 8px;
+        }
+        select {
+            background-color: #2c2c2c;
+            color: white;
+            border: 1px solid #444;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 15px;
+            outline: none;
+            appearance: none;
+            cursor: pointer;
+            width: 100%;
+        }
+        select:focus { border-color: var(--danger); }
+        .type-select { width: 35%; text-align: center; }
+
+        .advanced-toggle-btn {
+            background: none;
+            border: 1px dashed #444;
+            color: var(--text-sub);
+            padding: 5px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            margin: 5px 0;
+            transition: 0.2s;
+        }
+        .advanced-toggle-btn:active { background: #333; color: white; }
+
+        .time-area {
+            margin: 10px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .time-display {
+            font-size: 50px;
+            font-weight: bold;
+            color: #e0e0e0; 
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 1px;
+            line-height: 1;
+            transition: 0.2s; 
+        }
+        .status { font-size: 13px; color: var(--text-sub); margin: 5px 0; height: 16px; }
+        
+        #action-btn {
+            background-color: var(--success); 
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 17px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            transition: 0.1s;
+            margin-top: 5px;
+        }
+        #action-btn:active { transform: scale(0.98); }
+        
+        #action-btn.btn-danger { background-color: var(--danger); }
+        #action-btn.btn-danger:active { background-color: #d50000; }
+        
+        .plan-b-container {
+            display: none; 
+            flex-direction: column;
+            width: 100%;
+            gap: 8px;
+            margin-top: 5px;
+        }
+        .plan-b-option {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between; 
+            align-items: center;
+            transition: 0.1s;
+            text-decoration: none;
+        }
+        .plan-b-option:active { transform: scale(0.98); filter: brightness(1.1); }
+        .option-name { font-size: 15px; font-weight: bold; }
+        .option-meta { font-size: 11px; opacity: 0.7; font-weight: normal; margin-left: 5px; }
+        .option-price { font-size: 15px; font-weight: bold; font-variant-numeric: tabular-nums; }
+        .btn-uber { background-color: #1a1a1a; color: #ffffff; border: 1px solid #333; }
+        .btn-goshare { background-color: #009999; color: #ffffff; }
+        .btn-youbike { background-color: #ccaa00; color: #121212; }
+
+        .btn-reset { 
+            background-color: transparent; 
+            color: var(--text-sub); 
+            border: 1px dashed #555; 
+            justify-content: center; 
+            margin-top: 5px; 
+        }
+        .btn-reset:active { background-color: #333; color: white; border-color: #888; }
+
+        .footer {
+            margin-top: 15px;
+            font-size: 11px;
+            color: #666;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .footer-toggle {
+            color: var(--success);
+            text-decoration: none;
+            font-weight: bold;
+            padding: 5px 10px;
+            margin-top: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: 0.2s;
+        }
+        .contact-links {
+            display: none; 
+            flex-direction: row;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .contact-btn {
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 15px;
+        }
+        .btn-gmail { background-color: #ea4335; }
+        .btn-discord { background-color: #5865F2; }
+
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            opacity: 0;
+            pointer-events: none; 
+            transition: opacity 0.3s;
+            z-index: 90;
+        }
+        .overlay.active { opacity: 1; pointer-events: all; }
+
+        .bottom-sheet {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            height: 80vh; 
+            background-color: var(--card-bg);
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.8);
+            transform: translateY(100%); 
+            transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); 
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .bottom-sheet.active { transform: translateY(0); }
+        .sheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+        .sheet-header h3 { margin: 0; font-size: 18px; color: var(--text-main); }
+        .close-sheet-btn {
+            background: var(--danger);
+            color: white; border: none; padding: 5px 15px;
+            border-radius: 8px; font-weight: bold; cursor: pointer;
+        }
+        .sheet-content {
+            flex-grow: 1;
+            overflow-y: auto; 
+            color: var(--text-sub);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .add-node-btn {
+            background: #2c2c2c; color: white; border: 1px dashed #666;
+            width: 100%; padding: 12px; border-radius: 8px;
+            margin-top: 15px; cursor: pointer; font-size: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>末班車生存戰</h1>
+
+    <div class="location-block">
+        <label>出發地</label>
+        <div class="select-group">
+            <select class="type-select" id="start-type" onchange="updateStationOptions('start')">
+                <option value="mrt" selected>捷運</option>
+                <option value="train">火車</option>
+                <option value="hsr">高鐵</option>
+                <option value="bus">客運</option>
+            </select>
+            <select class="station-select" id="start-station">
+                <option value="Zhongshan" selected>中山</option>
+                <option value="TaipeiMain">台北車站</option>
+                <option value="Xindian">新店</option>
+            </select>
+        </div>
+    </div>
+
+    <button class="advanced-toggle-btn" onclick="openAdvancedSheet()">⛙ 加入中繼轉乘站 (進階模式)</button>
+
+    <div class="location-block">
+        <label>目的地</label>
+        <div class="select-group">
+            <select class="type-select" id="end-type" onchange="updateStationOptions('end')">
+                <option value="mrt" selected>捷運</option>
+                <option value="train">火車</option>
+                <option value="hsr">高鐵</option>
+                <option value="bus">客運</option>
+            </select>
+            <select class="station-select" id="end-station">
+                <option value="Zhongshan">中山</option>
+                <option value="TaipeiMain">台北車站</option>
+                <option value="Xindian" selected>新店</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="time-area">
+        <div class="status" id="status-text">現在時間</div>
+        <div class="time-display" id="time-display">00:00:00</div>
+        <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00; opacity:0.8;">00:42</span></div>
+    </div>
+    
+    <button id="action-btn" onclick="handleAction()">開始計算轉乘</button>
+
+    <div id="plan-b-container" class="plan-b-container">
+        <button class="plan-b-option btn-uber vehicle-option" onclick="openWeb('Uber')">
+            <span class="option-name">呼叫 Uber <span class="option-meta">~25min</span></span>
+            <span class="option-price">~$300</span>
+        </button>
+        <button class="plan-b-option btn-goshare vehicle-option" onclick="openWeb('GoShare')">
+            <span class="option-name">騎 GoShare <span class="option-meta">~30min</span></span>
+            <span class="option-price">~$80</span>
+        </button>
+        <button class="plan-b-option btn-youbike vehicle-option" onclick="openWeb('YouBike')">
+            <span class="option-name">熱血 YouBike <span class="option-meta">~60min</span></span>
+            <span class="option-price">~$15</span>
+        </button>
+        <button class="plan-b-option btn-reset" onclick="resetPlan()">
+            <span class="option-name">🔄 重新安排行程</span>
+        </button>
+    </div>
+
+    <div class="footer">
+        <span>本服務由綠茶地瓜維護</span>
+        <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
+        <div class="contact-links" id="contact-links">
+            <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
+            <a href="https://discord.gg/vUeBcsf" target="_blank" class="contact-btn btn-discord">💬 Discord</a>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeAdvancedSheet()"></div>
+<div class="bottom-sheet" id="advanced-sheet">
+    <div class="sheet-header">
+        <h3>進階轉乘路線設定</h3>
+        <button class="close-sheet-btn" onclick="closeAdvancedSheet()">完成</button>
+    </div>
+    <div class="sheet-content">
+        <p>在這裡，您可以打造像「中山 ➡️ 北車 ➡️ 客運1815」這種多段極限轉乘任務。</p>
+        
+        <div style="padding: 15px; background: #222; border-radius: 8px; margin-bottom: 10px;">
+            <strong>起點：</strong>捷運 中山站
+        </div>
+        <div style="padding: 15px; background: #222; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--success);">
+            <strong>中繼站 1：</strong>捷運 台北車站 (準備轉乘客運)
+        </div>
+        <div style="padding: 15px; background: #222; border-radius: 8px;">
+            <strong>終點：</strong>國光客運 1815
+        </div>
+
+        <button class="add-node-btn">➕ 新增下一個中繼站</button>
+    </div>
+</div>
+
+<script>
+    let isCountingDown = false;
+    let timeLeft = 0; 
+    let timer; 
+    const display = document.getElementById('time-display');
+    const statusText = document.getElementById('status-text');
+    const actionBtn = document.getElementById('action-btn');
+    const planBContainer = document.getElementById('plan-b-container'); 
+
+    // 處理選單連動（新增高鐵判斷）
+    function updateStationOptions(point) {
+        const typeSelect = document.getElementById(point + '-type');
+        const stationSelect = document.getElementById(point + '-station');
+        const selectedType = typeSelect.value;
+
+        stationSelect.innerHTML = '';
+
+        if (selectedType === 'mrt') {
+            stationSelect.innerHTML = `
+                <option value="Zhongshan">中山</option>
+                <option value="TaipeiMain">台北車站</option>
+                <option value="Xindian">新店</option>
+            `;
+            if (point === 'start') stationSelect.value = 'Zhongshan';
+            if (point === 'end') stationSelect.value = 'Xindian';
+        } else {
+            // 火車、客運、高鐵，目前一律預設為台北車站
+            stationSelect.innerHTML = `<option value="TaipeiMain" selected>台北車站</option>`;
+        }
+    }
+
+    function updateClock() {
+        if (!isCountingDown) {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            display.innerHTML = `${hh}:${mm}:${ss}`;
+        } else {
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                display.innerHTML = "來不及了💸";
+                display.style.fontSize = "50px"; 
+                display.style.color = "#ff5252";
+                
+                actionBtn.style.display = "none";
+                planBContainer.style.display = "flex";
+                
+                document.querySelectorAll('.vehicle-option').forEach(btn => {
+                    btn.style.display = "flex";
+                });
+                
+                statusText.innerHTML = "人生不是只有末班車...";
+                return;
+            }
+            timeLeft--;
+            let hours = Math.floor(timeLeft / 3600);
+            let minutes = Math.floor((timeLeft % 3600) / 60);
+            let seconds = timeLeft % 60;
+            
+            if (hours > 0) {
+                display.innerHTML = `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            } else {
+                display.innerHTML = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            }
+        }
+    }
+
+    updateClock();
+    timer = setInterval(updateClock, 1000);
+
+    function handleAction() {
+        const startType = document.getElementById('start-type').value;
+        const startStation = document.getElementById('start-station').value;
+        const endType = document.getElementById('end-type').value;
+        const endStation = document.getElementById('end-station').value;
+
+        // 1. 同站 + 同交通工具 ＝ 原地到達 (防呆)
+        if (startType === endType && startStation === endStation) {
+            clearInterval(timer); 
+            isCountingDown = false; 
+            
+            display.innerHTML = "恭喜到達🎉";
+            display.style.fontSize = "40px"; 
+            display.style.color = "#4caf50";
+            statusText.innerHTML = "你根本不用搭車，早點回家洗洗睡！";
+            
+            actionBtn.style.display = "none";
+            planBContainer.style.display = "flex";
+            
+            document.querySelectorAll('.vehicle-option').forEach(btn => {
+                btn.style.display = "none";
+            });
+            return;
+        }
+
+        // 2. 同站 + 不同交通工具 ＝ 北車迷宮 20 分鐘懲罰
+        let transferPenaltySeconds = 0;
+        if (startStation === endStation && startType !== endType) {
+            transferPenaltySeconds = 20 * 60; // 20 分鐘換算成秒
+            alert("⚠️ 偵測到「同站跨系統轉乘」。\n大車站就像迷宮，系統已自動為您預留 20 分鐘的步行轉乘時間！");
+        }
+
+        if (!isCountingDown) {
+            isCountingDown = true;
+            statusText.innerHTML = "距離末班車發車還剩";
+            display.style.color = "#4caf50";
+            actionBtn.innerHTML = "開啟極限求生模式！";
+            actionBtn.classList.add('btn-danger');
+
+            const now = new Date();
+            let target = new Date();
+            target.setHours(0, 42, 0, 0); 
+
+            if (now.getHours() >= 4) {
+                target.setDate(target.getDate() + 1);
+            }
+
+            // 計算基礎剩餘時間，再扣掉我們算出來的「步行懲罰時間」
+            timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenaltySeconds;
+            
+            if (timeLeft < 0) timeLeft = 0;
+            updateClock(); 
+        } else {
+            timeLeft += 60; 
+            display.style.color = '#ffea00';
+            setTimeout(() => { display.style.color = '#4caf50'; }, 150);
+        }
+    }
+
+    function resetPlan() {
+        clearInterval(timer);
+        isCountingDown = false;
+        
+        planBContainer.style.display = "none";    
+        actionBtn.style.display = "block";        
+        actionBtn.innerHTML = "開始計算轉乘";     
+        actionBtn.classList.remove('btn-danger'); 
+        
+        statusText.innerHTML = "現在時間";        
+        display.style.color = "#e0e0e0"; 
+        display.style.fontSize = "50px"; 
+        
+        document.querySelectorAll('.vehicle-option').forEach(btn => {
+            btn.style.display = "flex";
+        });
+                 
+        updateClock();
+        timer = setInterval(updateClock, 1000);
+    }
+
+    function openWeb(appName) {
+        let targetUrl = "";
+        if (appName === 'Uber') targetUrl = "https://m.uber.com/"; 
+        else if (appName === 'GoShare') targetUrl = "https://www.ridegoshare.com/"; 
+        else if (appName === 'YouBike') targetUrl = "https://www.youbike.com.tw/region/ntpc/stations/"; 
+        window.open(targetUrl, '_blank');
+    }
+
+    function toggleContact() {
+        const links = document.getElementById('contact-links');
+        links.style.display = (links.style.display === "flex") ? "none" : "flex";
+    }
+
+    function openAdvancedSheet() {
+        document.getElementById('overlay').classList.add('active');
+        document.getElementById('advanced-sheet').classList.add('active');
+    }
+
+    function closeAdvancedSheet() {
+        document.getElementById('overlay').classList.remove('active');
+        document.getElementById('advanced-sheet').classList.remove('active');
+    }
+</script>
+</body>
+</html>
