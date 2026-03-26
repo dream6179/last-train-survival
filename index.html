@@ -75,7 +75,7 @@
         .select-group {
             display: flex;
             gap: 8px;
-            position: relative; /* 為了讓客製化選單能對齊 */
+            position: relative; 
         }
         
         select, .station-input {
@@ -94,7 +94,6 @@
         
         .type-select { width: 35%; text-align: center; }
         
-        /* 🌟 全新客製化選單的外觀設定 */
         .autocomplete-wrapper {
             position: relative;
             width: 65%;
@@ -112,20 +111,40 @@
             border-top: none;
             border-radius: 0 0 8px 8px;
             z-index: 99;
-            max-height: 200px;
+            max-height: 250px;
             overflow-y: auto;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.8);
-            display: none; /* 預設隱藏 */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+            display: none; 
         }
-        .autocomplete-list div {
-            padding: 12px;
+        
+        /* 🌟 為了加入星星，把選單項目改成 flex 排版 */
+        .dropdown-item {
+            padding: 12px 15px;
             cursor: pointer;
-            border-bottom: 1px solid #3a3a3a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             color: white;
             font-size: 15px;
+            transition: background-color 0.1s;
         }
-        .autocomplete-list div:last-child { border-bottom: none; }
-        .autocomplete-list div:active { background-color: var(--success); }
+        .dropdown-item:active { background-color: #444; }
+        
+        /* 星星按鈕的樣式 */
+        .star-icon {
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 5px;
+            transition: transform 0.2s;
+        }
+        .star-icon:active { transform: scale(1.3); }
+
+        /* 分隔我的最愛與其他車站的隱形線 */
+        .dropdown-divider {
+            height: 1px;
+            background-color: #444;
+            margin: 4px 10px;
+        }
 
         .advanced-toggle-btn {
             background: none;
@@ -373,7 +392,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.28)</span>
+        <span>本服務由綠茶地瓜維護 (v1.29)</span>
         <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
@@ -410,6 +429,11 @@
     let offlineTimetableData = null; 
     let globalStationData = null; 
 
+    // 🌟 從使用者的手機瀏覽器喚醒「我的最愛」與「上次路線」
+    let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || [];
+    let savedStart = localStorage.getItem('lastTrainStart') || '中山';
+    let savedEnd = localStorage.getItem('lastTrainEnd') || '新店';
+
     const display = document.getElementById('time-display');
     const statusText = document.getElementById('status-text');
     const actionBtn = document.getElementById('action-btn');
@@ -427,10 +451,11 @@
                 globalStationData = await stationRes.json();
                 console.log("✅ 車站總字典已準備就緒！");
                 
-                initCustomAutocomplete(); // 初始化選單魔法
+                initCustomAutocomplete(); 
                 
-                document.getElementById('start-station-input').value = '中山';
-                document.getElementById('end-station-input').value = '新店';
+                // 自動套用使用者上次查過的路線 (記憶吐司)
+                document.getElementById('start-station-input').value = savedStart;
+                document.getElementById('end-station-input').value = savedEnd;
             }
         } catch (e) {
             console.log("⚠️ 檔案載入失敗，可能是路徑錯誤或在飛航模式。");
@@ -498,14 +523,31 @@
         }
     }
 
-    // --- 🌟 手刻的高質感下拉清單渲染器 ---
+    // 🌟 點擊星星時的魔法邏輯
+    function toggleFavorite(stationName) {
+        if (favoriteStations.includes(stationName)) {
+            // 如果已經在最愛，就把它移掉
+            favoriteStations = favoriteStations.filter(name => name !== stationName);
+        } else {
+            // 如果不在最愛，就加進去
+            favoriteStations.push(stationName);
+        }
+        // 存回使用者的手機裡
+        localStorage.setItem('lastTrainFavs', JSON.stringify(favoriteStations));
+        
+        // 重新繪製上下兩個下拉選單，讓星星狀態同步更新
+        renderCustomDropdown('start');
+        renderCustomDropdown('end');
+    }
+
+    // --- 🌟 置頂我的最愛的高階渲染器 ---
     function renderCustomDropdown(point) {
         const typeSelect = document.getElementById(point + '-type');
         const inputField = document.getElementById(point + '-station-input');
         const listContainer = document.getElementById(point + '-autocomplete-list');
         const selectedType = typeSelect.value;
         
-        listContainer.innerHTML = ''; // 清空舊清單
+        listContainer.innerHTML = ''; 
         
         let options = [];
         if (globalStationData && globalStationData[selectedType] && globalStationData[selectedType].options) {
@@ -513,40 +555,77 @@
         }
 
         const filterText = inputField.value.trim().toLowerCase();
+        
+        let favList = [];
+        let otherList = [];
 
         options.forEach(station => {
-            // 過濾邏輯：如果輸入框是空的就顯示全部，不然就比對字串
             if (station.name.toLowerCase().includes(filterText) || filterText === '') {
-                const item = document.createElement('div');
-                item.textContent = station.name;
-                
-                // 防止點擊選單時，輸入框失去焦點導致選單消失
-                item.addEventListener('mousedown', function(e) {
-                    e.preventDefault(); 
-                });
-                
-                // 點擊後把名字塞進輸入框，並隱藏選單
-                item.addEventListener('click', function() {
-                    inputField.value = station.name;
-                    listContainer.style.display = 'none';
-                });
-                listContainer.appendChild(item);
+                // 分類：是有被標星號的，還是沒有的？
+                if (favoriteStations.includes(station.name)) {
+                    favList.push(station);
+                } else {
+                    otherList.push(station);
+                }
             }
         });
+
+        // 負責畫出單一站點的工具
+        const createItem = (station, isFav) => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = station.name;
+
+            const starSpan = document.createElement('span');
+            starSpan.className = 'star-icon';
+            starSpan.textContent = isFav ? '★' : '☆';
+            starSpan.style.color = isFav ? '#ffca28' : '#666'; // ★是金黃色，☆是暗灰色
+
+            // 點擊星星：只改變最愛狀態，不關閉選單
+            starSpan.addEventListener('mousedown', function(e) {
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                toggleFavorite(station.name);
+            });
+
+            // 點擊站名：選定車站並關閉選單
+            item.addEventListener('mousedown', function(e) { e.preventDefault(); });
+            item.addEventListener('click', function() {
+                inputField.value = station.name;
+                listContainer.style.display = 'none';
+            });
+
+            item.appendChild(nameSpan);
+            item.appendChild(starSpan);
+            return item;
+        };
+
+        // 1. 先畫出「我的最愛」區塊 (自動置頂！)
+        favList.forEach(station => {
+            listContainer.appendChild(createItem(station, true));
+        });
+
+        // 2. 如果上面有最愛、下面也有一般車站，中間畫一條低調的分隔線
+        if (favList.length > 0 && otherList.length > 0) {
+            const divider = document.createElement('div');
+            divider.className = 'dropdown-divider';
+            listContainer.appendChild(divider);
+        }
+
+        // 3. 畫出其他的普通車站
+        otherList.forEach(station => {
+            listContainer.appendChild(createItem(station, false));
+        });
         
-        // 如果有東西就顯示框框，沒有就藏起來
         listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
     }
 
-    // --- 🌟 初始化搜尋輸入框 ---
     function initCustomAutocomplete() {
         ['start', 'end'].forEach(point => {
             const inputField = document.getElementById(point + '-station-input');
-            
-            // 使用者打字時，重新過濾
             inputField.addEventListener('input', () => renderCustomDropdown(point));
-            
-            // 使用者點擊輸入框時，清空並顯示所有選項
             inputField.addEventListener('focus', () => {
                 inputField.value = ''; 
                 renderCustomDropdown(point);
@@ -554,7 +633,6 @@
         });
     }
 
-    // 點擊畫面其他地方時，把懸浮選單收起來
     document.addEventListener('click', function (e) {
         ['start', 'end'].forEach(point => {
             const wrapper = document.getElementById(point + '-station-input').parentElement;
@@ -564,7 +642,6 @@
         });
     });
 
-    // 改變交通工具（如：捷運換火車）時，清空輸入框
     function updateStationOptions(point) {
         document.getElementById(point + '-station-input').value = '';
         renderCustomDropdown(point);
@@ -620,6 +697,10 @@
             alert("⚠️ 找不到這個車站，請確認是否有錯字，或從選單中直接點選！");
             return; 
         }
+
+        // 🌟 既然他成功按下了開始，代表這條路線他真的會搭，我們幫他偷偷記下來！
+        localStorage.setItem('lastTrainStart', startStationName);
+        localStorage.setItem('lastTrainEnd', endStationName);
 
         const startStation = startStationObj.id;
         const endStation = endStationObj.id;
