@@ -267,6 +267,7 @@
         if (!searchStationName) { alert("⚠️ 請先選擇或輸入要查詢的車站！"); return; }
 
         searchBtn.disabled = true; searchBtn.innerHTML = "⏳ 連線檢索中...";
+        resultBox.style.justifyContent = 'center';
         resultBox.innerHTML = `正在為您連線交通部與本地資料庫...`;
 
         try {
@@ -274,7 +275,6 @@
                 const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; 
             }
             
-            // 🌟 這裡如果 routing.js 沒抓好，會拋出錯誤被下面 catch 接住
             let res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken);
             
             if (res.status === "TOKEN_EXPIRED") {
@@ -313,7 +313,11 @@
         }
     }
 
-    let isCountingDown = false; let timeLeft = 0; let timer; let cachedTdxToken = ""; let offlineTimetableData = null; let globalStationData = null; 
+    let isCountingDown = false; let timeLeft = 0; let timer; let cachedTdxToken = ""; 
+    let offlineTimetableData = null; 
+    let globalStationData = null; 
+    let transferTimetableData = null; // 🌟 新增：存放轉乘死線的變數
+
     let isNotificationEnabled = false; let notificationTriggered = false;
 
     let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || [];
@@ -330,14 +334,16 @@
     const defaultStations = { 'trtc': '台北車站', 'tymetro': '台北車站', 'krtc': '高雄車站', 'tmrt': '高鐵台中站', 'tra': '台北車站', 'thsr': '台北車站', 'intercity': '台北車站', 'bus': '台北車站' };
 
     window.onload = async () => {
-        // 🌟 防彈裝甲啟動：把兩個 JSON 獨立出來抓取！這樣一個錯了，另一個還能活！
         try {
             const timeRes = await fetch('/data/offline-timetable.json');
             if (timeRes.ok) offlineTimetableData = await timeRes.json();
-        } catch (e) {
-            alert("🚨 警告：你的離線時刻表 (offline-timetable.json) 裡面有格式錯誤！\n\n可能是少打了一個逗號「,」或是多了一個大括號「}」，請去 GitHub 檢查 O54 或是 BR01 附近。");
-            console.error(e);
-        }
+        } catch (e) { console.error("離線時刻表載入失敗", e); }
+
+        // 🌟 讀取你的官方轉乘寶典！
+        try {
+            const transferRes = await fetch('/data/transfer-timetable.json');
+            if (transferRes.ok) transferTimetableData = await transferRes.json();
+        } catch (e) { console.error("轉乘字典尚未建置或載入失敗", e); }
 
         try {
             const stationRes = await fetch('/data/stations.json');
@@ -348,10 +354,7 @@
                 document.getElementById('end-station-input').value = savedEnd;
                 document.getElementById('search-station-input').value = savedStart;
             }
-        } catch (e) {
-            alert("🚨 警告：你的選單資料庫 (stations.json) 格式有錯！");
-            console.error(e);
-        }
+        } catch (e) { console.error("車站選單載入失敗", e); }
     };
 
     function toggleFavorite(stationName) {
@@ -487,11 +490,24 @@
                     realTime = await fetchRealLastTrainTime(globalStationData, cachedTdxToken, startStation, endStation, startType);
                 }
 
-                if (realTime && realTime !== "TOKEN_EXPIRED") finalTime = realTime;
-                else {
+                // 🌟 四層防禦機制正式啟動！
+                if (realTime && realTime !== "TOKEN_EXPIRED") {
+                    finalTime = realTime; // 第 1 層：API 直達
+                } else {
                     const offlineComputedTime = calculateOfflineTime(offlineTimetableData, startStationName, endStationName, startType);
-                    if (offlineComputedTime) { finalTime = offlineComputedTime; status = "離線演算法"; } 
-                    else { status = "系統預設"; alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。"); }
+                    if (offlineComputedTime) { 
+                        finalTime = offlineComputedTime; status = "離線演算法"; // 第 2 層：離線推演直達
+                    } else {
+                        // 🌟 第 3 層：查不到直達車，召喚官方轉乘死線！
+                        const transferTime = getOfficialTransferTime(transferTimetableData, startStationName, endStationName);
+                        if (transferTime) {
+                            finalTime = transferTime; 
+                            status = "官方轉乘死線"; 
+                        } else {
+                            // 第 4 層：連字典都沒寫，退回 23:59
+                            status = "系統預設"; alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。"); 
+                        }
+                    }
                 }
             } else { status = "系統預設"; alert(`尚未串接即時資料，使用 23:59 估算。`); }
 
