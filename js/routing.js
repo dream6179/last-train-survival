@@ -250,3 +250,29 @@ async function fetchSingleStationTime(stationName, type, offlineTimetableData, c
     
     return { status: finalStatus, data: finalResults };
 }
+// 4. 🌟 終極轉乘防線：官方轉乘死線字典
+function getOfficialTransferTime(transferData, startName, endName) {
+    // 檢查字典在不在，以及起點有沒有建檔
+    if (!transferData || !transferData[startName]) return null;
+    
+    const routes = transferData[startName];
+    let possibleTimes = [];
+
+    for (let key in routes) {
+        // 處理格式：如果是 "文湖線-南港展覽館"，切出 "南港展覽館"；如果是 "小碧潭"，就直接用
+        const destPart = key.includes('-') ? key.split('-')[1] : key;
+        
+        // 絕對精準比對終點站名稱！
+        if (destPart === endName) {
+            possibleTimes.push(routes[key]);
+        }
+    }
+
+    if (possibleTimes.length > 0) {
+        // 如果有多條路線都能到（比如板南跟文湖都能去南港展覽館）
+        // 為了求生安全，我們取最嚴格（最早）的時間！
+        possibleTimes.sort();
+        return possibleTimes[0];
+    }
+    return null;
+}
