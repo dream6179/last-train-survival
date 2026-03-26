@@ -1,5 +1,5 @@
 // ==========================================
-// 末班車生存戰 - 核心路徑分揀與運算引擎 (v1.1)
+// 末班車生存戰 - 核心路徑分揀與運算引擎 (v1.2)
 // ==========================================
 
 const operatorMap = {
@@ -9,14 +9,12 @@ const operatorMap = {
     'tmrt': 'TMRT'      
 };
 
-// 1. 智慧代碼導航器：負責查出起迄點的車站代號
 function getSmartStationInfo(globalStationData, origin, dest, type) {
     if (!globalStationData || !globalStationData[type] || !globalStationData[type].routes) return null;
     const routeKey = `${origin}-${dest}`;
     return globalStationData[type].routes[routeKey] || null;
 }
 
-// 2. 離線神級演算法：支援 Y 型分岔路線的極限推演
 function calculateOfflineTime(offlineTimetableData, startName, endName, type) {
     if (!offlineTimetableData || !offlineTimetableData[type]) return null;
     const table = offlineTimetableData[type];
@@ -58,7 +56,6 @@ function calculateOfflineTime(offlineTimetableData, startName, endName, type) {
     return null; 
 }
 
-// 3. 連線交通部 API 的求生大門
 async function fetchRealLastTrainTime(globalStationData, cachedTdxToken, origin, destination, type) {
     try {
         const operatorCode = operatorMap[type];
@@ -107,11 +104,6 @@ async function fetchRealLastTrainTime(globalStationData, cachedTdxToken, origin,
     }
 }
 
-// ==========================================
-// 🌟 模式 B：全站檢索系統專用邏輯
-// ==========================================
-
-// 輔助翻譯：當離線時，把 up/down 翻譯成人類看得懂的方向
 function getDirectionName(line, dir) {
     const map = {
         'R': { up: '淡水/北投', down: '象山/大安' },
@@ -124,20 +116,18 @@ function getDirectionName(line, dir) {
     return map[line] ? map[line][dir] : (dir === 'up' ? '上行方向' : '下行方向');
 }
 
-// 核心檢索：撈出該車站所有路線、所有方向的末班車
 async function fetchSingleStationTime(stationName, type, offlineTimetableData, cachedTdxToken) {
     let results = [];
     let isOnline = false;
     const operatorCode = operatorMap[type];
-    const table = offlineTimetableData[type];
     
-    if (!table) return { status: "error", data: [] };
-
-    // 找出這個站名對應的所有代碼 (解決交會站問題)
+    // 🌟 防彈機制：如果 offlineTimetableData 壞掉，直接擋下來，不讓程式崩潰！
+    if (!offlineTimetableData || !offlineTimetableData[type]) return { status: "error", data: [] };
+    
+    const table = offlineTimetableData[type];
     const stationKeys = Object.keys(table).filter(k => table[k].name === stationName);
     if (stationKeys.length === 0) return { status: "not_found", data: [] };
 
-    // 嘗試呼叫 TDX API
     if (operatorCode && cachedTdxToken) {
         try {
             for (let sKey of stationKeys) {
@@ -183,7 +173,6 @@ async function fetchSingleStationTime(stationName, type, offlineTimetableData, c
         }
     }
 
-    // 若斷網或查無資料，自動無縫切換到離線字典提取資料
     if (!isOnline) {
         stationKeys.forEach(sKey => {
             const sData = table[sKey];
