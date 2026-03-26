@@ -40,6 +40,10 @@ function calculateOfflineTime(offlineTimetableData, startName, endName, type) {
                     return timeData;
                 } 
                 else if (typeof timeData === 'object') {
+                    // 🌟 支線精確制導：如果目的地代碼直接就在這個物件裡，直接拿時間！
+                    if (timeData[eKey]) return timeData[eKey];
+                    
+                    // 橘線 (O) 專屬智慧分流邏輯
                     if (sLine === 'O') {
                         if (eNum >= 50) return timeData["O54"] || null;
                         if (eNum >= 13 && eNum <= 21) return timeData["O21"] || null;
