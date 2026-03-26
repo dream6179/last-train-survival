@@ -274,18 +274,72 @@
         }
     }
 
-    // 🌟 未來的全查詢邏輯入口
-    function executeFullSearch() {
+    // 🌟 全查詢邏輯正式啟動
+    async function executeFullSearch() {
         const searchType = document.getElementById('search-type').value;
         const searchStationName = document.getElementById('search-station-input').value;
         const resultBox = document.getElementById('search-result-box');
+        const searchBtn = document.getElementById('search-action-btn');
         
-        resultBox.innerHTML = `⏳ 正在透過新分揀系統準備檢索...<br><br>站點：${searchStationName} (${searchType})`;
-        
-        // 未來這裡要呼叫新的大腦邏輯
-        setTimeout(() => {
-            alert(`你點擊了查詢！\n未來新的分揀邏輯完成後，將在這裡撈出 ${searchStationName} 所有的時刻表並顯示在畫面下方。`);
-        }, 500);
+        if (!searchStationName) {
+            alert("⚠️ 請先選擇或輸入要查詢的車站！");
+            return;
+        }
+
+        searchBtn.disabled = true;
+        searchBtn.innerHTML = "⏳ 連線檢索中...";
+        resultBox.innerHTML = `正在為您連線交通部與本地資料庫...`;
+
+        try {
+            // 1. 如果沒有 Token，先去跟黑衣人拿
+            if (!cachedTdxToken && ['trtc', 'tymetro', 'krtc', 'tmrt'].includes(searchType)) {
+                const tokenRes = await fetch('/api/get-token'); 
+                const tokenData = await tokenRes.json(); 
+                cachedTdxToken = tokenData.access_token; 
+            }
+
+            // 2. 呼叫新的獨立分揀大腦
+            let res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken);
+            
+            // 3. 如果 Token 剛好過期，重拿一次再查
+            if (res.status === "TOKEN_EXPIRED") {
+                const tokenRes = await fetch('/api/get-token'); 
+                const tokenData = await tokenRes.json(); 
+                cachedTdxToken = tokenData.access_token;
+                res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken);
+            }
+
+            // 4. 判斷是否有資料
+            if (res.status === "not_found" || res.data.length === 0) {
+                resultBox.innerHTML = `<span style="color:var(--danger)">⚠️ 找不到「${searchStationName}」的發車資料，可能是未建檔或輸入有誤。</span>`;
+                return;
+            }
+
+            // 5. 組合超有質感的 HTML 介面呈現
+            let html = `<div style="width: 100%; text-align: left;">`;
+            html += `<h4 style="color: white; margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 8px;">🚉 ${searchStationName} 末班車時刻表</h4>`;
+            
+            res.data.forEach(item => {
+                let colorTag = item.source === "即時連線" ? "color: var(--success);" : "color: var(--warning);";
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px dashed #333;">
+                        <span style="font-weight: bold; color: #ddd; font-size: 14px;">往 ${item.destination}</span>
+                        <span style="font-size: 18px; font-weight: bold; font-variant-numeric: tabular-nums; color: white;">
+                            ${item.time} <span style="font-size: 10px; font-weight: normal; ${colorTag}; display: block; text-align: right; margin-top: 2px;">(${item.source})</span>
+                        </span>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            
+            resultBox.innerHTML = html;
+
+        } catch (e) {
+            resultBox.innerHTML = `<span style="color:var(--danger)">⚠️ 系統發生錯誤，請稍後再試。</span>`;
+        } finally {
+            searchBtn.disabled = false;
+            searchBtn.innerHTML = "🔍 重新查詢";
+        }
     }
 
     // ==========================================
