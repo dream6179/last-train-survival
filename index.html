@@ -478,10 +478,19 @@
 
         actionBtn.innerHTML = "⏳ 演算法推演中..."; actionBtn.disabled = true;
 
-        try {
+       try {
             let finalTime = "23:59"; let status = "即時連線";
 
-            if (['trtc', 'tymetro', 'krtc', 'tmrt'].includes(startType) && startType === endType) {
+            // 🌟 霸王級優先權：第一步，先把官方轉乘死線查出來！
+            // 只要字典有寫（代表它一定是個需要注意的轉乘/支線任務），我們就直接採用！
+            const transferTime = getOfficialTransferTime(transferTimetableData, startStationName, endStationName);
+
+            if (transferTime) {
+                finalTime = transferTime; 
+                status = "官方轉乘死線"; 
+            } 
+            // 🌟 如果轉乘字典沒寫（代表這是一般的直達車），才開始用常規的同線演算法
+            else if (['trtc', 'tymetro', 'krtc', 'tmrt'].includes(startType) && startType === endType) {
                 if (!cachedTdxToken) { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; }
                 let realTime = await fetchRealLastTrainTime(globalStationData, cachedTdxToken, startStation, endStation, startType);
                 
@@ -490,7 +499,6 @@
                     realTime = await fetchRealLastTrainTime(globalStationData, cachedTdxToken, startStation, endStation, startType);
                 }
 
-                // 🌟 四層防禦機制正式啟動！
                 if (realTime && realTime !== "TOKEN_EXPIRED") {
                     finalTime = realTime; // 第 1 層：API 直達
                 } else {
@@ -498,18 +506,13 @@
                     if (offlineComputedTime) { 
                         finalTime = offlineComputedTime; status = "離線演算法"; // 第 2 層：離線推演直達
                     } else {
-                        // 🌟 第 3 層：查不到直達車，召喚官方轉乘死線！
-                        const transferTime = getOfficialTransferTime(transferTimetableData, startStationName, endStationName);
-                        if (transferTime) {
-                            finalTime = transferTime; 
-                            status = "官方轉乘死線"; 
-                        } else {
-                            // 第 4 層：連字典都沒寫，退回 23:59
-                            status = "系統預設"; alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。"); 
-                        }
+                        // 第 4 層：字典沒寫，也不是直達車，退回 23:59
+                        status = "系統預設"; alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。"); 
                     }
                 }
-            } else { status = "系統預設"; alert(`尚未串接即時資料，使用 23:59 估算。`); }
+            } else { 
+                status = "系統預設"; alert(`尚未串接即時資料，使用 23:59 估算。`); 
+            }
 
             isCountingDown = true; statusText.innerHTML = "距離末班車發車還剩"; display.style.color = "#4caf50";
             speedModeText.innerHTML = `${finalTime} <span style="font-size:10px; color:#aaa;">(${status})</span>`;
