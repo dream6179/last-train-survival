@@ -126,8 +126,6 @@
       "Zhongshan-Xindian": { "originCode": "G14", "terminuses": ["G01"] },
       "Xindian-Zhongshan": { "originCode": "G01", "terminuses": ["G19"] }
     }
-  }
-}
   },
   "tymetro": { "options": [{"id": "TaipeiMain", "name": "台北車站"}], "routes": {} },
   "krtc": { "options": [{"id": "KaohsiungMain", "name": "高雄車站"}], "routes": {} },
