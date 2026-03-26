@@ -348,7 +348,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.21)</span>
+        <span>本服務由綠茶地瓜維護 (v1.22)</span>
         <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
@@ -390,14 +390,20 @@
     const speedModeText = document.getElementById('speed-mode');
     const planBContainer = document.getElementById('plan-b-container'); 
 
-    // 智慧代碼導航器
-    function getSmartStationIds(origin, dest) {
-        if (origin === 'Zhongshan' && dest === 'TaipeiMain') return ['R11', 'R10']; 
-        if (origin === 'TaipeiMain' && dest === 'Zhongshan') return ['R10', 'R11']; 
-        if (origin === 'Zhongshan' && dest === 'Xindian') return ['G14', 'G01'];   
-        if (origin === 'Xindian' && dest === 'Zhongshan') return ['G01', 'G14'];   
-        if (origin === 'TaipeiMain' && dest === 'Xindian') return ['R10', 'R08']; 
-        if (origin === 'Xindian' && dest === 'TaipeiMain') return ['G01', 'G10']; 
+    // --- 【全新修正】智慧代碼導航器：改為回傳「出發站代碼」以及「列車可能的終點站代碼」 ---
+    function getSmartStationInfo(origin, dest) {
+        // 紅線南下 (往象山或大安)
+        if (origin === 'Zhongshan' && dest === 'TaipeiMain') return { originCode: 'R11', terminuses: ['R02', 'R05'] }; 
+        // 紅線北上 (往淡水或北投)
+        if (origin === 'TaipeiMain' && dest === 'Zhongshan') return { originCode: 'R10', terminuses: ['R28', 'R22'] }; 
+        // 綠線南下 (必須往新店)
+        if (origin === 'Zhongshan' && dest === 'Xindian') return { originCode: 'G14', terminuses: ['G01'] };   
+        // 綠線北上 (往松山)
+        if (origin === 'Xindian' && dest === 'Zhongshan') return { originCode: 'G01', terminuses: ['G19'] };   
+        // 北車 轉 新店 (第一段：紅線往南到中正紀念堂轉車)
+        if (origin === 'TaipeiMain' && dest === 'Xindian') return { originCode: 'R10', terminuses: ['R02', 'R05'] }; 
+        // 新店 轉 北車 (第一段：綠線往北到中正紀念堂轉車)
+        if (origin === 'Xindian' && dest === 'TaipeiMain') return { originCode: 'G01', terminuses: ['G19'] }; 
         return null;
     }
 
@@ -420,7 +426,7 @@
         }
     }
 
-    // --- 抓蟲雷達版：去交通部拿真實末班車時間 ---
+    // --- 【大魔王修正】去交通部拿真實的「車站時刻表」 ---
     async function fetchRealLastTrainTime(origin, destination, retryCount = 0) {
         if (!cachedTdxToken) {
             const tokenRes = await fetch('/api/get-token');
@@ -428,13 +434,14 @@
             cachedTdxToken = tokenData.access_token;
         }
 
-        const stationIds = getSmartStationIds(origin, destination);
-        if (!stationIds) return null;
+        const info = getSmartStationInfo(origin, destination);
+        if (!info) return null;
         
-        const originCode = stationIds[0];
-        const destCode = stationIds[1];
+        const originCode = info.originCode;
+        const terminuses = info.terminuses;
 
-        const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/DailyTimetable/OD/TRTC/from/${originCode}/to/${destCode}?%24format=JSON`;
+        // 🌟 改敲「單一車站時刻表」的大門，避開 404 Not Found 的大雷！
+        const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/TRTC?$filter=StationID eq '${originCode}'&$format=JSON`;
 
         try {
             const res = await fetch(apiUrl, {
@@ -448,28 +455,40 @@
                 return fetchRealLastTrainTime(origin, destination, 1);
             }
 
-            if (data && data.length > 0 && data[0].ODTimetables) {
-                const timetables = data[0].ODTimetables;
+            if (data && data.length > 0) {
                 let maxMinutes = -1;
                 let lastTrainTimeStr = "";
 
-                timetables.forEach(t => {
-                    const timeStr = t.OriginStationDepartureTime; 
-                    const [h, m] = timeStr.split(':').map(Number);
-                    let adjustedH = h < 4 ? h + 24 : h;
-                    let totalMins = adjustedH * 60 + m;
+                // 遍歷車站內所有的行駛方向與時刻表
+                data.forEach(route => {
+                    // 只挑出「終點站符合我們要去的方向」的班車
+                    if (terminuses.includes(route.DestinationStationID)) {
+                        if (route.Timetables && route.Timetables.length > 0) {
+                            route.Timetables.forEach(t => {
+                                const timeStr = t.DepartureTime; // 抓出發車時間，例如 "00:42"
+                                const [h, m] = timeStr.split(':').map(Number);
+                                let adjustedH = h < 4 ? h + 24 : h;
+                                let totalMins = adjustedH * 60 + m;
 
-                    if (totalMins > maxMinutes) {
-                        maxMinutes = totalMins;
-                        lastTrainTimeStr = timeStr;
+                                // 找出數字最大的（最晚發車）
+                                if (totalMins > maxMinutes) {
+                                    maxMinutes = totalMins;
+                                    lastTrainTimeStr = timeStr;
+                                }
+                            });
+                        }
                     }
                 });
-                return lastTrainTimeStr;
-            } else {
-                // 🌟 雷達抓蟲：直接把網址和回傳的空資料彈出來給你看
-                alert("⚠️ 【除錯雷達啟動】抓不到資料！\n\n我們打過去的網址：\n" + apiUrl + "\n\n交通部回傳的內容：\n" + JSON.stringify(data).substring(0, 200));
-                return null;
-            }
+                
+                // 成功抓到！
+                if (lastTrainTimeStr !== "") {
+                    return lastTrainTimeStr;
+                }
+            } 
+            
+            alert("⚠️ 【除錯雷達】抓不到這個方向的車！\n網址：\n" + apiUrl + "\n\n回傳：\n" + JSON.stringify(data).substring(0, 200));
+            return null;
+            
         } catch (error) {
             console.error("連線發生異常：", error);
             alert("⚠️ 【除錯雷達】網路或 API 呼叫發生錯誤：\n" + error.message);
@@ -579,8 +598,7 @@
                 if (realTime) {
                     finalTargetTimeString = realTime;
                 } else {
-                    // 若抓不到資料，除錯雷達已經彈窗了，這裡只要套用預設值即可
-                    alert("⚠️ 既然 TDX 查無資料，將使用系統預設 00:42 估算。");
+                    alert("⚠️ 無法獲取時刻表，將使用系統預設 00:42 估算。");
                 }
             } else {
                 alert("目前火車與客運尚未連線 TDX，將使用系統預設 00:42 估算。");
