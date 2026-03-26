@@ -191,6 +191,32 @@
         
         #action-btn.btn-danger { background-color: var(--danger); }
         #action-btn.btn-danger:active { background-color: #d50000; }
+
+        /* 🌟 取代單一的取消按鈕，變成雙按鈕群組 */
+        .action-btn-group {
+            display: none; /* 預設隱藏 */
+            gap: 10px;
+            margin-top: 5px;
+            width: 100%;
+        }
+        .btn-reset, .btn-notify { 
+            background-color: transparent; 
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px 10px;
+            flex: 1; 
+            font-size: 15px;
+        }
+        .btn-reset { color: var(--text-sub); border: 1px dashed #555; }
+        .btn-reset:active { background-color: #333; color: white; border-color: #888; }
+        
+        .btn-notify { color: #ffca28; border: 1px dashed #ffca28; font-weight: bold;}
+        .btn-notify:active { background-color: rgba(255, 202, 40, 0.2); }
+        .btn-notify.active { background-color: #ffca28; color: #121212; border-style: solid; }
         
         .plan-b-container {
             display: none; 
@@ -217,21 +243,6 @@
         .btn-uber { background-color: #1a1a1a; color: #ffffff; border: 1px solid #333; }
         .btn-goshare { background-color: #009999; color: #ffffff; }
         .btn-youbike { background-color: #ccaa00; color: #121212; }
-
-        .btn-reset { 
-            background-color: transparent; 
-            color: var(--text-sub); 
-            border: 1px dashed #555; 
-            justify-content: center; 
-            margin-top: 5px; 
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-        }
-        .btn-reset:active { background-color: #333; color: white; border-color: #888; }
 
         .footer {
             margin-top: 15px;
@@ -400,9 +411,14 @@
     
     <button id="action-btn" onclick="handleAction()">開始計算轉乘</button>
     
-    <button id="cancel-btn" class="btn-reset" style="display: none;" onclick="resetPlan()">
-        <span class="option-name">🔄 終止求生，重新安排</span>
-    </button>
+    <div id="action-button-group" class="action-btn-group">
+        <button id="cancel-btn" class="btn-reset" onclick="resetPlan()">
+            <span class="option-name">🔄 終止求生</span>
+        </button>
+        <button id="notify-btn" class="btn-notify" onclick="enableAlarm()">
+            <span class="option-name">🔔 開啟提醒</span>
+        </button>
+    </div>
 
     <div id="plan-b-container" class="plan-b-container">
         <button class="plan-b-option btn-uber vehicle-option" onclick="openWeb('Uber')">
@@ -423,7 +439,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.33)</span>
+        <span>本服務由綠茶地瓜維護 (v1.34)</span>
         <div class="footer-action-row">
             <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
             <a class="footer-toggle" onclick="openSheet('settings-sheet')">⚙️ 設定</a>
@@ -483,7 +499,8 @@
     let offlineTimetableData = null; 
     let globalStationData = null; 
 
-    // 🌟 推播通知狀態旗標
+    // 🌟 推播通知狀態控制
+    let isAlarmEnabled = false;
     let notified10Min = false;
     let notified1Min = false;
 
@@ -494,7 +511,7 @@
     const display = document.getElementById('time-display');
     const statusText = document.getElementById('status-text');
     const actionBtn = document.getElementById('action-btn');
-    const cancelBtn = document.getElementById('cancel-btn'); 
+    const actionBtnGroup = document.getElementById('action-button-group'); 
     const speedModeText = document.getElementById('speed-mode');
     const planBContainer = document.getElementById('plan-b-container'); 
 
@@ -524,7 +541,6 @@
             const stationRes = await fetch('/data/stations.json');
             if (stationRes.ok) {
                 globalStationData = await stationRes.json();
-                console.log("✅ 車站總字典已準備就緒！");
                 
                 initCustomAutocomplete(); 
                 
@@ -532,26 +548,45 @@
                 document.getElementById('end-station-input').value = savedEnd;
             }
         } catch (e) {
-            console.log("⚠️ 檔案載入失敗，可能是路徑錯誤或在飛航模式。");
+            console.log("⚠️ 檔案載入失敗。");
         }
     };
 
-    // 🌟 專屬的推播功能器
     function sendPushNotification(title, body) {
         if ("Notification" in window && Notification.permission === "granted") {
             new Notification(title, { 
                 body: body,
-                icon: "https://cdn-icons-png.flaticon.com/512/2838/2838912.png" // 加上一個可愛的警報小圖示
+                icon: "https://cdn-icons-png.flaticon.com/512/2838/2838912.png" 
             });
         }
     }
 
-    // 🌟 要求推播權限
-    function requestNotificationPermission() {
+    // 🌟 按下鈴鐺按鈕後，才會執行的開啟通知邏輯
+    async function enableAlarm() {
+        // 第一步：先打預防針，跟使用者解釋手機系統的限制
+        alert("⚠️ 系統限制提醒：\n\n為確保倒數精準，請盡量【保持網頁開啟】且【螢幕長亮】。\n\n若您切換APP或鎖定螢幕，手機的省電機制可能會導致倒數暫停與通知失效喔！");
+        
         if ("Notification" in window) {
-            if (Notification.permission !== "denied" && Notification.permission !== "granted") {
-                Notification.requestPermission();
+            let permission = Notification.permission;
+            // 第二步：如果還沒答應過，才跳出瀏覽器的授權視窗
+            if (permission !== "granted" && permission !== "denied") {
+                permission = await Notification.requestPermission();
             }
+            
+            if (permission === "granted") {
+                isAlarmEnabled = true;
+                
+                // 第三步：按鈕變身，讓使用者知道設定成功
+                const notifyBtn = document.getElementById('notify-btn');
+                notifyBtn.classList.add('active');
+                notifyBtn.innerHTML = '<span class="option-name">✅ 提醒已開啟</span>';
+                
+                sendPushNotification("推播設定成功！", "我們會在最後 10 分鐘與 1 分鐘時提醒您。記得別關閉網頁喔！");
+            } else {
+                alert("您已拒絕通知權限，若要使用請至瀏覽器設定中開啟。");
+            }
+        } else {
+            alert("您的瀏覽器不支援推播通知功能。");
         }
     }
 
@@ -742,8 +777,8 @@
                 display.innerHTML = "來不及了💸";
                 display.style.fontSize = "50px"; 
                 display.style.color = "#ff5252";
-                actionBtn.style.display = "none";
-                cancelBtn.style.display = "none"; 
+                
+                actionBtnGroup.style.display = "none";
                 planBContainer.style.display = "flex";
                 document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex");
                 statusText.innerHTML = "人生不是只有末班車...";
@@ -751,14 +786,16 @@
             }
             timeLeft--;
             
-            // 🌟 倒數計時防護網：觸發推播警告
-            if (timeLeft === 600 && !notified10Min) { // 剩餘 10 分鐘 (600秒)
-                sendPushNotification("⚠️ 警告：剩下 10 分鐘！", "該結帳收包包前往捷運站了，別再喝了！");
-                notified10Min = true;
-            }
-            if (timeLeft === 60 && !notified1Min) { // 剩餘 1 分鐘 (60秒)
-                sendPushNotification("🚨 最後警告：剩餘 1 分鐘！", "拿出百米衝刺的速度！快跑啊！");
-                notified1Min = true;
+            // 🌟 只有當使用者點擊過「開啟提醒」時，才會發送這兩個時間點的推播
+            if (isAlarmEnabled) {
+                if (timeLeft === 600 && !notified10Min) {
+                    sendPushNotification("⚠️ 警告：剩下 10 分鐘！", "該結帳收包包前往捷運站了，別再喝了！");
+                    notified10Min = true;
+                }
+                if (timeLeft === 60 && !notified1Min) {
+                    sendPushNotification("🚨 最後警告：剩餘 1 分鐘！", "拿出百米衝刺的速度！快跑啊！");
+                    notified1Min = true;
+                }
             }
 
             let hours = Math.floor(timeLeft / 3600);
@@ -777,9 +814,8 @@
     timer = setInterval(updateClock, 1000);
 
     async function handleAction() {
-        // 🌟 使用者點擊開始求生時，第一時間要求推播權限
-        requestNotificationPermission();
-
+        // 🌟 移除原本會自動跳出的請求權限，現在全交由「鈴鐺按鈕」負責
+        
         const startType = document.getElementById('start-type').value;
         const endType = document.getElementById('end-type').value;
         
@@ -808,7 +844,6 @@
             display.style.color = "#4caf50";
             statusText.innerHTML = "你根本不用搭車，早點回家洗洗睡！";
             actionBtn.style.display = "none";
-            cancelBtn.style.display = "none";
             planBContainer.style.display = "flex";
             document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "none");
             return;
@@ -864,10 +899,10 @@
             statusText.innerHTML = "距離末班車發車還剩";
             display.style.color = "#4caf50";
             speedModeText.innerHTML = `${finalTargetTimeString} <span style="font-size:10px; color:#aaa;">(${connectionStatus})</span>`;
-            actionBtn.innerHTML = "開啟極限求生模式！";
-            actionBtn.classList.add('btn-danger');
             
-            cancelBtn.style.display = "flex";
+            // 🌟 隱藏主按鈕，顯示並排的「終止」與「開啟推播」雙按鈕
+            actionBtn.style.display = "none";
+            actionBtnGroup.style.display = "flex";
 
             const now = new Date();
             let target = new Date();
@@ -882,11 +917,6 @@
 
             timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenaltySeconds;
             if (timeLeft < 0) timeLeft = 0;
-
-            // 🌟 重置推播狀態，並發送「啟動成功」的第一聲通知
-            notified10Min = false;
-            notified1Min = false;
-            sendPushNotification("極限求生模式啟動！", `末班車將於 ${finalTargetTimeString} 發車，倒數開始！`);
 
             updateClock(); 
 
@@ -903,13 +933,20 @@
         clearInterval(timer);
         isCountingDown = false;
         
+        // 🌟 恢復預設的按鈕狀態
         planBContainer.style.display = "none";    
-        cancelBtn.style.display = "none"; 
-        
+        actionBtnGroup.style.display = "none"; 
         actionBtn.style.display = "block";        
         actionBtn.innerHTML = "開始計算轉乘";     
-        actionBtn.classList.remove('btn-danger'); 
         actionBtn.disabled = false;
+        
+        // 🌟 重置鬧鐘狀態
+        isAlarmEnabled = false;
+        notified10Min = false;
+        notified1Min = false;
+        const notifyBtn = document.getElementById('notify-btn');
+        notifyBtn.classList.remove('active');
+        notifyBtn.innerHTML = '<span class="option-name">🔔 開啟提醒</span>';
         
         statusText.innerHTML = "現在時間";        
         speedModeText.innerHTML = "待查驗...";
