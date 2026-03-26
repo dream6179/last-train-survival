@@ -348,7 +348,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護</span>
+        <span>本服務由綠茶地瓜維護 (v1.21)</span>
         <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
@@ -396,8 +396,8 @@
         if (origin === 'TaipeiMain' && dest === 'Zhongshan') return ['R10', 'R11']; 
         if (origin === 'Zhongshan' && dest === 'Xindian') return ['G14', 'G01'];   
         if (origin === 'Xindian' && dest === 'Zhongshan') return ['G01', 'G14'];   
-        if (origin === 'TaipeiMain' && dest === 'Xindian') return ['R10', 'R08']; // 先搭紅線到中正紀念堂
-        if (origin === 'Xindian' && dest === 'TaipeiMain') return ['G01', 'G10']; // 先搭綠線到中正紀念堂
+        if (origin === 'TaipeiMain' && dest === 'Xindian') return ['R10', 'R08']; 
+        if (origin === 'Xindian' && dest === 'TaipeiMain') return ['G01', 'G10']; 
         return null;
     }
 
@@ -420,7 +420,7 @@
         }
     }
 
-    // --- 強化版：去交通部拿真實末班車時間 ---
+    // --- 抓蟲雷達版：去交通部拿真實末班車時間 ---
     async function fetchRealLastTrainTime(origin, destination, retryCount = 0) {
         if (!cachedTdxToken) {
             const tokenRes = await fetch('/api/get-token');
@@ -434,7 +434,6 @@
         const originCode = stationIds[0];
         const destCode = stationIds[1];
 
-        // 🌟 秘訣：把日期參數拿掉！讓 TDX 直接回傳通用班表，避開「查無今日資料」的陷阱
         const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/DailyTimetable/OD/TRTC/from/${originCode}/to/${destCode}?%24format=JSON`;
 
         try {
@@ -443,7 +442,6 @@
             });
             const data = await res.json();
 
-            // 如果 TDX 說認證失敗，代表 Token 可能過期，我們清掉重試一次
             if ((data.message === 'Unauthorized' || res.status === 401) && retryCount === 0) {
                 console.log("Token 失效，自動重新索取...");
                 cachedTdxToken = "";
@@ -468,12 +466,13 @@
                 });
                 return lastTrainTimeStr;
             } else {
-                // 若仍為空，把回傳資料印在主控台供我們 debug
-                console.error("TDX 依然回傳空資料：", data);
+                // 🌟 雷達抓蟲：直接把網址和回傳的空資料彈出來給你看
+                alert("⚠️ 【除錯雷達啟動】抓不到資料！\n\n我們打過去的網址：\n" + apiUrl + "\n\n交通部回傳的內容：\n" + JSON.stringify(data).substring(0, 200));
                 return null;
             }
         } catch (error) {
             console.error("連線發生異常：", error);
+            alert("⚠️ 【除錯雷達】網路或 API 呼叫發生錯誤：\n" + error.message);
             return null;
         }
     }
@@ -580,8 +579,8 @@
                 if (realTime) {
                     finalTargetTimeString = realTime;
                 } else {
-                    // 如果再抓不到，我們就老實跟使用者道歉並用預設值
-                    alert("⚠️ 交通部今日班表更新異常，將使用系統預設 00:42 估算。");
+                    // 若抓不到資料，除錯雷達已經彈窗了，這裡只要套用預設值即可
+                    alert("⚠️ 既然 TDX 查無資料，將使用系統預設 00:42 估算。");
                 }
             } else {
                 alert("目前火車與客運尚未連線 TDX，將使用系統預設 00:42 估算。");
