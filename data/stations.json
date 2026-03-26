@@ -124,7 +124,15 @@
       "Zhongshan-TaipeiMain": { "originCode": "R11", "terminuses": ["R02", "R05"] },
       "TaipeiMain-Zhongshan": { "originCode": "R10", "terminuses": ["R28", "R22"] },
       "Zhongshan-Xindian": { "originCode": "G14", "terminuses": ["G01"] },
-      "Xindian-Zhongshan": { "originCode": "G01", "terminuses": ["G19"] }
+      "Xindian-Zhongshan": { "originCode": "G01", "terminuses": ["G19"] },
+      
+      "TaipeiCityHall-Banqiao": { "originCode": "BL18", "terminuses": ["BL01", "BL05"] },
+      "Banqiao-TaipeiCityHall": { "originCode": "BL07", "terminuses": ["BL23", "BL21"] },
+      
+      "Daan-Tamsui": { "originCode": "R05", "terminuses": ["R28", "R22"] },
+      "Tamsui-Daan": { "originCode": "R28", "terminuses": ["R02", "R05"] },
+      
+      "Gongguan-Songshan": { "originCode": "G07", "terminuses": ["G19"] }
     }
   },
   "tymetro": { "options": [{"id": "TaipeiMain", "name": "台北車站"}], "routes": {} },
