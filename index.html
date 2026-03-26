@@ -265,20 +265,6 @@
             font-size: 14px;
             line-height: 1.5;
         }
-
-        .btn-test-api {
-            background: transparent;
-            color: #888;
-            border: 1px dashed #555;
-            padding: 8px;
-            border-radius: 8px;
-            width: 100%;
-            margin-top: 10px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: 0.2s;
-        }
-        .btn-test-api:active { background: #333; color: white; }
     </style>
 </head>
 <body>
@@ -353,7 +339,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.24)</span>
+        <span>本服務由綠茶地瓜維護 (v1.25)</span>
         <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
@@ -387,7 +373,7 @@
     let timeLeft = 0; 
     let timer; 
     let cachedTdxToken = ""; 
-    let offlineTimetableData = null; // 準備用來存離線字典的變數
+    let offlineTimetableData = null; 
 
     const display = document.getElementById('time-display');
     const statusText = document.getElementById('status-text');
@@ -396,7 +382,6 @@
     const speedModeText = document.getElementById('speed-mode');
     const planBContainer = document.getElementById('plan-b-container'); 
 
-    // 網頁一打開，就先偷偷把我們建好的 JSON 離線字典載入備用！
     window.onload = async () => {
         try {
             const res = await fetch('/data/offline-timetable.json');
@@ -405,7 +390,7 @@
                 console.log("✅ 離線備用時刻表已準備就緒！");
             }
         } catch (e) {
-            console.log("離線時刻表載入失敗，可能檔案還沒建好。");
+            console.log("⚠️ 離線時刻表載入失敗，可能是在飛航模式或檔案尚未建立。");
         }
     };
 
@@ -419,21 +404,22 @@
         return null;
     }
 
+    // --- 🌟 修正了斷網恐慌症：整個包在 try...catch 裡面 ---
     async function fetchRealLastTrainTime(origin, destination, retryCount = 0) {
-        if (!cachedTdxToken) {
-            const tokenRes = await fetch('/api/get-token');
-            const tokenData = await tokenRes.json();
-            cachedTdxToken = tokenData.access_token;
-        }
-
-        const info = getSmartStationInfo(origin, destination);
-        if (!info) return null;
-        
-        const originCode = info.originCode;
-        const terminuses = info.terminuses;
-        const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/TRTC?$filter=StationID eq '${originCode}'&$format=JSON`;
-
         try {
+            if (!cachedTdxToken) {
+                const tokenRes = await fetch('/api/get-token');
+                const tokenData = await tokenRes.json();
+                cachedTdxToken = tokenData.access_token;
+            }
+
+            const info = getSmartStationInfo(origin, destination);
+            if (!info) return null;
+            
+            const originCode = info.originCode;
+            const terminuses = info.terminuses;
+            const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/TRTC?$filter=StationID eq '${originCode}'&$format=JSON`;
+
             const res = await fetch(apiUrl, {
                 headers: { 'Authorization': `Bearer ${cachedTdxToken}` }
             });
@@ -473,7 +459,8 @@
             } 
             return null;
         } catch (error) {
-            console.error("連線發生異常：", error);
+            // 🌟 如果沒網路抓不到 Token 或 API，冷靜回傳 null 交給離線字典處理
+            console.error("飛航模式或斷網中，放棄即時連線：", error);
             return null;
         }
     }
@@ -567,33 +554,29 @@
             alert("⚠️ 偵測到「同站跨系統轉乘」。\n系統已自動為您預留 20 分鐘步行時間！");
         }
 
-        actionBtn.innerHTML = "⏳ 連線交通部 TDX 中...";
+        actionBtn.innerHTML = "⏳ 運算中...";
         actionBtn.disabled = true;
 
         try {
-            // 🌟 第三層防護：極限通用底線改成 23:59
             let finalTargetTimeString = "23:59"; 
             let connectionStatus = "即時連線";
 
             if (startType === 'mrt' && endType === 'mrt') {
-                // 第一層防護：嘗試抓取即時資料
                 const realTime = await fetchRealLastTrainTime(startStation, endStation);
                 if (realTime) {
                     finalTargetTimeString = realTime;
                 } else {
-                    // 第二層防護：如果 TDX 失敗，嘗試讀取離線字典
                     const routeKey = `${startStation}-${endStation}`;
                     if (offlineTimetableData && offlineTimetableData['mrt'] && offlineTimetableData['mrt'][routeKey]) {
                         finalTargetTimeString = offlineTimetableData['mrt'][routeKey];
                         connectionStatus = "離線備用";
-                        alert("⚠️ 無法連線交通部，已自動切換至離線時刻表。");
+                        alert("⚠️ 目前網路異常或無法連線，已為您切換至「離線備用」時刻表。");
                     } else {
                         connectionStatus = "系統預設";
                         alert("⚠️ 查無即時與離線資料，將使用系統預設 23:59 估算。");
                     }
                 }
             } else {
-                // 如果是火車客運，目前也走離線字典或底線 23:59
                 const routeKey = `${startStation}-${endStation}`;
                 if (offlineTimetableData && offlineTimetableData[startType] && offlineTimetableData[startType][routeKey]) {
                     finalTargetTimeString = offlineTimetableData[startType][routeKey];
