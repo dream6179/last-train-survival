@@ -191,32 +191,6 @@
         
         #action-btn.btn-danger { background-color: var(--danger); }
         #action-btn.btn-danger:active { background-color: #d50000; }
-
-        /* 🌟 取代單一的取消按鈕，變成雙按鈕群組 */
-        .action-btn-group {
-            display: none; /* 預設隱藏 */
-            gap: 10px;
-            margin-top: 5px;
-            width: 100%;
-        }
-        .btn-reset, .btn-notify { 
-            background-color: transparent; 
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 12px 10px;
-            flex: 1; 
-            font-size: 15px;
-        }
-        .btn-reset { color: var(--text-sub); border: 1px dashed #555; }
-        .btn-reset:active { background-color: #333; color: white; border-color: #888; }
-        
-        .btn-notify { color: #ffca28; border: 1px dashed #ffca28; font-weight: bold;}
-        .btn-notify:active { background-color: rgba(255, 202, 40, 0.2); }
-        .btn-notify.active { background-color: #ffca28; color: #121212; border-style: solid; }
         
         .plan-b-container {
             display: none; 
@@ -244,6 +218,21 @@
         .btn-goshare { background-color: #009999; color: #ffffff; }
         .btn-youbike { background-color: #ccaa00; color: #121212; }
 
+        .btn-reset { 
+            background-color: transparent; 
+            color: var(--text-sub); 
+            border: 1px dashed #555; 
+            justify-content: center; 
+            margin-top: 5px; 
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+        }
+        .btn-reset:active { background-color: #333; color: white; border-color: #888; }
+
         .footer {
             margin-top: 15px;
             font-size: 11px;
@@ -253,22 +242,16 @@
             flex-direction: column;
             align-items: center;
         }
-        .footer-action-row {
-            display: flex;
-            gap: 15px;
-            margin-top: 5px;
-        }
         .footer-toggle {
             color: var(--success);
             text-decoration: none;
             font-weight: bold;
             padding: 5px 10px;
+            margin-top: 5px;
             cursor: pointer;
             border-radius: 5px;
             transition: 0.2s;
         }
-        .footer-toggle:active { background: #333; }
-        
         .contact-links {
             display: none; 
             flex-direction: row;
@@ -334,26 +317,6 @@
             font-size: 14px;
             line-height: 1.5;
         }
-
-        .setting-btn {
-            background: #2c2c2c; 
-            color: white; 
-            border: none;
-            width: 100%; 
-            padding: 15px; 
-            border-radius: 10px;
-            margin-bottom: 10px; 
-            cursor: pointer; 
-            font-size: 16px;
-            text-align: left; 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between;
-            font-weight: bold;
-            transition: 0.2s;
-        }
-        .setting-btn:active { background: #444; transform: scale(0.98); }
-        .setting-arrow { color: #888; font-size: 20px; }
     </style>
 </head>
 <body>
@@ -381,7 +344,7 @@
         </div>
     </div>
 
-    <button class="advanced-toggle-btn" onclick="openSheet('advanced-sheet')">⛙ 加入中繼轉乘站 (進階模式)</button>
+    <button class="advanced-toggle-btn" onclick="openAdvancedSheet()">⛙ 加入中繼轉乘站 (進階模式)</button>
 
     <div class="location-block">
         <label>目的地</label>
@@ -411,14 +374,9 @@
     
     <button id="action-btn" onclick="handleAction()">開始計算轉乘</button>
     
-    <div id="action-button-group" class="action-btn-group">
-        <button id="cancel-btn" class="btn-reset" onclick="resetPlan()">
-            <span class="option-name">🔄 終止求生</span>
-        </button>
-        <button id="notify-btn" class="btn-notify" onclick="enableAlarm()">
-            <span class="option-name">🔔 開啟提醒</span>
-        </button>
-    </div>
+    <button id="cancel-btn" class="btn-reset" style="display: none;" onclick="resetPlan()">
+        <span class="option-name">🔄 終止求生，重新安排</span>
+    </button>
 
     <div id="plan-b-container" class="plan-b-container">
         <button class="plan-b-option btn-uber vehicle-option" onclick="openWeb('Uber')">
@@ -439,11 +397,8 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.34)</span>
-        <div class="footer-action-row">
-            <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
-            <a class="footer-toggle" onclick="openSheet('settings-sheet')">⚙️ 設定</a>
-        </div>
+        <span>本服務由綠茶地瓜維護 (v1.35)</span>
+        <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
             <a href="https://discord.gg/vUeBcsf" target="_blank" class="contact-btn btn-discord">💬 Discord</a>
@@ -451,12 +406,11 @@
     </div>
 </div>
 
-<div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
-
+<div class="overlay" id="overlay" onclick="closeAdvancedSheet()"></div>
 <div class="bottom-sheet" id="advanced-sheet">
     <div class="sheet-header">
         <h3>進階轉乘路線設定</h3>
-        <button class="close-sheet-btn" onclick="closeAllSheets()">完成</button>
+        <button class="close-sheet-btn" onclick="closeAdvancedSheet()">完成</button>
     </div>
     <div class="sheet-content">
         <p>在這裡，您可以打造像「中山 ➡️ 北車 ➡️ 客運1815」這種多段極限轉乘任務。</p>
@@ -472,25 +426,6 @@
     </div>
 </div>
 
-<div class="bottom-sheet" id="settings-sheet">
-    <div class="sheet-header">
-        <h3>系統設定</h3>
-        <button class="close-sheet-btn" onclick="closeAllSheets()">關閉</button>
-    </div>
-    <div class="sheet-content">
-        <button class="setting-btn" onclick="showHelp()">
-            <span>📖 使用方法</span><span class="setting-arrow">›</span>
-        </button>
-        <button class="setting-btn" onclick="shareApp()">
-            <span>🔗 分享網站給朋友</span><span class="setting-arrow">›</span>
-        </button>
-        
-        <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #666; letter-spacing: 1px;">
-            更多進階功能開發中...<br>Stay tuned!
-        </div>
-    </div>
-</div>
-
 <script>
     let isCountingDown = false;
     let timeLeft = 0; 
@@ -499,11 +434,6 @@
     let offlineTimetableData = null; 
     let globalStationData = null; 
 
-    // 🌟 推播通知狀態控制
-    let isAlarmEnabled = false;
-    let notified10Min = false;
-    let notified1Min = false;
-
     let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || [];
     let savedStart = localStorage.getItem('lastTrainStart') || '台北車站';
     let savedEnd = localStorage.getItem('lastTrainEnd') || '台北車站';
@@ -511,26 +441,17 @@
     const display = document.getElementById('time-display');
     const statusText = document.getElementById('status-text');
     const actionBtn = document.getElementById('action-btn');
-    const actionBtnGroup = document.getElementById('action-button-group'); 
+    const cancelBtn = document.getElementById('cancel-btn'); 
     const speedModeText = document.getElementById('speed-mode');
     const planBContainer = document.getElementById('plan-b-container'); 
 
     const defaultStations = {
-        'trtc': '台北車站',
-        'tymetro': '台北車站',
-        'krtc': '高雄車站',
-        'tmrt': '高鐵台中站',
-        'tra': '台北車站',
-        'thsr': '台北車站',
-        'intercity': '台北車站',
-        'bus': '台北車站'
+        'trtc': '台北車站', 'tymetro': '台北車站', 'krtc': '高雄車站', 'tmrt': '高鐵台中站',
+        'tra': '台北車站', 'thsr': '台北車站', 'intercity': '台北車站', 'bus': '台北車站'
     };
 
     const operatorMap = {
-        'trtc': 'TRTC',     
-        'tymetro': 'TYMC',  
-        'krtc': 'KRTC',     
-        'tmrt': 'TMRT'      
+        'trtc': 'TRTC', 'tymetro': 'TYMC', 'krtc': 'KRTC', 'tmrt': 'TMRT'      
     };
 
     window.onload = async () => {
@@ -541,6 +462,7 @@
             const stationRes = await fetch('/data/stations.json');
             if (stationRes.ok) {
                 globalStationData = await stationRes.json();
+                console.log("✅ 車站總字典已準備就緒！");
                 
                 initCustomAutocomplete(); 
                 
@@ -548,46 +470,46 @@
                 document.getElementById('end-station-input').value = savedEnd;
             }
         } catch (e) {
-            console.log("⚠️ 檔案載入失敗。");
+            console.log("⚠️ 檔案載入失敗，可能是路徑錯誤或在飛航模式。");
         }
     };
 
-    function sendPushNotification(title, body) {
-        if ("Notification" in window && Notification.permission === "granted") {
-            new Notification(title, { 
-                body: body,
-                icon: "https://cdn-icons-png.flaticon.com/512/2838/2838912.png" 
-            });
-        }
-    }
+    // --- 🌟 全新神級演算法：離線推演方向與極限時間 ---
+    function calculateOfflineTime(startName, endName, type) {
+        if (!offlineTimetableData || !offlineTimetableData[type]) return null;
+        const table = offlineTimetableData[type];
 
-    // 🌟 按下鈴鐺按鈕後，才會執行的開啟通知邏輯
-    async function enableAlarm() {
-        // 第一步：先打預防針，跟使用者解釋手機系統的限制
-        alert("⚠️ 系統限制提醒：\n\n為確保倒數精準，請盡量【保持網頁開啟】且【螢幕長亮】。\n\n若您切換APP或鎖定螢幕，手機的省電機制可能會導致倒數暫停與通知失效喔！");
-        
-        if ("Notification" in window) {
-            let permission = Notification.permission;
-            // 第二步：如果還沒答應過，才跳出瀏覽器的授權視窗
-            if (permission !== "granted" && permission !== "denied") {
-                permission = await Notification.requestPermission();
+        // 1. 在你建立的 119 個車站字典裡，把名字相同的節點全部抓出來 (例如交會站會有兩個代碼)
+        const startKeys = Object.keys(table).filter(k => table[k].name === startName);
+        const endKeys = Object.keys(table).filter(k => table[k].name === endName);
+
+        // 2. 開始在這些代碼裡面找尋「同一條線」的緣分
+        for (let sKey of startKeys) {
+            for (let eKey of endKeys) {
+                // 利用正則表達式把英文字母(路線)和數字(站數)拆開
+                const sLine = sKey.match(/[A-Z]+/)[0];
+                const eLine = eKey.match(/[A-Z]+/)[0];
+
+                if (sLine === eLine) {
+                    // 抓到同一條線了！開始判斷方向
+                    const sNum = parseInt(sKey.match(/\d+/)[0]);
+                    const eNum = parseInt(eKey.match(/\d+/)[0]);
+                    
+                    // 捷運編碼規則：數字小到大是 up，大到小是 down (以 G04 -> G01 為例，4 > 1 所以是 down)
+                    const direction = sNum < eNum ? 'up' : 'down';
+                    
+                    const time = table[sKey][direction];
+                    
+                    // 如果抓出來的時間不是預設的 00:00，就回傳！
+                    if (time && time !== "00:00") {
+                        return time;
+                    }
+                }
             }
-            
-            if (permission === "granted") {
-                isAlarmEnabled = true;
-                
-                // 第三步：按鈕變身，讓使用者知道設定成功
-                const notifyBtn = document.getElementById('notify-btn');
-                notifyBtn.classList.add('active');
-                notifyBtn.innerHTML = '<span class="option-name">✅ 提醒已開啟</span>';
-                
-                sendPushNotification("推播設定成功！", "我們會在最後 10 分鐘與 1 分鐘時提醒您。記得別關閉網頁喔！");
-            } else {
-                alert("您已拒絕通知權限，若要使用請至瀏覽器設定中開啟。");
-            }
-        } else {
-            alert("您的瀏覽器不支援推播通知功能。");
         }
+        
+        // 如果上面找不到同線的組合，代表這是一趟需要「轉乘」的旅程 (下一版的任務)
+        return null; 
     }
 
     function getSmartStationInfo(origin, dest, type) {
@@ -777,27 +699,14 @@
                 display.innerHTML = "來不及了💸";
                 display.style.fontSize = "50px"; 
                 display.style.color = "#ff5252";
-                
-                actionBtnGroup.style.display = "none";
+                actionBtn.style.display = "none";
+                cancelBtn.style.display = "none"; 
                 planBContainer.style.display = "flex";
                 document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex");
                 statusText.innerHTML = "人生不是只有末班車...";
                 return;
             }
             timeLeft--;
-            
-            // 🌟 只有當使用者點擊過「開啟提醒」時，才會發送這兩個時間點的推播
-            if (isAlarmEnabled) {
-                if (timeLeft === 600 && !notified10Min) {
-                    sendPushNotification("⚠️ 警告：剩下 10 分鐘！", "該結帳收包包前往捷運站了，別再喝了！");
-                    notified10Min = true;
-                }
-                if (timeLeft === 60 && !notified1Min) {
-                    sendPushNotification("🚨 最後警告：剩餘 1 分鐘！", "拿出百米衝刺的速度！快跑啊！");
-                    notified1Min = true;
-                }
-            }
-
             let hours = Math.floor(timeLeft / 3600);
             let minutes = Math.floor((timeLeft % 3600) / 60);
             let seconds = timeLeft % 60;
@@ -814,8 +723,6 @@
     timer = setInterval(updateClock, 1000);
 
     async function handleAction() {
-        // 🌟 移除原本會自動跳出的請求權限，現在全交由「鈴鐺按鈕」負責
-        
         const startType = document.getElementById('start-type').value;
         const endType = document.getElementById('end-type').value;
         
@@ -844,6 +751,7 @@
             display.style.color = "#4caf50";
             statusText.innerHTML = "你根本不用搭車，早點回家洗洗睡！";
             actionBtn.style.display = "none";
+            cancelBtn.style.display = "none";
             planBContainer.style.display = "flex";
             document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "none");
             return;
@@ -862,7 +770,7 @@
             alert("⚠️ 偵測到「同站跨系統轉乘」。\n系統已自動為您預留 20 分鐘步行時間！");
         }
 
-        actionBtn.innerHTML = "⏳ 運算中...";
+        actionBtn.innerHTML = "⏳ 演算法推演中...";
         actionBtn.disabled = true;
 
         try {
@@ -870,39 +778,37 @@
             let connectionStatus = "即時連線";
 
             if (['trtc', 'tymetro', 'krtc', 'tmrt'].includes(startType) && startType === endType) {
+                // 1. 先去跟交通部拿資料
                 const realTime = await fetchRealLastTrainTime(startStation, endStation, startType);
                 if (realTime) {
                     finalTargetTimeString = realTime;
                 } else {
-                    const routeKey = `${startStation}-${endStation}`;
-                    if (offlineTimetableData && offlineTimetableData[startType] && offlineTimetableData[startType][routeKey]) {
-                        finalTargetTimeString = offlineTimetableData[startType][routeKey];
-                        connectionStatus = "離線備用";
-                        alert("⚠️ 目前網路異常或無法連線，已為您切換至「離線備用」時刻表。");
+                    // 🌟 2. 交通部掛掉時，召喚我們剛寫好的神級本地演算法！
+                    const offlineComputedTime = calculateOfflineTime(startStationName, endStationName, startType);
+                    
+                    if (offlineComputedTime) {
+                        finalTargetTimeString = offlineComputedTime;
+                        connectionStatus = "離線演算法";
+                        alert("⚠️ 交通部連線異常，已為您啟用本地演算法精準算出末班車時間！");
                     } else {
                         connectionStatus = "系統預設";
-                        alert("⚠️ 查無即時與離線資料，將使用系統預設 23:59 估算。");
+                        // 如果查不到同線，代表是需要轉乘的，目前先保底 23:59
+                        alert("⚠️ 跨線轉乘資料尚未備齊，將使用系統保底 23:59 估算。");
                     }
                 }
             } else {
-                const routeKey = `${startStation}-${endStation}`;
-                if (offlineTimetableData && offlineTimetableData[startType] && offlineTimetableData[startType][routeKey]) {
-                    finalTargetTimeString = offlineTimetableData[startType][routeKey];
-                    connectionStatus = "離線備用";
-                } else {
-                    connectionStatus = "系統預設";
-                    alert(`目前尚未串接即時資料，將使用預設 23:59 估算。`);
-                }
+                connectionStatus = "系統預設";
+                alert(`目前尚未串接即時資料，將使用預設 23:59 估算。`);
             }
 
             isCountingDown = true;
             statusText.innerHTML = "距離末班車發車還剩";
             display.style.color = "#4caf50";
             speedModeText.innerHTML = `${finalTargetTimeString} <span style="font-size:10px; color:#aaa;">(${connectionStatus})</span>`;
+            actionBtn.innerHTML = "開啟極限求生模式！";
+            actionBtn.classList.add('btn-danger');
             
-            // 🌟 隱藏主按鈕，顯示並排的「終止」與「開啟推播」雙按鈕
-            actionBtn.style.display = "none";
-            actionBtnGroup.style.display = "flex";
+            cancelBtn.style.display = "flex";
 
             const now = new Date();
             let target = new Date();
@@ -917,7 +823,6 @@
 
             timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenaltySeconds;
             if (timeLeft < 0) timeLeft = 0;
-
             updateClock(); 
 
         } catch (error) {
@@ -933,20 +838,13 @@
         clearInterval(timer);
         isCountingDown = false;
         
-        // 🌟 恢復預設的按鈕狀態
         planBContainer.style.display = "none";    
-        actionBtnGroup.style.display = "none"; 
+        cancelBtn.style.display = "none"; 
+        
         actionBtn.style.display = "block";        
         actionBtn.innerHTML = "開始計算轉乘";     
+        actionBtn.classList.remove('btn-danger'); 
         actionBtn.disabled = false;
-        
-        // 🌟 重置鬧鐘狀態
-        isAlarmEnabled = false;
-        notified10Min = false;
-        notified1Min = false;
-        const notifyBtn = document.getElementById('notify-btn');
-        notifyBtn.classList.remove('active');
-        notifyBtn.innerHTML = '<span class="option-name">🔔 開啟提醒</span>';
         
         statusText.innerHTML = "現在時間";        
         speedModeText.innerHTML = "待查驗...";
@@ -972,33 +870,14 @@
         links.style.display = (links.style.display === "flex") ? "none" : "flex";
     }
 
-    function openSheet(sheetId) {
+    function openAdvancedSheet() {
         document.getElementById('overlay').classList.add('active');
-        document.getElementById(sheetId).classList.add('active');
+        document.getElementById('advanced-sheet').classList.add('active');
     }
 
-    function closeAllSheets() {
+    function closeAdvancedSheet() {
         document.getElementById('overlay').classList.remove('active');
         document.getElementById('advanced-sheet').classList.remove('active');
-        document.getElementById('settings-sheet').classList.remove('active');
-    }
-
-    function showHelp() {
-        alert("【使用指南】\n\n1. 選擇起迄站：輸入關鍵字或從選單挑選。\n2. 加入最愛：點擊站名旁邊的 ☆ 即可置頂。\n3. 開始倒數：點擊綠色大按鈕，我們會為您連線交通部抓取真實發車時間。\n4. 緊急備案：如果來不及了，我們會自動幫你叫車！");
-    }
-
-    function shareApp() {
-        if (navigator.share) {
-            navigator.share({
-                title: '末班車生存戰',
-                text: '趕不上末班車？一鍵查詢真實末班車發車倒數，專屬夜歸人的極限生存指南。',
-                url: window.location.href
-            }).catch((error) => console.log('分享取消或發生錯誤:', error));
-        } else {
-            navigator.clipboard.writeText(window.location.href).then(() => {
-                alert("🔗 網址已複製到剪貼簿！趕快貼給朋友吧！");
-            });
-        }
     }
 </script>
 </body>
