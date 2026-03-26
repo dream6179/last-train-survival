@@ -324,7 +324,6 @@
             line-height: 1.5;
         }
 
-        /* 🌟 設定選單專屬按鈕樣式 */
         .setting-btn {
             background: #2c2c2c; 
             color: white; 
@@ -424,7 +423,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.32)</span>
+        <span>本服務由綠茶地瓜維護 (v1.33)</span>
         <div class="footer-action-row">
             <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
             <a class="footer-toggle" onclick="openSheet('settings-sheet')">⚙️ 設定</a>
@@ -484,6 +483,10 @@
     let offlineTimetableData = null; 
     let globalStationData = null; 
 
+    // 🌟 推播通知狀態旗標
+    let notified10Min = false;
+    let notified1Min = false;
+
     let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || [];
     let savedStart = localStorage.getItem('lastTrainStart') || '台北車站';
     let savedEnd = localStorage.getItem('lastTrainEnd') || '台北車站';
@@ -532,6 +535,25 @@
             console.log("⚠️ 檔案載入失敗，可能是路徑錯誤或在飛航模式。");
         }
     };
+
+    // 🌟 專屬的推播功能器
+    function sendPushNotification(title, body) {
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification(title, { 
+                body: body,
+                icon: "https://cdn-icons-png.flaticon.com/512/2838/2838912.png" // 加上一個可愛的警報小圖示
+            });
+        }
+    }
+
+    // 🌟 要求推播權限
+    function requestNotificationPermission() {
+        if ("Notification" in window) {
+            if (Notification.permission !== "denied" && Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+        }
+    }
 
     function getSmartStationInfo(origin, dest, type) {
         if (!globalStationData || !globalStationData[type] || !globalStationData[type].routes) return null;
@@ -728,6 +750,17 @@
                 return;
             }
             timeLeft--;
+            
+            // 🌟 倒數計時防護網：觸發推播警告
+            if (timeLeft === 600 && !notified10Min) { // 剩餘 10 分鐘 (600秒)
+                sendPushNotification("⚠️ 警告：剩下 10 分鐘！", "該結帳收包包前往捷運站了，別再喝了！");
+                notified10Min = true;
+            }
+            if (timeLeft === 60 && !notified1Min) { // 剩餘 1 分鐘 (60秒)
+                sendPushNotification("🚨 最後警告：剩餘 1 分鐘！", "拿出百米衝刺的速度！快跑啊！");
+                notified1Min = true;
+            }
+
             let hours = Math.floor(timeLeft / 3600);
             let minutes = Math.floor((timeLeft % 3600) / 60);
             let seconds = timeLeft % 60;
@@ -744,6 +777,9 @@
     timer = setInterval(updateClock, 1000);
 
     async function handleAction() {
+        // 🌟 使用者點擊開始求生時，第一時間要求推播權限
+        requestNotificationPermission();
+
         const startType = document.getElementById('start-type').value;
         const endType = document.getElementById('end-type').value;
         
@@ -846,6 +882,12 @@
 
             timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenaltySeconds;
             if (timeLeft < 0) timeLeft = 0;
+
+            // 🌟 重置推播狀態，並發送「啟動成功」的第一聲通知
+            notified10Min = false;
+            notified1Min = false;
+            sendPushNotification("極限求生模式啟動！", `末班車將於 ${finalTargetTimeString} 發車，倒數開始！`);
+
             updateClock(); 
 
         } catch (error) {
@@ -893,7 +935,6 @@
         links.style.display = (links.style.display === "flex") ? "none" : "flex";
     }
 
-    // 🌟 控制所有視窗開啟與關閉的統整器
     function openSheet(sheetId) {
         document.getElementById('overlay').classList.add('active');
         document.getElementById(sheetId).classList.add('active');
@@ -905,7 +946,6 @@
         document.getElementById('settings-sheet').classList.remove('active');
     }
 
-    // 🌟 設定內的按鈕功能
     function showHelp() {
         alert("【使用指南】\n\n1. 選擇起迄站：輸入關鍵字或從選單挑選。\n2. 加入最愛：點擊站名旁邊的 ☆ 即可置頂。\n3. 開始倒數：點擊綠色大按鈕，我們會為您連線交通部抓取真實發車時間。\n4. 緊急備案：如果來不及了，我們會自動幫你叫車！");
     }
@@ -918,7 +958,6 @@
                 url: window.location.href
             }).catch((error) => console.log('分享取消或發生錯誤:', error));
         } else {
-            // 如果是在電腦版瀏覽器，沒有原生分享，就幫他複製網址
             navigator.clipboard.writeText(window.location.href).then(() => {
                 alert("🔗 網址已複製到剪貼簿！趕快貼給朋友吧！");
             });
