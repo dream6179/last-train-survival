@@ -6,11 +6,7 @@
     
     <title>末班車生存戰 | 深夜通勤導航</title>
     <meta name="description" content="趕不上末班車？開啟極限求生模式！幫你精準計算捷運末班車時間，並提供 Uber、GoShare 等深夜 Plan B 備案。">
-    <meta property="og:title" content="末班車生存戰 | 你的深夜回家導航">
-    <meta property="og:description" content="趕不上末班車？一鍵查詢真實末班車發車倒數，專屬夜歸人的極限生存指南。">
-    <meta property="og:image" content="https://images.unsplash.com/photo-1517737272895-17d1cc961cb3?q=80&w=1200&auto=format&fit=crop">
-    <meta property="og:type" content="website">
-
+    
     <style>
         :root {
             --bg-color: #121212;
@@ -22,198 +18,47 @@
             --warning: #ffb300;
         }
 
-        html, body {
-            overflow: hidden; 
-            height: 100%;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-color);
-            overscroll-behavior: none; 
-        }
+        html, body { overflow: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); overscroll-behavior: none; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--text-main); display: flex; justify-content: center; align-items: center; }
 
-        body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            color: var(--text-main);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .container {
-            text-align: center;
-            width: 90%;
-            max-width: 400px;
-            height: 92vh; 
-            max-height: 680px;
-            background-color: var(--card-bg);
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            display: flex;
-            flex-direction: column;
-            justify-content: center; 
-            padding: 0 20px; 
-            box-sizing: border-box;
-            gap: 6px; 
-            position: relative; 
-        }
-
+        .container { text-align: center; width: 90%; max-width: 400px; height: 92vh; max-height: 680px; background-color: var(--card-bg); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; justify-content: center; padding: 0 20px; box-sizing: border-box; gap: 6px; position: relative; }
         h1 { font-size: 22px; color: var(--danger); margin: 0 0 10px 0; }
         
-        .location-block {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            text-align: left;
-            margin-bottom: 2px;
-        }
-        .location-block label {
-            font-size: 12px;
-            color: var(--text-sub);
-            margin-bottom: 4px;
-            font-weight: bold;
-        }
-        .select-group {
-            display: flex;
-            gap: 8px;
-            position: relative; 
-        }
+        .location-block { display: flex; flex-direction: column; width: 100%; text-align: left; margin-bottom: 2px; }
+        .location-block label { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; font-weight: bold; }
+        .select-group { display: flex; gap: 8px; position: relative; }
         
-        select, .station-input {
-            background-color: #2c2c2c;
-            color: white;
-            border: 1px solid #444;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 15px;
-            outline: none;
-            cursor: pointer;
-            box-sizing: border-box;
-        }
+        select, .station-input { background-color: #2c2c2c; color: white; border: 1px solid #444; padding: 10px; border-radius: 8px; font-size: 15px; outline: none; cursor: pointer; box-sizing: border-box; }
         select { appearance: none; }
         select:focus, .station-input:focus { border-color: var(--danger); }
-        
         .type-select { width: 35%; text-align: center; }
         
-        .autocomplete-wrapper {
-            position: relative;
-            width: 65%;
-        }
-        .station-input {
-            width: 100%;
-        }
-        .autocomplete-list {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background-color: #2c2c2c;
-            border: 1px solid #444;
-            border-top: none;
-            border-radius: 0 0 8px 8px;
-            z-index: 99;
-            max-height: 250px;
-            overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.9);
-            display: none; 
-        }
-        
-        .dropdown-item {
-            padding: 12px 15px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: white;
-            font-size: 15px;
-            transition: background-color 0.1s;
-        }
+        .autocomplete-wrapper { position: relative; width: 65%; }
+        .station-input { width: 100%; }
+        .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background-color: #2c2c2c; border: 1px solid #444; border-top: none; border-radius: 0 0 8px 8px; z-index: 99; max-height: 250px; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.9); display: none; }
+        .dropdown-item { padding: 12px 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: white; font-size: 15px; transition: background-color 0.1s; }
         .dropdown-item:active { background-color: #444; }
-        
-        .star-icon {
-            font-size: 18px;
-            cursor: pointer;
-            padding: 0 5px;
-            transition: transform 0.2s;
-        }
+        .star-icon { font-size: 18px; cursor: pointer; padding: 0 5px; transition: transform 0.2s; }
         .star-icon:active { transform: scale(1.3); }
+        .dropdown-divider { height: 1px; background-color: #444; margin: 4px 10px; }
 
-        .dropdown-divider {
-            height: 1px;
-            background-color: #444;
-            margin: 4px 10px;
-        }
-
-        .advanced-toggle-btn {
-            background: none;
-            border: 1px dashed #444;
-            color: var(--text-sub);
-            padding: 5px;
-            border-radius: 8px;
-            font-size: 12px;
-            cursor: pointer;
-            margin: 5px 0;
-            transition: 0.2s;
-        }
+        .advanced-toggle-btn { background: none; border: 1px dashed #444; color: var(--text-sub); padding: 5px; border-radius: 8px; font-size: 12px; cursor: pointer; margin: 5px 0; transition: 0.2s; }
         .advanced-toggle-btn:active { background: #333; color: white; }
 
-        .time-area {
-            margin: 10px 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .time-display {
-            font-size: 50px;
-            font-weight: bold;
-            color: #e0e0e0; 
-            font-variant-numeric: tabular-nums;
-            letter-spacing: 1px;
-            line-height: 1;
-            transition: 0.2s; 
-        }
+        .time-area { margin: 10px 0; display: flex; flex-direction: column; align-items: center; }
+        .time-display { font-size: 50px; font-weight: bold; color: #e0e0e0; font-variant-numeric: tabular-nums; letter-spacing: 1px; line-height: 1; transition: 0.2s; }
         .status { font-size: 13px; color: var(--text-sub); margin: 5px 0; height: 16px; }
         
-        #action-btn {
-            background-color: var(--success); 
-            color: white;
-            border: none;
-            padding: 15px;
-            font-size: 17px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-            transition: 0.1s;
-            margin-top: 5px;
-        }
+        #action-btn { background-color: var(--success); color: white; border: none; padding: 15px; font-size: 17px; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.1s; margin-top: 5px; }
         #action-btn:active { transform: scale(0.98); }
         #action-btn:disabled { background-color: #555; cursor: not-allowed; transform: none; }
-        
         #action-btn.btn-danger { background-color: var(--danger); }
         #action-btn.btn-danger:active { background-color: #d50000; }
-
         #action-btn.btn-warning { background-color: var(--warning); color: #121212; }
         #action-btn.btn-warning:active { background-color: #ff9800; }
         
-        .plan-b-container {
-            display: none; 
-            flex-direction: column;
-            width: 100%;
-            gap: 8px;
-            margin-top: 5px;
-        }
-        .plan-b-option {
-            border: none;
-            border-radius: 10px;
-            padding: 12px 15px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between; 
-            align-items: center;
-            transition: 0.1s;
-            text-decoration: none;
-        }
+        .plan-b-container { display: none; flex-direction: column; width: 100%; gap: 8px; margin-top: 5px; }
+        .plan-b-option { border: none; border-radius: 10px; padding: 12px 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.1s; text-decoration: none; }
         .plan-b-option:active { transform: scale(0.98); filter: brightness(1.1); }
         .option-name { font-size: 15px; font-weight: bold; }
         .option-meta { font-size: 11px; opacity: 0.7; font-weight: normal; margin-left: 5px; }
@@ -221,115 +66,30 @@
         .btn-uber { background-color: #1a1a1a; color: #ffffff; border: 1px solid #333; }
         .btn-goshare { background-color: #009999; color: #ffffff; }
         .btn-youbike { background-color: #ccaa00; color: #121212; }
-
-        .btn-reset { 
-            background-color: transparent; 
-            color: var(--text-sub); 
-            border: 1px dashed #555; 
-            justify-content: center; 
-            margin-top: 5px; 
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-        }
+        .btn-reset { background-color: transparent; color: var(--text-sub); border: 1px dashed #555; justify-content: center; margin-top: 5px; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; }
         .btn-reset:active { background-color: #333; color: white; border-color: #888; }
 
-        .footer {
-            margin-top: 15px;
-            font-size: 11px;
-            color: #666;
-            line-height: 1.6;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        /* 🌟 更新底部連結區域的排版，讓設定跟聯絡我們並排 */
-        .footer-links-container {
-            display: flex;
-            gap: 20px;
-            margin-top: 5px;
-        }
-        .footer-toggle {
-            color: var(--success);
-            text-decoration: none;
-            font-weight: bold;
-            padding: 5px 10px;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: 0.2s;
-        }
+        .footer { margin-top: 15px; font-size: 11px; color: #666; line-height: 1.6; display: flex; flex-direction: column; align-items: center; }
+        .footer-links-container { display: flex; gap: 20px; margin-top: 5px; }
+        .footer-toggle { color: var(--success); text-decoration: none; font-weight: bold; padding: 5px 10px; cursor: pointer; border-radius: 5px; transition: 0.2s; }
         .footer-toggle:active { background: #333; }
-
-        .contact-links {
-            display: none; 
-            flex-direction: row;
-            gap: 10px;
-            margin-top: 8px;
-        }
-        .contact-btn {
-            text-decoration: none;
-            color: white;
-            font-weight: bold;
-            font-size: 12px;
-            padding: 6px 12px;
-            border-radius: 15px;
-        }
+        .contact-links { display: none; flex-direction: row; gap: 10px; margin-top: 8px; }
+        .contact-btn { text-decoration: none; color: white; font-weight: bold; font-size: 12px; padding: 6px 12px; border-radius: 15px; }
         .btn-gmail { background-color: #ea4335; }
         .btn-discord { background-color: #5865F2; }
 
-        .overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            opacity: 0;
-            pointer-events: none; 
-            transition: opacity 0.3s;
-            z-index: 90;
-        }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 90; }
         .overlay.active { opacity: 1; pointer-events: all; }
 
-        .bottom-sheet {
-            position: fixed;
-            bottom: 0; left: 0; width: 100%;
-            height: 80vh; 
-            background-color: var(--card-bg);
-            border-radius: 20px 20px 0 0;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.8);
-            transform: translateY(100%); 
-            transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); 
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            box-sizing: border-box;
-        }
+        .bottom-sheet { position: fixed; bottom: 0; left: 0; width: 100%; height: 80vh; background-color: var(--card-bg); border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); z-index: 100; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
         .bottom-sheet.active { transform: translateY(0); }
-        .sheet-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #333;
-            padding-bottom: 15px;
-            margin-bottom: 15px;
-        }
+        .sheet-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
         .sheet-header h3 { margin: 0; font-size: 18px; color: var(--text-main); }
-        .close-sheet-btn {
-            background: var(--danger);
-            color: white; border: none; padding: 5px 15px;
-            border-radius: 8px; font-weight: bold; cursor: pointer;
-        }
-        .sheet-content {
-            flex-grow: 1;
-            overflow-y: auto; 
-            color: var(--text-sub);
-            font-size: 14px;
-            line-height: 1.5;
-        }
+        .close-sheet-btn { background: var(--danger); color: white; border: none; padding: 5px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .sheet-content { flex-grow: 1; overflow-y: auto; color: var(--text-sub); font-size: 14px; line-height: 1.5; }
     </style>
+    
+    <script src="/js/routing.js"></script>
 </head>
 <body>
 
@@ -385,37 +145,21 @@
     </div>
     
     <button id="action-btn" onclick="handleAction()">開始計算轉乘</button>
-    
-    <button id="cancel-btn" class="btn-reset" style="display: none;" onclick="resetPlan()">
-        <span class="option-name">🔄 終止求生，重新安排</span>
-    </button>
+    <button id="cancel-btn" class="btn-reset" style="display: none;" onclick="resetPlan()"><span class="option-name">🔄 終止求生，重新安排</span></button>
 
     <div id="plan-b-container" class="plan-b-container">
-        <button class="plan-b-option btn-uber vehicle-option" onclick="openWeb('Uber')">
-            <span class="option-name">呼叫 Uber <span class="option-meta">~25min</span></span>
-            <span class="option-price">~$300</span>
-        </button>
-        <button class="plan-b-option btn-goshare vehicle-option" onclick="openWeb('GoShare')">
-            <span class="option-name">騎 GoShare <span class="option-meta">~30min</span></span>
-            <span class="option-price">~$80</span>
-        </button>
-        <button class="plan-b-option btn-youbike vehicle-option" onclick="openWeb('YouBike')">
-            <span class="option-name">熱血 YouBike <span class="option-meta">~60min</span></span>
-            <span class="option-price">~$15</span>
-        </button>
-        <button class="plan-b-option btn-reset" onclick="resetPlan()">
-            <span class="option-name">🔄 重新安排行程</span>
-        </button>
+        <button class="plan-b-option btn-uber vehicle-option" onclick="openWeb('Uber')"><span class="option-name">呼叫 Uber <span class="option-meta">~25min</span></span><span class="option-price">~$300</span></button>
+        <button class="plan-b-option btn-goshare vehicle-option" onclick="openWeb('GoShare')"><span class="option-name">騎 GoShare <span class="option-meta">~30min</span></span><span class="option-price">~$80</span></button>
+        <button class="plan-b-option btn-youbike vehicle-option" onclick="openWeb('YouBike')"><span class="option-name">熱血 YouBike <span class="option-meta">~60min</span></span><span class="option-price">~$15</span></button>
+        <button class="plan-b-option btn-reset" onclick="resetPlan()"><span class="option-name">🔄 重新安排行程</span></button>
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.37)</span>
-        
+        <span>本服務由綠茶地瓜維護 (v1.38 架構解耦版)</span>
         <div class="footer-links-container">
             <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
             <a class="footer-toggle" onclick="openSettingsSheet()">⚙️ 設定與說明</a>
         </div>
-
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
             <a href="https://discord.gg/vUeBcsf" target="_blank" class="contact-btn btn-discord">💬 Discord</a>
@@ -426,44 +170,29 @@
 <div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
 
 <div class="bottom-sheet" id="advanced-sheet">
-    <div class="sheet-header">
-        <h3>進階轉乘路線設定</h3>
-        <button class="close-sheet-btn" onclick="closeAllSheets()">完成</button>
-    </div>
+    <div class="sheet-header"><h3>進階轉乘路線設定</h3><button class="close-sheet-btn" onclick="closeAllSheets()">完成</button></div>
     <div class="sheet-content">
         <p>在這裡，您可以打造像「中山 ➡️ 北車 ➡️ 客運1815」這種多段極限轉乘任務。</p>
-        <div style="padding: 15px; background: #222; border-radius: 8px; margin-bottom: 10px;">
-            <strong>起點：</strong>捷運 中山站
-        </div>
-        <div style="padding: 15px; background: #222; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--success);">
-            <strong>中繼站 1：</strong>捷運 台北車站 (準備轉乘客運)
-        </div>
-        <div style="padding: 15px; background: #222; border-radius: 8px;">
-            <strong>終點：</strong>國光客運 1815
-        </div>
+        <div style="padding: 15px; background: #222; border-radius: 8px; margin-bottom: 10px;"><strong>起點：</strong>捷運 中山站</div>
+        <div style="padding: 15px; background: #222; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--success);"><strong>中繼站 1：</strong>捷運 台北車站 (準備轉乘客運)</div>
+        <div style="padding: 15px; background: #222; border-radius: 8px;"><strong>終點：</strong>國光客運 1815</div>
     </div>
 </div>
 
 <div class="bottom-sheet" id="settings-sheet">
-    <div class="sheet-header">
-        <h3>⚙️ 設定與說明</h3>
-        <button class="close-sheet-btn" onclick="closeAllSheets()">關閉</button>
-    </div>
+    <div class="sheet-header"><h3>⚙️ 設定與說明</h3><button class="close-sheet-btn" onclick="closeAllSheets()">關閉</button></div>
     <div class="sheet-content">
-        
         <button class="plan-b-option" onclick="shareApp()" style="background-color: #333; color: white; width: 100%; justify-content: center; margin-bottom: 20px;">
             <span class="option-name">🔗 分享這個求生工具給朋友</span>
         </button>
-
         <h4 style="color: white; margin-bottom: 10px;">📖 快速使用說明</h4>
         <ul style="padding-left: 20px; line-height: 1.8;">
             <li>選擇你要出發與抵達的車站。</li>
-            <li>點擊輸入框時，按一下旁邊的空心星星「☆」，即可加入最愛並永久置頂。</li>
+            <li>點擊輸入框時，按一下旁邊的星星「☆」即可加入最愛並置頂。</li>
             <li>系統會優先連線交通部 TDX 抓取即時末班車時間。</li>
             <li>若遇斷網或 API 異常，系統將自動啟動內建的「離線演算法」為您推算極限發車時間。</li>
             <li>倒數開始後，點擊紅色按鈕可開啟「發車通知」，在倒數 10 分鐘時會響鈴提醒！</li>
         </ul>
-        
     </div>
 </div>
 
@@ -494,10 +223,6 @@
         'tra': '台北車站', 'thsr': '台北車站', 'intercity': '台北車站', 'bus': '台北車站'
     };
 
-    const operatorMap = {
-        'trtc': 'TRTC', 'tymetro': 'TYMC', 'krtc': 'KRTC', 'tmrt': 'TMRT'      
-    };
-
     window.onload = async () => {
         try {
             const timeRes = await fetch('/data/offline-timetable.json');
@@ -506,110 +231,14 @@
             const stationRes = await fetch('/data/stations.json');
             if (stationRes.ok) {
                 globalStationData = await stationRes.json();
-                console.log("✅ 車站總字典已準備就緒！");
-                
                 initCustomAutocomplete(); 
-                
                 document.getElementById('start-station-input').value = savedStart;
                 document.getElementById('end-station-input').value = savedEnd;
             }
         } catch (e) {
-            console.log("⚠️ 檔案載入失敗，可能是路徑錯誤或在飛航模式。");
+            console.log("⚠️ 檔案載入失敗。");
         }
     };
-
-    function calculateOfflineTime(startName, endName, type) {
-        if (!offlineTimetableData || !offlineTimetableData[type]) return null;
-        const table = offlineTimetableData[type];
-
-        const startKeys = Object.keys(table).filter(k => table[k].name === startName);
-        const endKeys = Object.keys(table).filter(k => table[k].name === endName);
-
-        for (let sKey of startKeys) {
-            for (let eKey of endKeys) {
-                const sLine = sKey.match(/[A-Z]+/)[0];
-                const eLine = eKey.match(/[A-Z]+/)[0];
-
-                if (sLine === eLine) {
-                    const sNum = parseInt(sKey.match(/\d+/)[0]);
-                    const eNum = parseInt(eKey.match(/\d+/)[0]);
-                    
-                    const direction = sNum < eNum ? 'up' : 'down';
-                    const time = table[sKey][direction];
-                    
-                    if (time && time !== "00:00") {
-                        return time;
-                    }
-                }
-            }
-        }
-        return null; 
-    }
-
-    function getSmartStationInfo(origin, dest, type) {
-        if (!globalStationData || !globalStationData[type] || !globalStationData[type].routes) return null;
-        const routeKey = `${origin}-${dest}`;
-        return globalStationData[type].routes[routeKey] || null;
-    }
-
-    async function fetchRealLastTrainTime(origin, destination, type, retryCount = 0) {
-        try {
-            const operatorCode = operatorMap[type];
-            if (!operatorCode) return null;
-
-            if (!cachedTdxToken) {
-                const tokenRes = await fetch('/api/get-token');
-                const tokenData = await tokenRes.json();
-                cachedTdxToken = tokenData.access_token;
-            }
-
-            const info = getSmartStationInfo(origin, destination, type);
-            if (!info) return null;
-            
-            const originCode = info.originCode;
-            const terminuses = info.terminuses;
-            
-            const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/${operatorCode}?$filter=StationID eq '${originCode}'&$format=JSON`;
-
-            const res = await fetch(apiUrl, {
-                headers: { 'Authorization': `Bearer ${cachedTdxToken}` }
-            });
-            const data = await res.json();
-
-            if ((data.message === 'Unauthorized' || res.status === 401) && retryCount === 0) {
-                cachedTdxToken = "";
-                return fetchRealLastTrainTime(origin, destination, type, 1);
-            }
-
-            if (data && data.length > 0) {
-                let maxMinutes = -1;
-                let lastTrainTimeStr = "";
-
-                data.forEach(route => {
-                    const tdxDestId = route.DestinationStaionID || route.DestinationStationID;
-                    if (terminuses.includes(tdxDestId)) {
-                        if (route.Timetables && route.Timetables.length > 0) {
-                            route.Timetables.forEach(t => {
-                                const timeStr = t.DepartureTime; 
-                                const [h, m] = timeStr.split(':').map(Number);
-                                let adjustedH = h < 4 ? h + 24 : h;
-                                let totalMins = adjustedH * 60 + m;
-
-                                if (totalMins > maxMinutes) {
-                                    maxMinutes = totalMins;
-                                    lastTrainTimeStr = timeStr;
-                                }
-                            });
-                        }
-                    }
-                });
-                if (lastTrainTimeStr !== "") return lastTrainTimeStr;
-            } 
-            return null;
-        } catch (error) {
-            return null;
-        }
-    }
 
     function toggleFavorite(stationName) {
         if (favoriteStations.includes(stationName)) {
@@ -629,12 +258,7 @@
         const selectedType = typeSelect.value;
         
         listContainer.innerHTML = ''; 
-        
-        let options = [];
-        if (globalStationData && globalStationData[selectedType] && globalStationData[selectedType].options) {
-            options = globalStationData[selectedType].options;
-        }
-
+        let options = globalStationData?.[selectedType]?.options || [];
         const filterText = inputField.value.trim().toLowerCase();
         
         let favList = [];
@@ -642,11 +266,8 @@
 
         options.forEach(station => {
             if (station.name.toLowerCase().includes(filterText) || filterText === '') {
-                if (favoriteStations.includes(station.name)) {
-                    favList.push(station);
-                } else {
-                    otherList.push(station);
-                }
+                if (favoriteStations.includes(station.name)) favList.push(station);
+                else otherList.push(station);
             }
         });
 
@@ -663,9 +284,7 @@
             starSpan.style.color = isFav ? '#ffca28' : '#666'; 
 
             starSpan.addEventListener('mousedown', function(e) {
-                e.preventDefault(); 
-                e.stopPropagation(); 
-                toggleFavorite(station.name);
+                e.preventDefault(); e.stopPropagation(); toggleFavorite(station.name);
             });
 
             item.addEventListener('mousedown', function(e) { e.preventDefault(); });
@@ -680,13 +299,9 @@
         };
 
         favList.forEach(station => { listContainer.appendChild(createItem(station, true)); });
-
         if (favList.length > 0 && otherList.length > 0) {
-            const divider = document.createElement('div');
-            divider.className = 'dropdown-divider';
-            listContainer.appendChild(divider);
+            const divider = document.createElement('div'); divider.className = 'dropdown-divider'; listContainer.appendChild(divider);
         }
-
         otherList.forEach(station => { listContainer.appendChild(createItem(station, false)); });
         
         listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
@@ -696,27 +311,20 @@
         ['start', 'end'].forEach(point => {
             const inputField = document.getElementById(point + '-station-input');
             inputField.addEventListener('input', () => renderCustomDropdown(point));
-            inputField.addEventListener('focus', () => {
-                inputField.value = ''; 
-                renderCustomDropdown(point);
-            });
+            inputField.addEventListener('focus', () => { inputField.value = ''; renderCustomDropdown(point); });
         });
     }
 
     document.addEventListener('click', function (e) {
         ['start', 'end'].forEach(point => {
             const wrapper = document.getElementById(point + '-station-input').parentElement;
-            if (!wrapper.contains(e.target)) {
-                document.getElementById(point + '-autocomplete-list').style.display = 'none';
-            }
+            if (!wrapper.contains(e.target)) document.getElementById(point + '-autocomplete-list').style.display = 'none';
         });
     });
 
     function updateStationOptions(point) {
         const typeSelect = document.getElementById(point + '-type');
-        const selectedType = typeSelect.value;
-        
-        document.getElementById(point + '-station-input').value = defaultStations[selectedType] || '';
+        document.getElementById(point + '-station-input').value = defaultStations[typeSelect.value] || '';
         renderCustomDropdown(point);
     }
 
@@ -724,31 +332,23 @@
         isNotificationEnabled = !isNotificationEnabled;
         if (isNotificationEnabled) {
             actionBtn.innerHTML = "🔕 關閉發車通知";
-            actionBtn.classList.remove('btn-danger');
-            actionBtn.classList.add('btn-warning');
+            actionBtn.classList.replace('btn-danger', 'btn-warning');
             alert("🔔 已開啟通知！末班車發車前 10 分鐘會提醒您。");
         } else {
             actionBtn.innerHTML = "🔔 開啟發車通知";
-            actionBtn.classList.remove('btn-warning');
-            actionBtn.classList.add('btn-danger');
+            actionBtn.classList.replace('btn-warning', 'btn-danger');
         }
     }
 
     function updateClock() {
         if (!isCountingDown) {
             const now = new Date();
-            const hh = String(now.getHours()).padStart(2, '0');
-            const mm = String(now.getMinutes()).padStart(2, '0');
-            const ss = String(now.getSeconds()).padStart(2, '0');
-            display.innerHTML = `${hh}:${mm}:${ss}`;
+            display.innerHTML = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
         } else {
             if (timeLeft <= 0) {
                 clearInterval(timer);
-                display.innerHTML = "來不及了💸";
-                display.style.fontSize = "50px"; 
-                display.style.color = "#ff5252";
-                actionBtn.style.display = "none";
-                cancelBtn.style.display = "none"; 
+                display.innerHTML = "來不及了💸"; display.style.fontSize = "50px"; display.style.color = "#ff5252";
+                actionBtn.style.display = "none"; cancelBtn.style.display = "none"; 
                 planBContainer.style.display = "flex";
                 document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex");
                 statusText.innerHTML = "人生不是只有末班車...";
@@ -757,21 +357,14 @@
             timeLeft--;
             
             if (isNotificationEnabled && !notificationTriggered && timeLeft === 600) {
-                new Notification("🏃‍♂️ 末班車警報！", {
-                    body: "距離您的末班車發車只剩最後 10 分鐘，請盡快前往車站！",
-                });
+                new Notification("🏃‍♂️ 末班車警報！", { body: "距離發車只剩最後 10 分鐘！" });
                 notificationTriggered = true; 
             }
 
-            let hours = Math.floor(timeLeft / 3600);
-            let minutes = Math.floor((timeLeft % 3600) / 60);
-            let seconds = timeLeft % 60;
-            
-            if (hours > 0) {
-                display.innerHTML = `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-            } else {
-                display.innerHTML = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-            }
+            let h = Math.floor(timeLeft / 3600);
+            let m = Math.floor((timeLeft % 3600) / 60);
+            let s = timeLeft % 60;
+            display.innerHTML = h > 0 ? `${h}:${m<10?'0':''}${m}:${s<10?'0':''}${s}` : `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
         }
     }
 
@@ -781,34 +374,22 @@
     async function handleAction() {
         const startType = document.getElementById('start-type').value;
         const endType = document.getElementById('end-type').value;
-        
         const startStationName = document.getElementById('start-station-input').value;
         const endStationName = document.getElementById('end-station-input').value;
 
         if (isCountingDown) {
             if ("Notification" in window) {
-                if (Notification.permission === "granted") {
-                    toggleNotificationState();
-                } else if (Notification.permission !== "denied") {
-                    Notification.requestPermission().then(permission => {
-                        if (permission === "granted") toggleNotificationState();
-                    });
-                } else {
-                    alert("⚠️ 您之前拒絕了通知權限，請至瀏覽器的設定中手動開啟喔！");
-                }
-            } else {
-                alert("⚠️ 您的瀏覽器不支援推播通知喔！");
-            }
+                if (Notification.permission === "granted") toggleNotificationState();
+                else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); });
+                else alert("⚠️ 您之前拒絕了通知權限，請手動開啟！");
+            } else alert("⚠️ 不支援推播通知！");
             return;
         }
 
         const startStationObj = globalStationData[startType]?.options.find(s => s.name === startStationName);
         const endStationObj = globalStationData[endType]?.options.find(s => s.name === endStationName);
 
-        if (!startStationObj || !endStationObj) {
-            alert("⚠️ 找不到這個車站，請確認是否有錯字，或從選單中直接點選！");
-            return; 
-        }
+        if (!startStationObj || !endStationObj) return alert("⚠️ 找不到車站！");
 
         localStorage.setItem('lastTrainStart', startStationName);
         localStorage.setItem('lastTrainEnd', endStationName);
@@ -817,160 +398,104 @@
         const endStation = endStationObj.id;
 
         if (startType === endType && startStation === endStation) {
-            clearInterval(timer); 
-            isCountingDown = false; 
-            display.innerHTML = "恭喜到達🎉";
-            display.style.fontSize = "40px"; 
-            display.style.color = "#4caf50";
-            statusText.innerHTML = "你根本不用搭車，早點回家洗洗睡！";
-            actionBtn.style.display = "none";
-            cancelBtn.style.display = "none";
+            clearInterval(timer); isCountingDown = false; 
+            display.innerHTML = "恭喜到達🎉"; display.style.fontSize = "40px"; display.style.color = "#4caf50";
+            statusText.innerHTML = "早點回家洗洗睡！";
+            actionBtn.style.display = "none"; cancelBtn.style.display = "none";
             planBContainer.style.display = "flex";
             document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "none");
             return;
         }
 
-        let transferPenaltySeconds = 0;
-        if (startStation === endStation && startType !== endType) {
-            transferPenaltySeconds = 20 * 60; 
-            alert("⚠️ 偵測到「同站跨系統轉乘」。\n系統已自動為您預留 20 分鐘步行時間！");
-        }
+        let transferPenalty = (startStation === endStation && startType !== endType) ? 20 * 60 : 0;
+        if (transferPenalty > 0) alert("⚠️ 偵測到「同站跨系統轉乘」，已預留 20 分鐘步行時間！");
 
-        actionBtn.innerHTML = "⏳ 演算法推演中...";
-        actionBtn.disabled = true;
+        actionBtn.innerHTML = "⏳ 演算法推演中..."; actionBtn.disabled = true;
 
         try {
-            let finalTargetTimeString = "23:59"; 
-            let connectionStatus = "即時連線";
+            let finalTime = "23:59"; 
+            let status = "即時連線";
 
             if (['trtc', 'tymetro', 'krtc', 'tmrt'].includes(startType) && startType === endType) {
-                const realTime = await fetchRealLastTrainTime(startStation, endStation, startType);
-                if (realTime) {
-                    finalTargetTimeString = realTime;
+                
+                // 🌟 呼叫外部的 API 模組拿 Token
+                if (!cachedTdxToken) {
+                    const tokenRes = await fetch('/api/get-token');
+                    const tokenData = await tokenRes.json();
+                    cachedTdxToken = tokenData.access_token;
+                }
+
+                // 🌟 呼叫外部大腦算時間
+                let realTime = await fetchRealLastTrainTime(globalStationData, cachedTdxToken, startStation, endStation, startType);
+                
+                if (realTime === "TOKEN_EXPIRED") {
+                    const tokenRes = await fetch('/api/get-token');
+                    const tokenData = await tokenRes.json();
+                    cachedTdxToken = tokenData.access_token;
+                    realTime = await fetchRealLastTrainTime(globalStationData, cachedTdxToken, startStation, endStation, startType);
+                }
+
+                if (realTime && realTime !== "TOKEN_EXPIRED") {
+                    finalTime = realTime;
                 } else {
-                    const offlineComputedTime = calculateOfflineTime(startStationName, endStationName, startType);
-                    
+                    const offlineComputedTime = calculateOfflineTime(offlineTimetableData, startStationName, endStationName, startType);
                     if (offlineComputedTime) {
-                        finalTargetTimeString = offlineComputedTime;
-                        connectionStatus = "離線演算法";
+                        finalTime = offlineComputedTime; status = "離線演算法";
                     } else {
-                        connectionStatus = "系統預設";
-                        alert("⚠️ 跨線轉乘資料尚未備齊，將使用系統保底 23:59 估算。");
+                        status = "系統預設"; alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。");
                     }
                 }
             } else {
-                connectionStatus = "系統預設";
-                alert(`目前尚未串接即時資料，將使用預設 23:59 估算。`);
+                status = "系統預設"; alert(`尚未串接即時資料，使用 23:59 估算。`);
             }
 
             isCountingDown = true;
-            statusText.innerHTML = "距離末班車發車還剩";
-            display.style.color = "#4caf50";
-            speedModeText.innerHTML = `${finalTargetTimeString} <span style="font-size:10px; color:#aaa;">(${connectionStatus})</span>`;
+            statusText.innerHTML = "距離末班車發車還剩"; display.style.color = "#4caf50";
+            speedModeText.innerHTML = `${finalTime} <span style="font-size:10px; color:#aaa;">(${status})</span>`;
             
-            actionBtn.innerHTML = "🔔 開啟發車通知";
-            actionBtn.classList.remove('btn-success');
-            actionBtn.classList.add('btn-danger');
-            
+            actionBtn.innerHTML = "🔔 開啟發車通知"; actionBtn.classList.replace('btn-success', 'btn-danger');
             cancelBtn.style.display = "flex";
 
-            const now = new Date();
-            let target = new Date();
-            const [hh, mm] = finalTargetTimeString.split(':').map(Number);
+            const now = new Date(); let target = new Date();
+            const [hh, mm] = finalTime.split(':').map(Number);
             target.setHours(hh, mm, 0, 0); 
+            if (now.getHours() >= 4 && hh < 4) target.setDate(target.getDate() + 1); 
+            else if (now.getHours() < 4 && hh >= 4) target.setDate(target.getDate() - 1); 
 
-            if (now.getHours() >= 4 && hh < 4) {
-                target.setDate(target.getDate() + 1); 
-            } else if (now.getHours() < 4 && hh >= 4) {
-                target.setDate(target.getDate() - 1); 
-            }
-
-            timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenaltySeconds;
+            timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenalty;
             if (timeLeft < 0) timeLeft = 0;
             updateClock(); 
 
         } catch (error) {
-            alert("系統發生錯誤，請稍後再試！");
-            isCountingDown = false;
+            alert("系統發生錯誤！"); isCountingDown = false;
         } finally {
             actionBtn.disabled = false;
         }
     }
 
     function resetPlan() {
-        clearInterval(timer);
-        isCountingDown = false;
-        
-        isNotificationEnabled = false;
-        notificationTriggered = false;
-        
-        planBContainer.style.display = "none";    
-        cancelBtn.style.display = "none"; 
-        
-        actionBtn.style.display = "block";        
-        actionBtn.innerHTML = "開始計算轉乘";     
-        actionBtn.classList.remove('btn-danger', 'btn-warning'); 
-        actionBtn.classList.add('btn-success'); 
+        clearInterval(timer); isCountingDown = false; isNotificationEnabled = false; notificationTriggered = false;
+        planBContainer.style.display = "none"; cancelBtn.style.display = "none"; 
+        actionBtn.style.display = "block"; actionBtn.innerHTML = "開始計算轉乘";     
+        actionBtn.classList.remove('btn-danger', 'btn-warning'); actionBtn.classList.add('btn-success'); 
         actionBtn.disabled = false;
-        
-        statusText.innerHTML = "現在時間";        
-        speedModeText.innerHTML = "待查驗...";
-        display.style.color = "#e0e0e0"; 
-        display.style.fontSize = "50px"; 
-        
+        statusText.innerHTML = "現在時間"; speedModeText.innerHTML = "待查驗..."; display.style.color = "#e0e0e0"; display.style.fontSize = "50px"; 
         document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex");
-        
-        updateClock();
-        timer = setInterval(updateClock, 1000);
+        updateClock(); timer = setInterval(updateClock, 1000);
     }
 
     function openWeb(appName) {
-        let targetUrl = "";
-        if (appName === 'Uber') targetUrl = "https://m.uber.com/"; 
-        else if (appName === 'GoShare') targetUrl = "https://www.ridegoshare.com/"; 
-        else if (appName === 'YouBike') targetUrl = "https://www.youbike.com.tw/region/ntpc/stations/"; 
-        window.open(targetUrl, '_blank');
+        const urls = {'Uber': 'https://m.uber.com/', 'GoShare': 'https://www.ridegoshare.com/', 'YouBike': 'https://www.youbike.com.tw/'};
+        window.open(urls[appName], '_blank');
     }
 
-    function toggleContact() {
-        const links = document.getElementById('contact-links');
-        links.style.display = (links.style.display === "flex") ? "none" : "flex";
-    }
-
-    // 🌟 控制所有彈出視窗的開關邏輯
-    function openAdvancedSheet() {
-        document.getElementById('overlay').classList.add('active');
-        document.getElementById('advanced-sheet').classList.add('active');
-    }
-
-    function openSettingsSheet() {
-        document.getElementById('overlay').classList.add('active');
-        document.getElementById('settings-sheet').classList.add('active');
-    }
-
-    function closeAllSheets() {
-        document.getElementById('overlay').classList.remove('active');
-        document.getElementById('advanced-sheet').classList.remove('active');
-        document.getElementById('settings-sheet').classList.remove('active');
-    }
-
-    // 🌟 神級功能：呼叫手機原生的分享選單
+    function toggleContact() { const l = document.getElementById('contact-links'); l.style.display = l.style.display === "flex" ? "none" : "flex"; }
+    function openAdvancedSheet() { document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
+    function openSettingsSheet() { document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
+    function closeAllSheets() { document.getElementById('overlay').classList.remove('active'); document.getElementById('advanced-sheet').classList.remove('active'); document.getElementById('settings-sheet').classList.remove('active'); }
     function shareApp() {
-        if (navigator.share) {
-            navigator.share({
-                title: '末班車生存戰',
-                text: '趕不上末班車？快用這個工具一鍵查詢末班車倒數，不怕再被困在台北街頭！',
-                url: window.location.href
-            }).then(() => {
-                console.log('分享成功！');
-            }).catch((error) => {
-                console.error('分享失敗或被取消：', error);
-            });
-        } else {
-            // 如果是在電腦版或不支援的瀏覽器，就幫他複製網址
-            navigator.clipboard.writeText(window.location.href);
-            alert("✅ 網址已複製！快去貼給朋友吧！");
-        }
+        if (navigator.share) navigator.share({ title: '末班車生存戰', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href });
+        else { navigator.clipboard.writeText(window.location.href); alert("✅ 網址已複製！"); }
     }
 </script>
 </body>
