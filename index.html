@@ -282,9 +282,7 @@
                 <option value="bus">客運</option>
             </select>
             <select class="station-select" id="start-station">
-                <option value="Zhongshan" selected>中山</option>
-                <option value="TaipeiMain">台北車站</option>
-                <option value="Xindian">新店</option>
+                <option value="">載入中...</option>
             </select>
         </div>
     </div>
@@ -301,9 +299,7 @@
                 <option value="bus">客運</option>
             </select>
             <select class="station-select" id="end-station">
-                <option value="Zhongshan">中山</option>
-                <option value="TaipeiMain">台北車站</option>
-                <option value="Xindian" selected>新店</option>
+                <option value="">載入中...</option>
             </select>
         </div>
     </div>
@@ -339,7 +335,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.25)</span>
+        <span>本服務由綠茶地瓜維護 (v1.26)</span>
         <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
@@ -374,6 +370,7 @@
     let timer; 
     let cachedTdxToken = ""; 
     let offlineTimetableData = null; 
+    let globalStationData = null; // 🌟 儲存從 JSON 抓來的車站總字典
 
     const display = document.getElementById('time-display');
     const statusText = document.getElementById('status-text');
@@ -382,29 +379,41 @@
     const speedModeText = document.getElementById('speed-mode');
     const planBContainer = document.getElementById('plan-b-container'); 
 
+    // 網頁開啟時，兩份 JSON 檔案一起去雲端拿下來！
     window.onload = async () => {
         try {
-            const res = await fetch('/data/offline-timetable.json');
-            if (res.ok) {
-                offlineTimetableData = await res.json();
-                console.log("✅ 離線備用時刻表已準備就緒！");
+            // 抓離線時刻表
+            const timeRes = await fetch('/data/offline-timetable.json');
+            if (timeRes.ok) offlineTimetableData = await timeRes.json();
+            
+            // 抓車站總字典
+            const stationRes = await fetch('/data/stations.json');
+            if (stationRes.ok) {
+                globalStationData = await stationRes.json();
+                console.log("✅ 車站總字典已準備就緒！");
+                
+                // 字典準備好後，主動把下拉選單「畫」出來
+                updateStationOptions('start');
+                updateStationOptions('end');
+                
+                // 貼心小設定：幫使用者預設好中山到新店
+                document.getElementById('start-station').value = 'Zhongshan';
+                document.getElementById('end-station').value = 'Xindian';
             }
         } catch (e) {
-            console.log("⚠️ 離線時刻表載入失敗，可能是在飛航模式或檔案尚未建立。");
+            console.log("⚠️ 檔案載入失敗，可能是路徑錯誤或在飛航模式。");
         }
     };
 
+    // --- 🌟 智慧代碼導航器：現在直接查字典，不再寫死了！ ---
     function getSmartStationInfo(origin, dest) {
-        if (origin === 'Zhongshan' && dest === 'TaipeiMain') return { originCode: 'R11', terminuses: ['R02', 'R05'] }; 
-        if (origin === 'TaipeiMain' && dest === 'Zhongshan') return { originCode: 'R10', terminuses: ['R28', 'R22'] }; 
-        if (origin === 'Zhongshan' && dest === 'Xindian') return { originCode: 'G14', terminuses: ['G01'] };   
-        if (origin === 'Xindian' && dest === 'Zhongshan') return { originCode: 'G01', terminuses: ['G19'] };   
-        if (origin === 'TaipeiMain' && dest === 'Xindian') return { originCode: 'R10', terminuses: ['R02', 'R05'] }; 
-        if (origin === 'Xindian' && dest === 'TaipeiMain') return { originCode: 'G01', terminuses: ['G19'] }; 
-        return null;
+        if (!globalStationData || !globalStationData['mrt'] || !globalStationData['mrt'].routes) return null;
+        
+        const routeKey = `${origin}-${dest}`;
+        // 直接從 JSON 裡面把這個組合的方向和代碼拿出來
+        return globalStationData['mrt'].routes[routeKey] || null;
     }
 
-    // --- 🌟 修正了斷網恐慌症：整個包在 try...catch 裡面 ---
     async function fetchRealLastTrainTime(origin, destination, retryCount = 0) {
         try {
             if (!cachedTdxToken) {
@@ -414,7 +423,10 @@
             }
 
             const info = getSmartStationInfo(origin, destination);
-            if (!info) return null;
+            if (!info) {
+                console.log("⚠️ 字典裡找不到這個站點組合的方向邏輯！");
+                return null;
+            }
             
             const originCode = info.originCode;
             const terminuses = info.terminuses;
@@ -459,27 +471,30 @@
             } 
             return null;
         } catch (error) {
-            // 🌟 如果沒網路抓不到 Token 或 API，冷靜回傳 null 交給離線字典處理
             console.error("飛航模式或斷網中，放棄即時連線：", error);
             return null;
         }
     }
 
+    // --- 🌟 動態選單產生器 ---
     function updateStationOptions(point) {
         const typeSelect = document.getElementById(point + '-type');
         const stationSelect = document.getElementById(point + '-station');
         const selectedType = typeSelect.value;
+        
         stationSelect.innerHTML = '';
-        if (selectedType === 'mrt') {
-            stationSelect.innerHTML = `
-                <option value="Zhongshan">中山</option>
-                <option value="TaipeiMain">台北車站</option>
-                <option value="Xindian">新店</option>
-            `;
-            if (point === 'start') stationSelect.value = 'Zhongshan';
-            if (point === 'end') stationSelect.value = 'Xindian';
+
+        if (globalStationData && globalStationData[selectedType] && globalStationData[selectedType].options) {
+            // 從 JSON 裡面把該交通工具的所有站點倒出來，變成 option
+            globalStationData[selectedType].options.forEach(station => {
+                const opt = document.createElement('option');
+                opt.value = station.id;
+                opt.textContent = station.name;
+                stationSelect.appendChild(opt);
+            });
         } else {
-            stationSelect.innerHTML = `<option value="TaipeiMain" selected>台北車站</option>`;
+            // 萬一 JSON 還沒載入好，給個預設畫面
+            stationSelect.innerHTML = `<option value="">請稍候...</option>`;
         }
     }
 
