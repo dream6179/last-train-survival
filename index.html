@@ -98,7 +98,11 @@
         .close-sheet-btn { background: var(--danger); color: white; border: none; padding: 5px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .sheet-content { flex-grow: 1; overflow-y: auto; color: var(--text-sub); font-size: 14px; line-height: 1.5; }
         
-        .search-result-box { margin-top: 15px; background: #222; border-radius: 10px; padding: 15px; min-height: 150px; display: flex; justify-content: center; align-items: center; color: #666; font-size: 13px; border: 1px dashed #444; }
+        // .search-result-box { margin-top: 15px; background: #222; border-radius: 10px; padding: 15px; min-height: 150px; display: flex; justify-content: center; align-items: center; color: #666; font-size: 13px; border: 1px dashed #444; }
+    // /* 查詢結果的虛擬框 */
+        .search-result-box { margin-top: 15px; background: #222; border-radius: 10px; padding: 15px; min-height: 150px; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #666; font-size: 13px; border: 1px dashed #444; }
+        .search-result-box::-webkit-scrollbar { width: 6px; }
+        .search-result-box::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
     </style>
     
     <script src="/js/routing.js"></script>
@@ -298,6 +302,7 @@
                 `;
             });
             html += `</div>`;
+            resultBox.style.justifyContent = 'flex-start';
             resultBox.innerHTML = html;
 
         } catch (e) {
