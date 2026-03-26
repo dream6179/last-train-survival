@@ -117,7 +117,6 @@
             display: none; 
         }
         
-        /* 🌟 為了加入星星，把選單項目改成 flex 排版 */
         .dropdown-item {
             padding: 12px 15px;
             cursor: pointer;
@@ -130,7 +129,6 @@
         }
         .dropdown-item:active { background-color: #444; }
         
-        /* 星星按鈕的樣式 */
         .star-icon {
             font-size: 18px;
             cursor: pointer;
@@ -139,7 +137,6 @@
         }
         .star-icon:active { transform: scale(1.3); }
 
-        /* 分隔我的最愛與其他車站的隱形線 */
         .dropdown-divider {
             height: 1px;
             background-color: #444;
@@ -331,10 +328,14 @@
         <label>出發地</label>
         <div class="select-group">
             <select class="type-select" id="start-type" onchange="updateStationOptions('start')">
-                <option value="mrt" selected>捷運</option>
-                <option value="train">火車</option>
-                <option value="hsr">高鐵</option>
-                <option value="bus">客運</option>
+                <option value="trtc" selected>北捷</option>
+                <option value="tymetro">桃捷</option>
+                <option value="krtc">高捷</option>
+                <option value="tmrt">中捷</option>
+                <option value="tra">台鐵</option>
+                <option value="thsr">高鐵</option>
+                <option value="intercity">客運</option>
+                <option value="bus">公車</option>
             </select>
             <div class="autocomplete-wrapper">
                 <input type="text" id="start-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
@@ -349,10 +350,14 @@
         <label>目的地</label>
         <div class="select-group">
             <select class="type-select" id="end-type" onchange="updateStationOptions('end')">
-                <option value="mrt" selected>捷運</option>
-                <option value="train">火車</option>
-                <option value="hsr">高鐵</option>
-                <option value="bus">客運</option>
+                <option value="trtc" selected>北捷</option>
+                <option value="tymetro">桃捷</option>
+                <option value="krtc">高捷</option>
+                <option value="tmrt">中捷</option>
+                <option value="tra">台鐵</option>
+                <option value="thsr">高鐵</option>
+                <option value="intercity">客運</option>
+                <option value="bus">公車</option>
             </select>
             <div class="autocomplete-wrapper">
                 <input type="text" id="end-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
@@ -392,7 +397,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.29)</span>
+        <span>本服務由綠茶地瓜維護 (v1.31)</span>
         <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
@@ -429,10 +434,9 @@
     let offlineTimetableData = null; 
     let globalStationData = null; 
 
-    // 🌟 從使用者的手機瀏覽器喚醒「我的最愛」與「上次路線」
     let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || [];
-    let savedStart = localStorage.getItem('lastTrainStart') || '中山';
-    let savedEnd = localStorage.getItem('lastTrainEnd') || '新店';
+    let savedStart = localStorage.getItem('lastTrainStart') || '台北車站';
+    let savedEnd = localStorage.getItem('lastTrainEnd') || '台北車站';
 
     const display = document.getElementById('time-display');
     const statusText = document.getElementById('status-text');
@@ -440,6 +444,25 @@
     const cancelBtn = document.getElementById('cancel-btn'); 
     const speedModeText = document.getElementById('speed-mode');
     const planBContainer = document.getElementById('plan-b-container'); 
+
+    // 🌟 在地化大腦：各交通工具的預設代表車站
+    const defaultStations = {
+        'trtc': '台北車站',
+        'tymetro': '台北車站',
+        'krtc': '高雄車站',
+        'tmrt': '高鐵台中站',
+        'tra': '台北車站',
+        'thsr': '台北車站',
+        'intercity': '台北車站',
+        'bus': '台北車站'
+    };
+
+    const operatorMap = {
+        'trtc': 'TRTC',     
+        'tymetro': 'TYMC',  
+        'krtc': 'KRTC',     
+        'tmrt': 'TMRT'      
+    };
 
     window.onload = async () => {
         try {
@@ -453,7 +476,6 @@
                 
                 initCustomAutocomplete(); 
                 
-                // 自動套用使用者上次查過的路線 (記憶吐司)
                 document.getElementById('start-station-input').value = savedStart;
                 document.getElementById('end-station-input').value = savedEnd;
             }
@@ -462,26 +484,30 @@
         }
     };
 
-    function getSmartStationInfo(origin, dest) {
-        if (!globalStationData || !globalStationData['mrt'] || !globalStationData['mrt'].routes) return null;
+    function getSmartStationInfo(origin, dest, type) {
+        if (!globalStationData || !globalStationData[type] || !globalStationData[type].routes) return null;
         const routeKey = `${origin}-${dest}`;
-        return globalStationData['mrt'].routes[routeKey] || null;
+        return globalStationData[type].routes[routeKey] || null;
     }
 
-    async function fetchRealLastTrainTime(origin, destination, retryCount = 0) {
+    async function fetchRealLastTrainTime(origin, destination, type, retryCount = 0) {
         try {
+            const operatorCode = operatorMap[type];
+            if (!operatorCode) return null;
+
             if (!cachedTdxToken) {
                 const tokenRes = await fetch('/api/get-token');
                 const tokenData = await tokenRes.json();
                 cachedTdxToken = tokenData.access_token;
             }
 
-            const info = getSmartStationInfo(origin, destination);
+            const info = getSmartStationInfo(origin, destination, type);
             if (!info) return null;
             
             const originCode = info.originCode;
             const terminuses = info.terminuses;
-            const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/TRTC?$filter=StationID eq '${originCode}'&$format=JSON`;
+            
+            const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/${operatorCode}?$filter=StationID eq '${originCode}'&$format=JSON`;
 
             const res = await fetch(apiUrl, {
                 headers: { 'Authorization': `Bearer ${cachedTdxToken}` }
@@ -490,7 +516,7 @@
 
             if ((data.message === 'Unauthorized' || res.status === 401) && retryCount === 0) {
                 cachedTdxToken = "";
-                return fetchRealLastTrainTime(origin, destination, 1);
+                return fetchRealLastTrainTime(origin, destination, type, 1);
             }
 
             if (data && data.length > 0) {
@@ -523,24 +549,17 @@
         }
     }
 
-    // 🌟 點擊星星時的魔法邏輯
     function toggleFavorite(stationName) {
         if (favoriteStations.includes(stationName)) {
-            // 如果已經在最愛，就把它移掉
             favoriteStations = favoriteStations.filter(name => name !== stationName);
         } else {
-            // 如果不在最愛，就加進去
             favoriteStations.push(stationName);
         }
-        // 存回使用者的手機裡
         localStorage.setItem('lastTrainFavs', JSON.stringify(favoriteStations));
-        
-        // 重新繪製上下兩個下拉選單，讓星星狀態同步更新
         renderCustomDropdown('start');
         renderCustomDropdown('end');
     }
 
-    // --- 🌟 置頂我的最愛的高階渲染器 ---
     function renderCustomDropdown(point) {
         const typeSelect = document.getElementById(point + '-type');
         const inputField = document.getElementById(point + '-station-input');
@@ -561,7 +580,6 @@
 
         options.forEach(station => {
             if (station.name.toLowerCase().includes(filterText) || filterText === '') {
-                // 分類：是有被標星號的，還是沒有的？
                 if (favoriteStations.includes(station.name)) {
                     favList.push(station);
                 } else {
@@ -570,7 +588,6 @@
             }
         });
 
-        // 負責畫出單一站點的工具
         const createItem = (station, isFav) => {
             const item = document.createElement('div');
             item.className = 'dropdown-item';
@@ -581,16 +598,14 @@
             const starSpan = document.createElement('span');
             starSpan.className = 'star-icon';
             starSpan.textContent = isFav ? '★' : '☆';
-            starSpan.style.color = isFav ? '#ffca28' : '#666'; // ★是金黃色，☆是暗灰色
+            starSpan.style.color = isFav ? '#ffca28' : '#666'; 
 
-            // 點擊星星：只改變最愛狀態，不關閉選單
             starSpan.addEventListener('mousedown', function(e) {
                 e.preventDefault(); 
                 e.stopPropagation(); 
                 toggleFavorite(station.name);
             });
 
-            // 點擊站名：選定車站並關閉選單
             item.addEventListener('mousedown', function(e) { e.preventDefault(); });
             item.addEventListener('click', function() {
                 inputField.value = station.name;
@@ -602,22 +617,15 @@
             return item;
         };
 
-        // 1. 先畫出「我的最愛」區塊 (自動置頂！)
-        favList.forEach(station => {
-            listContainer.appendChild(createItem(station, true));
-        });
+        favList.forEach(station => { listContainer.appendChild(createItem(station, true)); });
 
-        // 2. 如果上面有最愛、下面也有一般車站，中間畫一條低調的分隔線
         if (favList.length > 0 && otherList.length > 0) {
             const divider = document.createElement('div');
             divider.className = 'dropdown-divider';
             listContainer.appendChild(divider);
         }
 
-        // 3. 畫出其他的普通車站
-        otherList.forEach(station => {
-            listContainer.appendChild(createItem(station, false));
-        });
+        otherList.forEach(station => { listContainer.appendChild(createItem(station, false)); });
         
         listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
     }
@@ -643,7 +651,11 @@
     });
 
     function updateStationOptions(point) {
-        document.getElementById(point + '-station-input').value = '';
+        const typeSelect = document.getElementById(point + '-type');
+        const selectedType = typeSelect.value;
+        
+        // 🌟 智慧預設：切換交通工具時，自動填入該系統的代表車站
+        document.getElementById(point + '-station-input').value = defaultStations[selectedType] || '';
         renderCustomDropdown(point);
     }
 
@@ -698,7 +710,6 @@
             return; 
         }
 
-        // 🌟 既然他成功按下了開始，代表這條路線他真的會搭，我們幫他偷偷記下來！
         localStorage.setItem('lastTrainStart', startStationName);
         localStorage.setItem('lastTrainEnd', endStationName);
 
@@ -739,14 +750,14 @@
             let finalTargetTimeString = "23:59"; 
             let connectionStatus = "即時連線";
 
-            if (startType === 'mrt' && endType === 'mrt') {
-                const realTime = await fetchRealLastTrainTime(startStation, endStation);
+            if (['trtc', 'tymetro', 'krtc', 'tmrt'].includes(startType) && startType === endType) {
+                const realTime = await fetchRealLastTrainTime(startStation, endStation, startType);
                 if (realTime) {
                     finalTargetTimeString = realTime;
                 } else {
                     const routeKey = `${startStation}-${endStation}`;
-                    if (offlineTimetableData && offlineTimetableData['mrt'] && offlineTimetableData['mrt'][routeKey]) {
-                        finalTargetTimeString = offlineTimetableData['mrt'][routeKey];
+                    if (offlineTimetableData && offlineTimetableData[startType] && offlineTimetableData[startType][routeKey]) {
+                        finalTargetTimeString = offlineTimetableData[startType][routeKey];
                         connectionStatus = "離線備用";
                         alert("⚠️ 目前網路異常或無法連線，已為您切換至「離線備用」時刻表。");
                     } else {
