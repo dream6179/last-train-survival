@@ -1,0 +1,13 @@
+{
+  "mrt": {
+    "Zhongshan-TaipeiMain": "00:40",
+    "TaipeiMain-Zhongshan": "00:43",
+    "Zhongshan-Xindian": "00:30",
+    "Xindian-Zhongshan": "00:08",
+    "TaipeiMain-Xindian": "00:25",
+    "Xindian-TaipeiMain": "00:08"
+  },
+  "train": {},
+  "hsr": {},
+  "bus": {}
+}
