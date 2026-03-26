@@ -334,8 +334,6 @@
         <span class="option-name">🔄 終止求生，重新安排</span>
     </button>
 
-    <button class="btn-test-api" id="test-api-btn" onclick="testTdxConnection()">🔌 測試黑衣人連線 (抓取 TDX Token)</button>
-
     <div id="plan-b-container" class="plan-b-container">
         <button class="plan-b-option btn-uber vehicle-option" onclick="openWeb('Uber')">
             <span class="option-name">呼叫 Uber <span class="option-meta">~25min</span></span>
@@ -355,7 +353,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.23)</span>
+        <span>本服務由綠茶地瓜維護 (v1.24)</span>
         <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
@@ -389,6 +387,7 @@
     let timeLeft = 0; 
     let timer; 
     let cachedTdxToken = ""; 
+    let offlineTimetableData = null; // 準備用來存離線字典的變數
 
     const display = document.getElementById('time-display');
     const statusText = document.getElementById('status-text');
@@ -397,7 +396,19 @@
     const speedModeText = document.getElementById('speed-mode');
     const planBContainer = document.getElementById('plan-b-container'); 
 
-    // 智慧代碼導航器
+    // 網頁一打開，就先偷偷把我們建好的 JSON 離線字典載入備用！
+    window.onload = async () => {
+        try {
+            const res = await fetch('/data/offline-timetable.json');
+            if (res.ok) {
+                offlineTimetableData = await res.json();
+                console.log("✅ 離線備用時刻表已準備就緒！");
+            }
+        } catch (e) {
+            console.log("離線時刻表載入失敗，可能檔案還沒建好。");
+        }
+    };
+
     function getSmartStationInfo(origin, dest) {
         if (origin === 'Zhongshan' && dest === 'TaipeiMain') return { originCode: 'R11', terminuses: ['R02', 'R05'] }; 
         if (origin === 'TaipeiMain' && dest === 'Zhongshan') return { originCode: 'R10', terminuses: ['R28', 'R22'] }; 
@@ -408,26 +419,6 @@
         return null;
     }
 
-    async function testTdxConnection() {
-        const testBtn = document.getElementById('test-api-btn');
-        const originalText = testBtn.innerHTML;
-        try {
-            testBtn.innerHTML = "⏳ 呼叫黑衣人中...";
-            const response = await fetch('/api/get-token');
-            const data = await response.json();
-            if (data.access_token) {
-                alert("🎉 太神啦！成功拿到 TDX 通行證！\n\n通行證開頭：" + data.access_token.substring(0, 15) + "...");
-            } else {
-                alert("❌ 黑衣人任務失敗，檢查一下 Vercel 環境變數有沒有設定對喔！\n\n錯誤訊息：" + JSON.stringify(data));
-            }
-        } catch (error) {
-            alert("🚨 發生錯誤，黑衣人失聯了：" + error);
-        } finally {
-            testBtn.innerHTML = originalText;
-        }
-    }
-
-    // --- 修正 TDX 拼錯字的大絕招版 ---
     async function fetchRealLastTrainTime(origin, destination, retryCount = 0) {
         if (!cachedTdxToken) {
             const tokenRes = await fetch('/api/get-token');
@@ -440,7 +431,6 @@
         
         const originCode = info.originCode;
         const terminuses = info.terminuses;
-
         const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/TRTC?$filter=StationID eq '${originCode}'&$format=JSON`;
 
         try {
@@ -450,7 +440,6 @@
             const data = await res.json();
 
             if ((data.message === 'Unauthorized' || res.status === 401) && retryCount === 0) {
-                console.log("Token 失效，自動重新索取...");
                 cachedTdxToken = "";
                 return fetchRealLastTrainTime(origin, destination, 1);
             }
@@ -460,9 +449,7 @@
                 let lastTrainTimeStr = "";
 
                 data.forEach(route => {
-                    // 🌟 這裡就是抓蟲核心！TDX 把 Station 拼成 Staion，我們直接寫一個兼容寫法
                     const tdxDestId = route.DestinationStaionID || route.DestinationStationID;
-                    
                     if (terminuses.includes(tdxDestId)) {
                         if (route.Timetables && route.Timetables.length > 0) {
                             route.Timetables.forEach(t => {
@@ -484,11 +471,7 @@
                     return lastTrainTimeStr;
                 }
             } 
-            
-            // 如果連防呆都找不到，再彈出來警告
-            alert("⚠️ 還是抓不到車次！\n回傳：\n" + JSON.stringify(data).substring(0, 200));
             return null;
-            
         } catch (error) {
             console.error("連線發生異常：", error);
             return null;
@@ -529,7 +512,6 @@
                 
                 actionBtn.style.display = "none";
                 cancelBtn.style.display = "none"; 
-                document.getElementById('test-api-btn').style.display = "none"; 
                 planBContainer.style.display = "flex";
                 
                 document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex");
@@ -567,7 +549,6 @@
             statusText.innerHTML = "你根本不用搭車，早點回家洗洗睡！";
             actionBtn.style.display = "none";
             cancelBtn.style.display = "none";
-            document.getElementById('test-api-btn').style.display = "none";
             planBContainer.style.display = "flex";
             document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "none");
             return;
@@ -590,28 +571,47 @@
         actionBtn.disabled = true;
 
         try {
-            let finalTargetTimeString = "00:42"; 
+            // 🌟 第三層防護：極限通用底線改成 23:59
+            let finalTargetTimeString = "23:59"; 
+            let connectionStatus = "即時連線";
 
             if (startType === 'mrt' && endType === 'mrt') {
+                // 第一層防護：嘗試抓取即時資料
                 const realTime = await fetchRealLastTrainTime(startStation, endStation);
                 if (realTime) {
                     finalTargetTimeString = realTime;
                 } else {
-                    alert("⚠️ 交通部資料解析失敗，將使用預設 00:42 估算。");
+                    // 第二層防護：如果 TDX 失敗，嘗試讀取離線字典
+                    const routeKey = `${startStation}-${endStation}`;
+                    if (offlineTimetableData && offlineTimetableData['mrt'] && offlineTimetableData['mrt'][routeKey]) {
+                        finalTargetTimeString = offlineTimetableData['mrt'][routeKey];
+                        connectionStatus = "離線備用";
+                        alert("⚠️ 無法連線交通部，已自動切換至離線時刻表。");
+                    } else {
+                        connectionStatus = "系統預設";
+                        alert("⚠️ 查無即時與離線資料，將使用系統預設 23:59 估算。");
+                    }
                 }
             } else {
-                alert("目前火車與客運尚未連線 TDX，將使用預設 00:42 估算。");
+                // 如果是火車客運，目前也走離線字典或底線 23:59
+                const routeKey = `${startStation}-${endStation}`;
+                if (offlineTimetableData && offlineTimetableData[startType] && offlineTimetableData[startType][routeKey]) {
+                    finalTargetTimeString = offlineTimetableData[startType][routeKey];
+                    connectionStatus = "離線備用";
+                } else {
+                    connectionStatus = "系統預設";
+                    alert(`目前尚未串接即時資料，將使用預設 23:59 估算。`);
+                }
             }
 
             isCountingDown = true;
             statusText.innerHTML = "距離末班車發車還剩";
             display.style.color = "#4caf50";
-            speedModeText.innerHTML = `${finalTargetTimeString} <span style="font-size:10px; color:#aaa;">(即時連線)</span>`;
+            speedModeText.innerHTML = `${finalTargetTimeString} <span style="font-size:10px; color:#aaa;">(${connectionStatus})</span>`;
             actionBtn.innerHTML = "開啟極限求生模式！";
             actionBtn.classList.add('btn-danger');
             
             cancelBtn.style.display = "flex";
-            document.getElementById('test-api-btn').style.display = "none";
 
             const now = new Date();
             let target = new Date();
@@ -629,7 +629,7 @@
             updateClock(); 
 
         } catch (error) {
-            alert("連線發生錯誤，請稍後再試！");
+            alert("系統發生錯誤，請稍後再試！");
             isCountingDown = false;
         } finally {
             actionBtn.disabled = false;
@@ -648,8 +648,6 @@
         actionBtn.innerHTML = "開始計算轉乘";     
         actionBtn.classList.remove('btn-danger'); 
         actionBtn.disabled = false;
-        
-        document.getElementById('test-api-btn').style.display = "block"; 
         
         statusText.innerHTML = "現在時間";        
         speedModeText.innerHTML = "待查驗...";
