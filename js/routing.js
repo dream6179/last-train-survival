@@ -1,5 +1,5 @@
 // ==========================================
-// 末班車生存戰 - 核心路徑分揀與運算引擎 (v1.2)
+// 末班車生存戰 - 核心路徑分揀與運算引擎 (v1.3)
 // ==========================================
 
 const operatorMap = {
@@ -118,12 +118,16 @@ function getDirectionName(line, dir) {
 
 // 核心檢索：撈出該車站所有路線、所有方向的末班車
 async function fetchSingleStationTime(stationName, type, offlineTimetableData, cachedTdxToken) {
-    let resultsMap = new Map(); // 🌟 用 Map 來幫助我們去重跟找最晚的車
+    let resultsMap = new Map(); 
     let isOnline = false;
     const operatorCode = operatorMap[type];
-    const table = offlineTimetableData[type];
     
-    if (!table) return { status: "error", data: [] };
+    // 🛡️ 防彈裝甲加回來：先嚴格檢查資料是不是壞的！
+    if (!offlineTimetableData || !offlineTimetableData[type]) {
+        return { status: "error", data: [] };
+    }
+    
+    const table = offlineTimetableData[type];
 
     const stationKeys = Object.keys(table).filter(k => table[k].name === stationName);
     if (stationKeys.length === 0) return { status: "not_found", data: [] };
@@ -149,7 +153,6 @@ async function fetchSingleStationTime(stationName, type, offlineTimetableData, c
                     isOnline = true;
                     data.forEach(route => {
                         const destName = route.DestinationStationName.Zh_tw;
-                        // 用路線和終點當作唯一的 Key，例如: "G-往新店"
                         const routeLine = sKey.match(/[A-Z]+/)[0];
                         const uniqueKey = `${routeLine}-${destName}`;
 
@@ -158,17 +161,13 @@ async function fetchSingleStationTime(stationName, type, offlineTimetableData, c
                                 const timeStr = t.DepartureTime;
                                 const [h, m] = timeStr.split(':').map(Number);
                                 
-                                // 🌟 核心跨日邏輯：把凌晨 0~3 點加上 24 小時
                                 let adjustedH = h < 4 ? h + 24 : h;
                                 let totalMins = adjustedH * 60 + m;
 
-                                // 篩選條件：這班車必須還沒開走！
                                 if (totalMins >= absoluteCurrentMins) {
-                                    // 如果 Map 裡面還沒有這個終點，或者這班車比 Map 裡面存的車「還要晚」，就更新它
                                     if (!resultsMap.has(uniqueKey)) {
                                         resultsMap.set(uniqueKey, { time: timeStr, totalMins: totalMins });
                                     } else {
-                                        // 注意：我們要找的是「剩餘班次裡面，最晚的那一班」
                                         if (totalMins > resultsMap.get(uniqueKey).totalMins) {
                                             resultsMap.set(uniqueKey, { time: timeStr, totalMins: totalMins });
                                         }
@@ -181,13 +180,11 @@ async function fetchSingleStationTime(stationName, type, offlineTimetableData, c
             }
         } catch (e) {
             console.log("API 查詢失敗，降級使用離線資料");
-            isOnline = false; // 強制切換離線
+            isOnline = false; 
         }
     }
 
-    // 若斷網、查無資料、或是「即時連線發現所有車都開走了」，自動切換離線顯示「表定末班車」
     if (!isOnline || resultsMap.size === 0) {
-        // 清空可能殘留的即時垃圾
         resultsMap.clear(); 
         
         stationKeys.forEach(sKey => {
@@ -224,7 +221,6 @@ async function fetchSingleStationTime(stationName, type, offlineTimetableData, c
         });
     }
     
-    // 把 Map 轉回陣列輸出
     let finalResults = [];
     resultsMap.forEach((val, key) => {
         const [line, dest] = key.split('-');
@@ -236,7 +232,6 @@ async function fetchSingleStationTime(stationName, type, offlineTimetableData, c
         });
     });
 
-    // 如果即時連線發現末班車真的都開走了，給一個特殊的 status
     let finalStatus = isOnline ? "online" : "offline";
     if (isOnline && finalResults.length === 0) {
         finalStatus = "all_departed"; 
