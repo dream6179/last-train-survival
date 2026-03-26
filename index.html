@@ -16,14 +16,20 @@
             --danger: #ff5252;
             --success: #4caf50;
             --warning: #ffb300;
+            --info: #2196F3;
         }
 
         html, body { overflow: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); overscroll-behavior: none; }
         body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--text-main); display: flex; justify-content: center; align-items: center; }
 
         .container { text-align: center; width: 90%; max-width: 400px; height: 92vh; max-height: 680px; background-color: var(--card-bg); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; justify-content: center; padding: 0 20px; box-sizing: border-box; gap: 6px; position: relative; }
-        h1 { font-size: 22px; color: var(--danger); margin: 0 0 10px 0; }
         
+        /* 🌟 標題區塊升級：加入右側按鈕排版 */
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .header-row h1 { font-size: 22px; color: var(--danger); margin: 0; }
+        .mode-toggle-btn { background: #333; color: white; border: none; border-radius: 50%; width: 35px; height: 35px; font-size: 16px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .mode-toggle-btn:active { transform: scale(0.9); background: #555; }
+
         .location-block { display: flex; flex-direction: column; width: 100%; text-align: left; margin-bottom: 2px; }
         .location-block label { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; font-weight: bold; }
         .select-group { display: flex; gap: 8px; position: relative; }
@@ -49,14 +55,19 @@
         .time-display { font-size: 50px; font-weight: bold; color: #e0e0e0; font-variant-numeric: tabular-nums; letter-spacing: 1px; line-height: 1; transition: 0.2s; }
         .status { font-size: 13px; color: var(--text-sub); margin: 5px 0; height: 16px; }
         
-        #action-btn { background-color: var(--success); color: white; border: none; padding: 15px; font-size: 17px; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.1s; margin-top: 5px; }
-        #action-btn:active { transform: scale(0.98); }
-        #action-btn:disabled { background-color: #555; cursor: not-allowed; transform: none; }
+        .main-action-btn { color: white; border: none; padding: 15px; font-size: 17px; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.1s; margin-top: 5px; }
+        .main-action-btn:active { transform: scale(0.98); }
+        .main-action-btn:disabled { background-color: #555; cursor: not-allowed; transform: none; }
+        
+        #action-btn { background-color: var(--success); }
         #action-btn.btn-danger { background-color: var(--danger); }
         #action-btn.btn-danger:active { background-color: #d50000; }
         #action-btn.btn-warning { background-color: var(--warning); color: #121212; }
         #action-btn.btn-warning:active { background-color: #ff9800; }
         
+        #search-action-btn { background-color: var(--info); margin-top: 15px;}
+        #search-action-btn:active { background-color: #1976D2; }
+
         .plan-b-container { display: none; flex-direction: column; width: 100%; gap: 8px; margin-top: 5px; }
         .plan-b-option { border: none; border-radius: 10px; padding: 12px 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.1s; text-decoration: none; }
         .plan-b-option:active { transform: scale(0.98); filter: brightness(1.1); }
@@ -87,6 +98,9 @@
         .sheet-header h3 { margin: 0; font-size: 18px; color: var(--text-main); }
         .close-sheet-btn { background: var(--danger); color: white; border: none; padding: 5px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .sheet-content { flex-grow: 1; overflow-y: auto; color: var(--text-sub); font-size: 14px; line-height: 1.5; }
+        
+        /* 查詢結果的虛擬框 */
+        .search-result-box { margin-top: 15px; background: #222; border-radius: 10px; padding: 15px; min-height: 150px; display: flex; justify-content: center; align-items: center; color: #666; font-size: 13px; border: 1px dashed #444; }
     </style>
     
     <script src="/js/routing.js"></script>
@@ -94,68 +108,102 @@
 <body>
 
 <div class="container">
-    <h1>末班車生存戰</h1>
+    
+    <div class="header-row">
+        <h1 id="main-title">末班車生存戰</h1>
+        <button class="mode-toggle-btn" id="mode-toggle-btn" onclick="toggleAppMode()" title="切換至全查詢模式">🔍</button>
+    </div>
 
-    <div class="location-block">
-        <label>出發地</label>
-        <div class="select-group">
-            <select class="type-select" id="start-type" onchange="updateStationOptions('start')">
-                <option value="trtc" selected>北捷</option>
-                <option value="tymetro">桃捷</option>
-                <option value="krtc">高捷</option>
-                <option value="tmrt">中捷</option>
-                <option value="tra">台鐵</option>
-                <option value="thsr">高鐵</option>
-                <option value="intercity">客運</option>
-                <option value="bus">公車</option>
-            </select>
-            <div class="autocomplete-wrapper">
-                <input type="text" id="start-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
-                <div id="start-autocomplete-list" class="autocomplete-list"></div>
+    <div id="mode-survival">
+        <div class="location-block">
+            <label>出發地</label>
+            <div class="select-group">
+                <select class="type-select" id="start-type" onchange="updateStationOptions('start')">
+                    <option value="trtc" selected>北捷</option>
+                    <option value="tymetro">桃捷</option>
+                    <option value="krtc">高捷</option>
+                    <option value="tmrt">中捷</option>
+                    <option value="tra">台鐵</option>
+                    <option value="thsr">高鐵</option>
+                    <option value="intercity">客運</option>
+                    <option value="bus">公車</option>
+                </select>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="start-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
+                    <div id="start-autocomplete-list" class="autocomplete-list"></div>
+                </div>
             </div>
+        </div>
+
+        <button class="advanced-toggle-btn" onclick="openAdvancedSheet()">⛙ 加入中繼轉乘站 (進階模式)</button>
+
+        <div class="location-block">
+            <label>目的地</label>
+            <div class="select-group">
+                <select class="type-select" id="end-type" onchange="updateStationOptions('end')">
+                    <option value="trtc" selected>北捷</option>
+                    <option value="tymetro">桃捷</option>
+                    <option value="krtc">高捷</option>
+                    <option value="tmrt">中捷</option>
+                    <option value="tra">台鐵</option>
+                    <option value="thsr">高鐵</option>
+                    <option value="intercity">客運</option>
+                    <option value="bus">公車</option>
+                </select>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="end-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
+                    <div id="end-autocomplete-list" class="autocomplete-list"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="time-area">
+            <div class="status" id="status-text">現在時間</div>
+            <div class="time-display" id="time-display">00:00:00</div>
+            <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00; opacity:0.8;">待查驗...</span></div>
+        </div>
+        
+        <button id="action-btn" class="main-action-btn" onclick="handleAction()">開始計算轉乘</button>
+        <button id="cancel-btn" class="btn-reset" style="display: none;" onclick="resetPlan()"><span class="option-name">🔄 終止求生，重新安排</span></button>
+
+        <div id="plan-b-container" class="plan-b-container">
+            <button class="plan-b-option btn-uber vehicle-option" onclick="openWeb('Uber')"><span class="option-name">呼叫 Uber <span class="option-meta">~25min</span></span><span class="option-price">~$300</span></button>
+            <button class="plan-b-option btn-goshare vehicle-option" onclick="openWeb('GoShare')"><span class="option-name">騎 GoShare <span class="option-meta">~30min</span></span><span class="option-price">~$80</span></button>
+            <button class="plan-b-option btn-youbike vehicle-option" onclick="openWeb('YouBike')"><span class="option-name">熱血 YouBike <span class="option-meta">~60min</span></span><span class="option-price">~$15</span></button>
+            <button class="plan-b-option btn-reset" onclick="resetPlan()"><span class="option-name">🔄 重新安排行程</span></button>
         </div>
     </div>
 
-    <button class="advanced-toggle-btn" onclick="openAdvancedSheet()">⛙ 加入中繼轉乘站 (進階模式)</button>
-
-    <div class="location-block">
-        <label>目的地</label>
-        <div class="select-group">
-            <select class="type-select" id="end-type" onchange="updateStationOptions('end')">
-                <option value="trtc" selected>北捷</option>
-                <option value="tymetro">桃捷</option>
-                <option value="krtc">高捷</option>
-                <option value="tmrt">中捷</option>
-                <option value="tra">台鐵</option>
-                <option value="thsr">高鐵</option>
-                <option value="intercity">客運</option>
-                <option value="bus">公車</option>
-            </select>
-            <div class="autocomplete-wrapper">
-                <input type="text" id="end-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
-                <div id="end-autocomplete-list" class="autocomplete-list"></div>
+    <div id="mode-search" style="display: none;">
+        <p style="color: var(--text-sub); font-size: 13px; margin-top: 0; margin-bottom: 20px;">想查哪站？我們去 TDX 資料庫幫你找。</p>
+        
+        <div class="location-block">
+            <label>查詢車站</label>
+            <div class="select-group">
+                <select class="type-select" id="search-type" onchange="updateStationOptions('search')">
+                    <option value="trtc" selected>北捷</option>
+                    <option value="tymetro">桃捷</option>
+                    <option value="krtc">高捷</option>
+                    <option value="tmrt">中捷</option>
+                    <option value="tra">台鐵</option>
+                    <option value="thsr">高鐵</option>
+                </select>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="search-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
+                    <div id="search-autocomplete-list" class="autocomplete-list"></div>
+                </div>
             </div>
         </div>
-    </div>
-    
-    <div class="time-area">
-        <div class="status" id="status-text">現在時間</div>
-        <div class="time-display" id="time-display">00:00:00</div>
-        <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00; opacity:0.8;">待查驗...</span></div>
-    </div>
-    
-    <button id="action-btn" onclick="handleAction()">開始計算轉乘</button>
-    <button id="cancel-btn" class="btn-reset" style="display: none;" onclick="resetPlan()"><span class="option-name">🔄 終止求生，重新安排</span></button>
 
-    <div id="plan-b-container" class="plan-b-container">
-        <button class="plan-b-option btn-uber vehicle-option" onclick="openWeb('Uber')"><span class="option-name">呼叫 Uber <span class="option-meta">~25min</span></span><span class="option-price">~$300</span></button>
-        <button class="plan-b-option btn-goshare vehicle-option" onclick="openWeb('GoShare')"><span class="option-name">騎 GoShare <span class="option-meta">~30min</span></span><span class="option-price">~$80</span></button>
-        <button class="plan-b-option btn-youbike vehicle-option" onclick="openWeb('YouBike')"><span class="option-name">熱血 YouBike <span class="option-meta">~60min</span></span><span class="option-price">~$15</span></button>
-        <button class="plan-b-option btn-reset" onclick="resetPlan()"><span class="option-name">🔄 重新安排行程</span></button>
+        <button id="search-action-btn" class="main-action-btn" onclick="executeFullSearch()">🔍 查詢發車時刻</button>
+
+        <div class="search-result-box" id="search-result-box">
+            等待檢索指令...
+        </div>
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.38 架構解耦版)</span>
+        <span>本服務由綠茶地瓜維護 (v1.39 全查詢UI)</span>
         <div class="footer-links-container">
             <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
             <a class="footer-toggle" onclick="openSettingsSheet()">⚙️ 設定與說明</a>
@@ -173,9 +221,6 @@
     <div class="sheet-header"><h3>進階轉乘路線設定</h3><button class="close-sheet-btn" onclick="closeAllSheets()">完成</button></div>
     <div class="sheet-content">
         <p>在這裡，您可以打造像「中山 ➡️ 北車 ➡️ 客運1815」這種多段極限轉乘任務。</p>
-        <div style="padding: 15px; background: #222; border-radius: 8px; margin-bottom: 10px;"><strong>起點：</strong>捷運 中山站</div>
-        <div style="padding: 15px; background: #222; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--success);"><strong>中繼站 1：</strong>捷運 台北車站 (準備轉乘客運)</div>
-        <div style="padding: 15px; background: #222; border-radius: 8px;"><strong>終點：</strong>國光客運 1815</div>
     </div>
 </div>
 
@@ -187,16 +232,65 @@
         </button>
         <h4 style="color: white; margin-bottom: 10px;">📖 快速使用說明</h4>
         <ul style="padding-left: 20px; line-height: 1.8;">
-            <li>選擇你要出發與抵達的車站。</li>
+            <li>點擊標題右側的「🔍」可切換至全車站時刻表查詢模式。</li>
             <li>點擊輸入框時，按一下旁邊的星星「☆」即可加入最愛並置頂。</li>
-            <li>系統會優先連線交通部 TDX 抓取即時末班車時間。</li>
-            <li>若遇斷網或 API 異常，系統將自動啟動內建的「離線演算法」為您推算極限發車時間。</li>
-            <li>倒數開始後，點擊紅色按鈕可開啟「發車通知」，在倒數 10 分鐘時會響鈴提醒！</li>
+            <li>系統會優先連線交通部 TDX，若遇斷網則自動啟動離線演算法。</li>
+            <li>倒數開始後，點擊紅色按鈕可開啟「發車通知」，倒數 10 分鐘時會響鈴！</li>
         </ul>
     </div>
 </div>
 
 <script>
+    // 🌟 UI 模式控制：生存模式 vs 查詢模式
+    let currentMode = 'survival'; // 'survival' 或 'search'
+
+    function toggleAppMode() {
+        const modeSurvival = document.getElementById('mode-survival');
+        const modeSearch = document.getElementById('mode-search');
+        const toggleBtn = document.getElementById('mode-toggle-btn');
+        const mainTitle = document.getElementById('main-title');
+
+        if (currentMode === 'survival') {
+            // 切換到查詢模式
+            modeSurvival.style.display = 'none';
+            modeSearch.style.display = 'block';
+            toggleBtn.innerHTML = '🏠';
+            toggleBtn.title = '返回求生模式';
+            mainTitle.innerHTML = '時刻表檢索';
+            mainTitle.style.color = 'var(--info)';
+            currentMode = 'search';
+            
+            // 幫他預設一個車站
+            document.getElementById('search-station-input').value = savedStart;
+        } else {
+            // 切換回求生模式
+            modeSearch.style.display = 'none';
+            modeSurvival.style.display = 'block';
+            toggleBtn.innerHTML = '🔍';
+            toggleBtn.title = '切換至全查詢模式';
+            mainTitle.innerHTML = '末班車生存戰';
+            mainTitle.style.color = 'var(--danger)';
+            currentMode = 'survival';
+        }
+    }
+
+    // 🌟 未來的全查詢邏輯入口
+    function executeFullSearch() {
+        const searchType = document.getElementById('search-type').value;
+        const searchStationName = document.getElementById('search-station-input').value;
+        const resultBox = document.getElementById('search-result-box');
+        
+        resultBox.innerHTML = `⏳ 正在透過新分揀系統準備檢索...<br><br>站點：${searchStationName} (${searchType})`;
+        
+        // 未來這裡要呼叫新的大腦邏輯
+        setTimeout(() => {
+            alert(`你點擊了查詢！\n未來新的分揀邏輯完成後，將在這裡撈出 ${searchStationName} 所有的時刻表並顯示在畫面下方。`);
+        }, 500);
+    }
+
+    // ==========================================
+    // 以下為原本求生模式的核心控制 (幾乎未變)
+    // ==========================================
     let isCountingDown = false;
     let timeLeft = 0; 
     let timer; 
@@ -249,6 +343,7 @@
         localStorage.setItem('lastTrainFavs', JSON.stringify(favoriteStations));
         renderCustomDropdown('start');
         renderCustomDropdown('end');
+        renderCustomDropdown('search'); // 🌟 也同步更新查詢模式的選單
     }
 
     function renderCustomDropdown(point) {
@@ -274,28 +369,15 @@
         const createItem = (station, isFav) => {
             const item = document.createElement('div');
             item.className = 'dropdown-item';
-            
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = station.name;
+            const nameSpan = document.createElement('span'); nameSpan.textContent = station.name;
+            const starSpan = document.createElement('span'); starSpan.className = 'star-icon';
+            starSpan.textContent = isFav ? '★' : '☆'; starSpan.style.color = isFav ? '#ffca28' : '#666'; 
 
-            const starSpan = document.createElement('span');
-            starSpan.className = 'star-icon';
-            starSpan.textContent = isFav ? '★' : '☆';
-            starSpan.style.color = isFav ? '#ffca28' : '#666'; 
-
-            starSpan.addEventListener('mousedown', function(e) {
-                e.preventDefault(); e.stopPropagation(); toggleFavorite(station.name);
-            });
-
+            starSpan.addEventListener('mousedown', function(e) { e.preventDefault(); e.stopPropagation(); toggleFavorite(station.name); });
             item.addEventListener('mousedown', function(e) { e.preventDefault(); });
-            item.addEventListener('click', function() {
-                inputField.value = station.name;
-                listContainer.style.display = 'none';
-            });
+            item.addEventListener('click', function() { inputField.value = station.name; listContainer.style.display = 'none'; });
 
-            item.appendChild(nameSpan);
-            item.appendChild(starSpan);
-            return item;
+            item.appendChild(nameSpan); item.appendChild(starSpan); return item;
         };
 
         favList.forEach(station => { listContainer.appendChild(createItem(station, true)); });
@@ -307,8 +389,9 @@
         listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
     }
 
+    // 🌟 現在初始化會連同 'search' 輸入框一起綁定魔法
     function initCustomAutocomplete() {
-        ['start', 'end'].forEach(point => {
+        ['start', 'end', 'search'].forEach(point => {
             const inputField = document.getElementById(point + '-station-input');
             inputField.addEventListener('input', () => renderCustomDropdown(point));
             inputField.addEventListener('focus', () => { inputField.value = ''; renderCustomDropdown(point); });
@@ -316,7 +399,7 @@
     }
 
     document.addEventListener('click', function (e) {
-        ['start', 'end'].forEach(point => {
+        ['start', 'end', 'search'].forEach(point => {
             const wrapper = document.getElementById(point + '-station-input').parentElement;
             if (!wrapper.contains(e.target)) document.getElementById(point + '-autocomplete-list').style.display = 'none';
         });
@@ -331,12 +414,9 @@
     function toggleNotificationState() {
         isNotificationEnabled = !isNotificationEnabled;
         if (isNotificationEnabled) {
-            actionBtn.innerHTML = "🔕 關閉發車通知";
-            actionBtn.classList.replace('btn-danger', 'btn-warning');
-            alert("🔔 已開啟通知！末班車發車前 10 分鐘會提醒您。");
+            actionBtn.innerHTML = "🔕 關閉發車通知"; actionBtn.classList.replace('btn-danger', 'btn-warning'); alert("🔔 已開啟通知！末班車發車前 10 分鐘會提醒您。");
         } else {
-            actionBtn.innerHTML = "🔔 開啟發車通知";
-            actionBtn.classList.replace('btn-warning', 'btn-danger');
+            actionBtn.innerHTML = "🔔 開啟發車通知"; actionBtn.classList.replace('btn-warning', 'btn-danger');
         }
     }
 
@@ -349,33 +429,23 @@
                 clearInterval(timer);
                 display.innerHTML = "來不及了💸"; display.style.fontSize = "50px"; display.style.color = "#ff5252";
                 actionBtn.style.display = "none"; cancelBtn.style.display = "none"; 
-                planBContainer.style.display = "flex";
-                document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex");
-                statusText.innerHTML = "人生不是只有末班車...";
-                return;
+                planBContainer.style.display = "flex"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex");
+                statusText.innerHTML = "人生不是只有末班車..."; return;
             }
             timeLeft--;
-            
             if (isNotificationEnabled && !notificationTriggered && timeLeft === 600) {
-                new Notification("🏃‍♂️ 末班車警報！", { body: "距離發車只剩最後 10 分鐘！" });
-                notificationTriggered = true; 
+                new Notification("🏃‍♂️ 末班車警報！", { body: "距離發車只剩最後 10 分鐘！" }); notificationTriggered = true; 
             }
-
-            let h = Math.floor(timeLeft / 3600);
-            let m = Math.floor((timeLeft % 3600) / 60);
-            let s = timeLeft % 60;
+            let h = Math.floor(timeLeft / 3600); let m = Math.floor((timeLeft % 3600) / 60); let s = timeLeft % 60;
             display.innerHTML = h > 0 ? `${h}:${m<10?'0':''}${m}:${s<10?'0':''}${s}` : `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
         }
     }
 
-    updateClock();
-    timer = setInterval(updateClock, 1000);
+    updateClock(); timer = setInterval(updateClock, 1000);
 
     async function handleAction() {
-        const startType = document.getElementById('start-type').value;
-        const endType = document.getElementById('end-type').value;
-        const startStationName = document.getElementById('start-station-input').value;
-        const endStationName = document.getElementById('end-station-input').value;
+        const startType = document.getElementById('start-type').value; const endType = document.getElementById('end-type').value;
+        const startStationName = document.getElementById('start-station-input').value; const endStationName = document.getElementById('end-station-input').value;
 
         if (isCountingDown) {
             if ("Notification" in window) {
@@ -388,22 +458,15 @@
 
         const startStationObj = globalStationData[startType]?.options.find(s => s.name === startStationName);
         const endStationObj = globalStationData[endType]?.options.find(s => s.name === endStationName);
-
         if (!startStationObj || !endStationObj) return alert("⚠️ 找不到車站！");
 
-        localStorage.setItem('lastTrainStart', startStationName);
-        localStorage.setItem('lastTrainEnd', endStationName);
-
-        const startStation = startStationObj.id;
-        const endStation = endStationObj.id;
+        localStorage.setItem('lastTrainStart', startStationName); localStorage.setItem('lastTrainEnd', endStationName);
+        const startStation = startStationObj.id; const endStation = endStationObj.id;
 
         if (startType === endType && startStation === endStation) {
             clearInterval(timer); isCountingDown = false; 
-            display.innerHTML = "恭喜到達🎉"; display.style.fontSize = "40px"; display.style.color = "#4caf50";
-            statusText.innerHTML = "早點回家洗洗睡！";
-            actionBtn.style.display = "none"; cancelBtn.style.display = "none";
-            planBContainer.style.display = "flex";
-            document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "none");
+            display.innerHTML = "恭喜到達🎉"; display.style.fontSize = "40px"; display.style.color = "#4caf50"; statusText.innerHTML = "早點回家洗洗睡！";
+            actionBtn.style.display = "none"; cancelBtn.style.display = "none"; planBContainer.style.display = "flex"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "none");
             return;
         }
 
@@ -413,90 +476,53 @@
         actionBtn.innerHTML = "⏳ 演算法推演中..."; actionBtn.disabled = true;
 
         try {
-            let finalTime = "23:59"; 
-            let status = "即時連線";
+            let finalTime = "23:59"; let status = "即時連線";
 
             if (['trtc', 'tymetro', 'krtc', 'tmrt'].includes(startType) && startType === endType) {
-                
-                // 🌟 呼叫外部的 API 模組拿 Token
-                if (!cachedTdxToken) {
-                    const tokenRes = await fetch('/api/get-token');
-                    const tokenData = await tokenRes.json();
-                    cachedTdxToken = tokenData.access_token;
-                }
-
-                // 🌟 呼叫外部大腦算時間
+                if (!cachedTdxToken) { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; }
                 let realTime = await fetchRealLastTrainTime(globalStationData, cachedTdxToken, startStation, endStation, startType);
                 
                 if (realTime === "TOKEN_EXPIRED") {
-                    const tokenRes = await fetch('/api/get-token');
-                    const tokenData = await tokenRes.json();
-                    cachedTdxToken = tokenData.access_token;
+                    const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token;
                     realTime = await fetchRealLastTrainTime(globalStationData, cachedTdxToken, startStation, endStation, startType);
                 }
 
-                if (realTime && realTime !== "TOKEN_EXPIRED") {
-                    finalTime = realTime;
-                } else {
+                if (realTime && realTime !== "TOKEN_EXPIRED") finalTime = realTime;
+                else {
                     const offlineComputedTime = calculateOfflineTime(offlineTimetableData, startStationName, endStationName, startType);
-                    if (offlineComputedTime) {
-                        finalTime = offlineComputedTime; status = "離線演算法";
-                    } else {
-                        status = "系統預設"; alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。");
-                    }
+                    if (offlineComputedTime) { finalTime = offlineComputedTime; status = "離線演算法"; } 
+                    else { status = "系統預設"; alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。"); }
                 }
-            } else {
-                status = "系統預設"; alert(`尚未串接即時資料，使用 23:59 估算。`);
-            }
+            } else { status = "系統預設"; alert(`尚未串接即時資料，使用 23:59 估算。`); }
 
-            isCountingDown = true;
-            statusText.innerHTML = "距離末班車發車還剩"; display.style.color = "#4caf50";
+            isCountingDown = true; statusText.innerHTML = "距離末班車發車還剩"; display.style.color = "#4caf50";
             speedModeText.innerHTML = `${finalTime} <span style="font-size:10px; color:#aaa;">(${status})</span>`;
-            
-            actionBtn.innerHTML = "🔔 開啟發車通知"; actionBtn.classList.replace('btn-success', 'btn-danger');
-            cancelBtn.style.display = "flex";
+            actionBtn.innerHTML = "🔔 開啟發車通知"; actionBtn.classList.replace('btn-success', 'btn-danger'); cancelBtn.style.display = "flex";
 
-            const now = new Date(); let target = new Date();
-            const [hh, mm] = finalTime.split(':').map(Number);
+            const now = new Date(); let target = new Date(); const [hh, mm] = finalTime.split(':').map(Number);
             target.setHours(hh, mm, 0, 0); 
-            if (now.getHours() >= 4 && hh < 4) target.setDate(target.getDate() + 1); 
-            else if (now.getHours() < 4 && hh >= 4) target.setDate(target.getDate() - 1); 
+            if (now.getHours() >= 4 && hh < 4) target.setDate(target.getDate() + 1); else if (now.getHours() < 4 && hh >= 4) target.setDate(target.getDate() - 1); 
 
-            timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenalty;
-            if (timeLeft < 0) timeLeft = 0;
-            updateClock(); 
+            timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenalty; if (timeLeft < 0) timeLeft = 0; updateClock(); 
 
-        } catch (error) {
-            alert("系統發生錯誤！"); isCountingDown = false;
-        } finally {
-            actionBtn.disabled = false;
-        }
+        } catch (error) { alert("系統發生錯誤！"); isCountingDown = false; } finally { actionBtn.disabled = false; }
     }
 
     function resetPlan() {
         clearInterval(timer); isCountingDown = false; isNotificationEnabled = false; notificationTriggered = false;
         planBContainer.style.display = "none"; cancelBtn.style.display = "none"; 
-        actionBtn.style.display = "block"; actionBtn.innerHTML = "開始計算轉乘";     
-        actionBtn.classList.remove('btn-danger', 'btn-warning'); actionBtn.classList.add('btn-success'); 
-        actionBtn.disabled = false;
+        actionBtn.style.display = "block"; actionBtn.innerHTML = "開始計算轉乘"; actionBtn.classList.remove('btn-danger', 'btn-warning'); actionBtn.classList.add('btn-success'); actionBtn.disabled = false;
         statusText.innerHTML = "現在時間"; speedModeText.innerHTML = "待查驗..."; display.style.color = "#e0e0e0"; display.style.fontSize = "50px"; 
         document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex");
         updateClock(); timer = setInterval(updateClock, 1000);
     }
 
-    function openWeb(appName) {
-        const urls = {'Uber': 'https://m.uber.com/', 'GoShare': 'https://www.ridegoshare.com/', 'YouBike': 'https://www.youbike.com.tw/'};
-        window.open(urls[appName], '_blank');
-    }
-
+    function openWeb(appName) { const urls = {'Uber': 'https://m.uber.com/', 'GoShare': 'https://www.ridegoshare.com/', 'YouBike': 'https://www.youbike.com.tw/'}; window.open(urls[appName], '_blank'); }
     function toggleContact() { const l = document.getElementById('contact-links'); l.style.display = l.style.display === "flex" ? "none" : "flex"; }
     function openAdvancedSheet() { document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
     function openSettingsSheet() { document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
     function closeAllSheets() { document.getElementById('overlay').classList.remove('active'); document.getElementById('advanced-sheet').classList.remove('active'); document.getElementById('settings-sheet').classList.remove('active'); }
-    function shareApp() {
-        if (navigator.share) navigator.share({ title: '末班車生存戰', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href });
-        else { navigator.clipboard.writeText(window.location.href); alert("✅ 網址已複製！"); }
-    }
+    function shareApp() { if (navigator.share) navigator.share({ title: '末班車生存戰', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href }); else { navigator.clipboard.writeText(window.location.href); alert("✅ 網址已複製！"); } }
 </script>
 </body>
 </html>
