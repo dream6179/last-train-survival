@@ -1,5 +1,5 @@
 {
-  "mrt": {
+  "trtc": {
     "options": [
       {"id": "Zhongshan", "name": "中山"},
       {"id": "TaipeiMain", "name": "台北車站"},
@@ -9,27 +9,14 @@
       "Zhongshan-TaipeiMain": { "originCode": "R11", "terminuses": ["R02", "R05"] },
       "TaipeiMain-Zhongshan": { "originCode": "R10", "terminuses": ["R28", "R22"] },
       "Zhongshan-Xindian": { "originCode": "G14", "terminuses": ["G01"] },
-      "Xindian-Zhongshan": { "originCode": "G01", "terminuses": ["G19"] },
-      "TaipeiMain-Xindian": { "originCode": "R10", "terminuses": ["R02", "R05"] },
-      "Xindian-TaipeiMain": { "originCode": "G01", "terminuses": ["G19"] }
+      "Xindian-Zhongshan": { "originCode": "G01", "terminuses": ["G19"] }
     }
   },
-  "train": {
-    "options": [
-      {"id": "TaipeiMain", "name": "台北車站"}
-    ],
-    "routes": {}
-  },
-  "hsr": {
-    "options": [
-      {"id": "TaipeiMain", "name": "台北車站"}
-    ],
-    "routes": {}
-  },
-  "bus": {
-    "options": [
-      {"id": "TaipeiMain", "name": "台北車站"}
-    ],
-    "routes": {}
-  }
+  "tymetro": { "options": [{"id": "TaipeiMain", "name": "台北車站"}], "routes": {} },
+  "krtc": { "options": [{"id": "KaohsiungMain", "name": "高雄車站"}], "routes": {} },
+  "tmrt": { "options": [{"id": "TaichungHSR", "name": "高鐵台中站"}], "routes": {} },
+  "tra": { "options": [{"id": "TaipeiMain", "name": "台北車站"}], "routes": {} },
+  "thsr": { "options": [{"id": "TaipeiMain", "name": "台北車站"}], "routes": {} },
+  "intercity": { "options": [{"id": "TaipeiMain", "name": "台北車站"}], "routes": {} },
+  "bus": { "options": [{"id": "TaipeiMain", "name": "台北車站"}], "routes": {} }
 }
