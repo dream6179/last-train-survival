@@ -19,6 +19,7 @@
             --text-sub: #aaaaaa;
             --danger: #ff5252;
             --success: #4caf50;
+            --warning: #ffb300;
         }
 
         html, body {
@@ -191,6 +192,13 @@
         
         #action-btn.btn-danger { background-color: var(--danger); }
         #action-btn.btn-danger:active { background-color: #d50000; }
+
+        /* 新增：開啟鈴鐺後的按鈕樣式 */
+        #action-btn.btn-warning { 
+            background-color: var(--warning); 
+            color: #121212; 
+        }
+        #action-btn.btn-warning:active { background-color: #ff9800; }
         
         .plan-b-container {
             display: none; 
@@ -397,7 +405,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.35)</span>
+        <span>本服務由綠茶地瓜維護 (v1.36)</span>
         <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
@@ -433,6 +441,10 @@
     let cachedTdxToken = ""; 
     let offlineTimetableData = null; 
     let globalStationData = null; 
+
+    // 🌟 推播通知專用變數
+    let isNotificationEnabled = false;
+    let notificationTriggered = false;
 
     let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || [];
     let savedStart = localStorage.getItem('lastTrainStart') || '台北車站';
@@ -474,41 +486,31 @@
         }
     };
 
-    // --- 🌟 全新神級演算法：離線推演方向與極限時間 ---
     function calculateOfflineTime(startName, endName, type) {
         if (!offlineTimetableData || !offlineTimetableData[type]) return null;
         const table = offlineTimetableData[type];
 
-        // 1. 在你建立的 119 個車站字典裡，把名字相同的節點全部抓出來 (例如交會站會有兩個代碼)
         const startKeys = Object.keys(table).filter(k => table[k].name === startName);
         const endKeys = Object.keys(table).filter(k => table[k].name === endName);
 
-        // 2. 開始在這些代碼裡面找尋「同一條線」的緣分
         for (let sKey of startKeys) {
             for (let eKey of endKeys) {
-                // 利用正則表達式把英文字母(路線)和數字(站數)拆開
                 const sLine = sKey.match(/[A-Z]+/)[0];
                 const eLine = eKey.match(/[A-Z]+/)[0];
 
                 if (sLine === eLine) {
-                    // 抓到同一條線了！開始判斷方向
                     const sNum = parseInt(sKey.match(/\d+/)[0]);
                     const eNum = parseInt(eKey.match(/\d+/)[0]);
                     
-                    // 捷運編碼規則：數字小到大是 up，大到小是 down (以 G04 -> G01 為例，4 > 1 所以是 down)
                     const direction = sNum < eNum ? 'up' : 'down';
-                    
                     const time = table[sKey][direction];
                     
-                    // 如果抓出來的時間不是預設的 00:00，就回傳！
                     if (time && time !== "00:00") {
                         return time;
                     }
                 }
             }
         }
-        
-        // 如果上面找不到同線的組合，代表這是一趟需要「轉乘」的旅程 (下一版的任務)
         return null; 
     }
 
@@ -686,6 +688,21 @@
         renderCustomDropdown(point);
     }
 
+    // 🌟 開啟/關閉通知的輔助函數
+    function toggleNotificationState() {
+        isNotificationEnabled = !isNotificationEnabled;
+        if (isNotificationEnabled) {
+            actionBtn.innerHTML = "🔕 關閉發車通知";
+            actionBtn.classList.remove('btn-danger');
+            actionBtn.classList.add('btn-warning');
+            alert("🔔 已開啟通知！末班車發車前 10 分鐘會提醒您。");
+        } else {
+            actionBtn.innerHTML = "🔔 開啟發車通知";
+            actionBtn.classList.remove('btn-warning');
+            actionBtn.classList.add('btn-danger');
+        }
+    }
+
     function updateClock() {
         if (!isCountingDown) {
             const now = new Date();
@@ -707,6 +724,15 @@
                 return;
             }
             timeLeft--;
+            
+            // 🌟 推播通知觸發核心：倒數等於 600 秒 (10分鐘) 時觸發
+            if (isNotificationEnabled && !notificationTriggered && timeLeft === 600) {
+                new Notification("🏃‍♂️ 末班車警報！", {
+                    body: "距離您的末班車發車只剩最後 10 分鐘，請盡快前往車站！",
+                });
+                notificationTriggered = true; // 避免重複觸發
+            }
+
             let hours = Math.floor(timeLeft / 3600);
             let minutes = Math.floor((timeLeft % 3600) / 60);
             let seconds = timeLeft % 60;
@@ -728,6 +754,25 @@
         
         const startStationName = document.getElementById('start-station-input').value;
         const endStationName = document.getElementById('end-station-input').value;
+
+        // 🌟 點擊按鈕後的新邏輯：如果已經在倒數了，就變成切換鈴鐺狀態
+        if (isCountingDown) {
+            if ("Notification" in window) {
+                if (Notification.permission === "granted") {
+                    toggleNotificationState();
+                } else if (Notification.permission !== "denied") {
+                    // 要求權限
+                    Notification.requestPermission().then(permission => {
+                        if (permission === "granted") toggleNotificationState();
+                    });
+                } else {
+                    alert("⚠️ 您之前拒絕了通知權限，請至瀏覽器的設定中手動開啟喔！");
+                }
+            } else {
+                alert("⚠️ 您的瀏覽器不支援推播通知喔！");
+            }
+            return;
+        }
 
         const startStationObj = globalStationData[startType]?.options.find(s => s.name === startStationName);
         const endStationObj = globalStationData[endType]?.options.find(s => s.name === endStationName);
@@ -757,13 +802,6 @@
             return;
         }
 
-        if (isCountingDown) {
-            timeLeft += 60; 
-            display.style.color = '#ffea00';
-            setTimeout(() => { display.style.color = '#4caf50'; }, 150);
-            return;
-        }
-
         let transferPenaltySeconds = 0;
         if (startStation === endStation && startType !== endType) {
             transferPenaltySeconds = 20 * 60; 
@@ -778,21 +816,17 @@
             let connectionStatus = "即時連線";
 
             if (['trtc', 'tymetro', 'krtc', 'tmrt'].includes(startType) && startType === endType) {
-                // 1. 先去跟交通部拿資料
                 const realTime = await fetchRealLastTrainTime(startStation, endStation, startType);
                 if (realTime) {
                     finalTargetTimeString = realTime;
                 } else {
-                    // 🌟 2. 交通部掛掉時，召喚我們剛寫好的神級本地演算法！
                     const offlineComputedTime = calculateOfflineTime(startStationName, endStationName, startType);
                     
                     if (offlineComputedTime) {
                         finalTargetTimeString = offlineComputedTime;
                         connectionStatus = "離線演算法";
-                        alert("⚠️ 交通部連線異常，已為您啟用本地演算法精準算出末班車時間！");
                     } else {
                         connectionStatus = "系統預設";
-                        // 如果查不到同線，代表是需要轉乘的，目前先保底 23:59
                         alert("⚠️ 跨線轉乘資料尚未備齊，將使用系統保底 23:59 估算。");
                     }
                 }
@@ -805,7 +839,10 @@
             statusText.innerHTML = "距離末班車發車還剩";
             display.style.color = "#4caf50";
             speedModeText.innerHTML = `${finalTargetTimeString} <span style="font-size:10px; color:#aaa;">(${connectionStatus})</span>`;
-            actionBtn.innerHTML = "開啟極限求生模式！";
+            
+            // 🌟 倒數開始後，按鈕變成「開啟發車通知」的鈴鐺
+            actionBtn.innerHTML = "🔔 開啟發車通知";
+            actionBtn.classList.remove('btn-success');
             actionBtn.classList.add('btn-danger');
             
             cancelBtn.style.display = "flex";
@@ -830,7 +867,6 @@
             isCountingDown = false;
         } finally {
             actionBtn.disabled = false;
-            if (!isCountingDown) actionBtn.innerHTML = "開始計算轉乘";
         }
     }
 
@@ -838,12 +874,17 @@
         clearInterval(timer);
         isCountingDown = false;
         
+        // 🌟 重設時把鈴鐺狀態歸零
+        isNotificationEnabled = false;
+        notificationTriggered = false;
+        
         planBContainer.style.display = "none";    
         cancelBtn.style.display = "none"; 
         
         actionBtn.style.display = "block";        
         actionBtn.innerHTML = "開始計算轉乘";     
-        actionBtn.classList.remove('btn-danger'); 
+        actionBtn.classList.remove('btn-danger', 'btn-warning'); 
+        actionBtn.classList.add('btn-success'); 
         actionBtn.disabled = false;
         
         statusText.innerHTML = "現在時間";        
