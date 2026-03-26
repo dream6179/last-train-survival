@@ -256,6 +256,24 @@
             width: 100%; padding: 12px; border-radius: 8px;
             margin-top: 15px; cursor: pointer; font-size: 15px;
         }
+
+        /* 測試按鈕專屬樣式 */
+        .btn-test-api {
+            background: transparent;
+            color: #888;
+            border: 1px dashed #555;
+            padding: 8px;
+            border-radius: 8px;
+            width: 100%;
+            margin-top: 10px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+        .btn-test-api:active {
+            background: #333;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -306,6 +324,8 @@
     </div>
     
     <button id="action-btn" onclick="handleAction()">開始計算轉乘</button>
+
+    <button class="btn-test-api" id="test-api-btn" onclick="testTdxConnection()">🔌 測試黑衣人連線 (抓取 TDX Token)</button>
 
     <div id="plan-b-container" class="plan-b-container">
         <button class="plan-b-option btn-uber vehicle-option" onclick="openWeb('Uber')">
@@ -367,7 +387,33 @@
     const actionBtn = document.getElementById('action-btn');
     const planBContainer = document.getElementById('plan-b-container'); 
 
-    // 處理選單連動（新增高鐵判斷）
+    // --- 全新：呼叫 Vercel 黑衣人的測試魔法 ---
+    async function testTdxConnection() {
+        const testBtn = document.getElementById('test-api-btn');
+        const originalText = testBtn.innerHTML;
+        
+        try {
+            // 讓按鈕顯示載入中，提升體驗
+            testBtn.innerHTML = "⏳ 呼叫黑衣人中...";
+            
+            // 去敲我們在 api/get-token.js 寫好的後端大門
+            const response = await fetch('/api/get-token');
+            const data = await response.json();
+            
+            if (data.access_token) {
+                alert("🎉 太神啦！成功拿到 TDX 通行證！\n\n通行證開頭：" + data.access_token.substring(0, 15) + "...");
+            } else {
+                alert("❌ 黑衣人任務失敗，檢查一下 Vercel 環境變數有沒有設定對喔！\n\n錯誤訊息：" + JSON.stringify(data));
+            }
+        } catch (error) {
+            alert("🚨 發生錯誤，黑衣人失聯了：" + error);
+        } finally {
+            // 測試完把按鈕文字改回來
+            testBtn.innerHTML = originalText;
+        }
+    }
+
+    // 處理選單連動
     function updateStationOptions(point) {
         const typeSelect = document.getElementById(point + '-type');
         const stationSelect = document.getElementById(point + '-station');
@@ -384,7 +430,6 @@
             if (point === 'start') stationSelect.value = 'Zhongshan';
             if (point === 'end') stationSelect.value = 'Xindian';
         } else {
-            // 火車、客運、高鐵，目前一律預設為台北車站
             stationSelect.innerHTML = `<option value="TaipeiMain" selected>台北車站</option>`;
         }
     }
@@ -404,6 +449,7 @@
                 display.style.color = "#ff5252";
                 
                 actionBtn.style.display = "none";
+                document.getElementById('test-api-btn').style.display = "none"; // 來不及的時候把測試按鈕也藏起來
                 planBContainer.style.display = "flex";
                 
                 document.querySelectorAll('.vehicle-option').forEach(btn => {
@@ -435,7 +481,6 @@
         const endType = document.getElementById('end-type').value;
         const endStation = document.getElementById('end-station').value;
 
-        // 1. 同站 + 同交通工具 ＝ 原地到達 (防呆)
         if (startType === endType && startStation === endStation) {
             clearInterval(timer); 
             isCountingDown = false; 
@@ -446,6 +491,7 @@
             statusText.innerHTML = "你根本不用搭車，早點回家洗洗睡！";
             
             actionBtn.style.display = "none";
+            document.getElementById('test-api-btn').style.display = "none";
             planBContainer.style.display = "flex";
             
             document.querySelectorAll('.vehicle-option').forEach(btn => {
@@ -454,10 +500,9 @@
             return;
         }
 
-        // 2. 同站 + 不同交通工具 ＝ 北車迷宮 20 分鐘懲罰
         let transferPenaltySeconds = 0;
         if (startStation === endStation && startType !== endType) {
-            transferPenaltySeconds = 20 * 60; // 20 分鐘換算成秒
+            transferPenaltySeconds = 20 * 60; 
             alert("⚠️ 偵測到「同站跨系統轉乘」。\n大車站就像迷宮，系統已自動為您預留 20 分鐘的步行轉乘時間！");
         }
 
@@ -476,7 +521,6 @@
                 target.setDate(target.getDate() + 1);
             }
 
-            // 計算基礎剩餘時間，再扣掉我們算出來的「步行懲罰時間」
             timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenaltySeconds;
             
             if (timeLeft < 0) timeLeft = 0;
@@ -496,6 +540,8 @@
         actionBtn.style.display = "block";        
         actionBtn.innerHTML = "開始計算轉乘";     
         actionBtn.classList.remove('btn-danger'); 
+        
+        document.getElementById('test-api-btn').style.display = "block"; // 重設時把測試按鈕叫回來
         
         statusText.innerHTML = "現在時間";        
         display.style.color = "#e0e0e0"; 
