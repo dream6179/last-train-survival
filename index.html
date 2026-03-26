@@ -75,9 +75,9 @@
         .select-group {
             display: flex;
             gap: 8px;
+            position: relative; /* 為了讓客製化選單能對齊 */
         }
         
-        /* 原本的下拉選單樣式，現在與輸入框共用 */
         select, .station-input {
             background-color: #2c2c2c;
             color: white;
@@ -93,7 +93,39 @@
         select:focus, .station-input:focus { border-color: var(--danger); }
         
         .type-select { width: 35%; text-align: center; }
-        .station-input { width: 65%; } /* 新增的智慧輸入框寬度 */
+        
+        /* 🌟 全新客製化選單的外觀設定 */
+        .autocomplete-wrapper {
+            position: relative;
+            width: 65%;
+        }
+        .station-input {
+            width: 100%;
+        }
+        .autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #2c2c2c;
+            border: 1px solid #444;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            z-index: 99;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.8);
+            display: none; /* 預設隱藏 */
+        }
+        .autocomplete-list div {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #3a3a3a;
+            color: white;
+            font-size: 15px;
+        }
+        .autocomplete-list div:last-child { border-bottom: none; }
+        .autocomplete-list div:active { background-color: var(--success); }
 
         .advanced-toggle-btn {
             background: none;
@@ -285,8 +317,10 @@
                 <option value="hsr">高鐵</option>
                 <option value="bus">客運</option>
             </select>
-            <input type="text" id="start-station-input" class="station-input" list="start-station-list" placeholder="輸入或選擇車站" autocomplete="off" onfocus="this.value=''">
-            <datalist id="start-station-list"></datalist>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="start-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
+                <div id="start-autocomplete-list" class="autocomplete-list"></div>
+            </div>
         </div>
     </div>
 
@@ -301,8 +335,10 @@
                 <option value="hsr">高鐵</option>
                 <option value="bus">客運</option>
             </select>
-            <input type="text" id="end-station-input" class="station-input" list="end-station-list" placeholder="輸入或選擇車站" autocomplete="off" onfocus="this.value=''">
-            <datalist id="end-station-list"></datalist>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="end-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
+                <div id="end-autocomplete-list" class="autocomplete-list"></div>
+            </div>
         </div>
     </div>
     
@@ -337,7 +373,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.27)</span>
+        <span>本服務由綠茶地瓜維護 (v1.28)</span>
         <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
@@ -391,10 +427,8 @@
                 globalStationData = await stationRes.json();
                 console.log("✅ 車站總字典已準備就緒！");
                 
-                updateStationOptions('start');
-                updateStationOptions('end');
+                initCustomAutocomplete(); // 初始化選單魔法
                 
-                // 🌟 現在操作的是 Input 的 value，而不是 select 的 option
                 document.getElementById('start-station-input').value = '中山';
                 document.getElementById('end-station-input').value = '新店';
             }
@@ -460,29 +494,80 @@
             } 
             return null;
         } catch (error) {
-            console.error("飛航模式或斷網中，放棄即時連線：", error);
             return null;
         }
     }
 
-    // --- 🌟 改良版的選項更新器：現在是去餵飽 <datalist> ---
-    function updateStationOptions(point) {
+    // --- 🌟 手刻的高質感下拉清單渲染器 ---
+    function renderCustomDropdown(point) {
         const typeSelect = document.getElementById(point + '-type');
-        const dataList = document.getElementById(point + '-station-list');
         const inputField = document.getElementById(point + '-station-input');
+        const listContainer = document.getElementById(point + '-autocomplete-list');
         const selectedType = typeSelect.value;
         
-        // 清空清單與輸入框
-        dataList.innerHTML = '';
-        inputField.value = '';
-
+        listContainer.innerHTML = ''; // 清空舊清單
+        
+        let options = [];
         if (globalStationData && globalStationData[selectedType] && globalStationData[selectedType].options) {
-            globalStationData[selectedType].options.forEach(station => {
-                const opt = document.createElement('option');
-                opt.value = station.name; // 使用者看到並輸入的是中文名稱
-                dataList.appendChild(opt);
-            });
+            options = globalStationData[selectedType].options;
         }
+
+        const filterText = inputField.value.trim().toLowerCase();
+
+        options.forEach(station => {
+            // 過濾邏輯：如果輸入框是空的就顯示全部，不然就比對字串
+            if (station.name.toLowerCase().includes(filterText) || filterText === '') {
+                const item = document.createElement('div');
+                item.textContent = station.name;
+                
+                // 防止點擊選單時，輸入框失去焦點導致選單消失
+                item.addEventListener('mousedown', function(e) {
+                    e.preventDefault(); 
+                });
+                
+                // 點擊後把名字塞進輸入框，並隱藏選單
+                item.addEventListener('click', function() {
+                    inputField.value = station.name;
+                    listContainer.style.display = 'none';
+                });
+                listContainer.appendChild(item);
+            }
+        });
+        
+        // 如果有東西就顯示框框，沒有就藏起來
+        listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
+    }
+
+    // --- 🌟 初始化搜尋輸入框 ---
+    function initCustomAutocomplete() {
+        ['start', 'end'].forEach(point => {
+            const inputField = document.getElementById(point + '-station-input');
+            
+            // 使用者打字時，重新過濾
+            inputField.addEventListener('input', () => renderCustomDropdown(point));
+            
+            // 使用者點擊輸入框時，清空並顯示所有選項
+            inputField.addEventListener('focus', () => {
+                inputField.value = ''; 
+                renderCustomDropdown(point);
+            });
+        });
+    }
+
+    // 點擊畫面其他地方時，把懸浮選單收起來
+    document.addEventListener('click', function (e) {
+        ['start', 'end'].forEach(point => {
+            const wrapper = document.getElementById(point + '-station-input').parentElement;
+            if (!wrapper.contains(e.target)) {
+                document.getElementById(point + '-autocomplete-list').style.display = 'none';
+            }
+        });
+    });
+
+    // 改變交通工具（如：捷運換火車）時，清空輸入框
+    function updateStationOptions(point) {
+        document.getElementById(point + '-station-input').value = '';
+        renderCustomDropdown(point);
     }
 
     function updateClock() {
@@ -525,17 +610,15 @@
         const startType = document.getElementById('start-type').value;
         const endType = document.getElementById('end-type').value;
         
-        // 🌟 防呆翻譯機：把使用者輸入的「中文名稱」轉換回「英文 ID」
         const startStationName = document.getElementById('start-station-input').value;
         const endStationName = document.getElementById('end-station-input').value;
 
-        // 從字典裡找出對應的車站物件
         const startStationObj = globalStationData[startType]?.options.find(s => s.name === startStationName);
         const endStationObj = globalStationData[endType]?.options.find(s => s.name === endStationName);
 
         if (!startStationObj || !endStationObj) {
             alert("⚠️ 找不到這個車站，請確認是否有錯字，或從選單中直接點選！");
-            return; // 煞車，不讓系統報錯
+            return; 
         }
 
         const startStation = startStationObj.id;
