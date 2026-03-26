@@ -76,7 +76,9 @@
             display: flex;
             gap: 8px;
         }
-        select {
+        
+        /* 原本的下拉選單樣式，現在與輸入框共用 */
+        select, .station-input {
             background-color: #2c2c2c;
             color: white;
             border: 1px solid #444;
@@ -84,12 +86,14 @@
             border-radius: 8px;
             font-size: 15px;
             outline: none;
-            appearance: none;
             cursor: pointer;
-            width: 100%;
+            box-sizing: border-box;
         }
-        select:focus { border-color: var(--danger); }
+        select { appearance: none; }
+        select:focus, .station-input:focus { border-color: var(--danger); }
+        
         .type-select { width: 35%; text-align: center; }
+        .station-input { width: 65%; } /* 新增的智慧輸入框寬度 */
 
         .advanced-toggle-btn {
             background: none;
@@ -281,9 +285,8 @@
                 <option value="hsr">高鐵</option>
                 <option value="bus">客運</option>
             </select>
-            <select class="station-select" id="start-station">
-                <option value="">載入中...</option>
-            </select>
+            <input type="text" id="start-station-input" class="station-input" list="start-station-list" placeholder="輸入或選擇車站" autocomplete="off" onfocus="this.value=''">
+            <datalist id="start-station-list"></datalist>
         </div>
     </div>
 
@@ -298,9 +301,8 @@
                 <option value="hsr">高鐵</option>
                 <option value="bus">客運</option>
             </select>
-            <select class="station-select" id="end-station">
-                <option value="">載入中...</option>
-            </select>
+            <input type="text" id="end-station-input" class="station-input" list="end-station-list" placeholder="輸入或選擇車站" autocomplete="off" onfocus="this.value=''">
+            <datalist id="end-station-list"></datalist>
         </div>
     </div>
     
@@ -335,7 +337,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.26)</span>
+        <span>本服務由綠茶地瓜維護 (v1.27)</span>
         <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
         <div class="contact-links" id="contact-links">
             <a href="mailto:zhtttttt@gmail.com?subject=末班車生存戰-開發回饋" class="contact-btn btn-gmail">✉️ Gmail</a>
@@ -370,7 +372,7 @@
     let timer; 
     let cachedTdxToken = ""; 
     let offlineTimetableData = null; 
-    let globalStationData = null; // 🌟 儲存從 JSON 抓來的車站總字典
+    let globalStationData = null; 
 
     const display = document.getElementById('time-display');
     const statusText = document.getElementById('status-text');
@@ -379,38 +381,31 @@
     const speedModeText = document.getElementById('speed-mode');
     const planBContainer = document.getElementById('plan-b-container'); 
 
-    // 網頁開啟時，兩份 JSON 檔案一起去雲端拿下來！
     window.onload = async () => {
         try {
-            // 抓離線時刻表
             const timeRes = await fetch('/data/offline-timetable.json');
             if (timeRes.ok) offlineTimetableData = await timeRes.json();
             
-            // 抓車站總字典
             const stationRes = await fetch('/data/stations.json');
             if (stationRes.ok) {
                 globalStationData = await stationRes.json();
                 console.log("✅ 車站總字典已準備就緒！");
                 
-                // 字典準備好後，主動把下拉選單「畫」出來
                 updateStationOptions('start');
                 updateStationOptions('end');
                 
-                // 貼心小設定：幫使用者預設好中山到新店
-                document.getElementById('start-station').value = 'Zhongshan';
-                document.getElementById('end-station').value = 'Xindian';
+                // 🌟 現在操作的是 Input 的 value，而不是 select 的 option
+                document.getElementById('start-station-input').value = '中山';
+                document.getElementById('end-station-input').value = '新店';
             }
         } catch (e) {
             console.log("⚠️ 檔案載入失敗，可能是路徑錯誤或在飛航模式。");
         }
     };
 
-    // --- 🌟 智慧代碼導航器：現在直接查字典，不再寫死了！ ---
     function getSmartStationInfo(origin, dest) {
         if (!globalStationData || !globalStationData['mrt'] || !globalStationData['mrt'].routes) return null;
-        
         const routeKey = `${origin}-${dest}`;
-        // 直接從 JSON 裡面把這個組合的方向和代碼拿出來
         return globalStationData['mrt'].routes[routeKey] || null;
     }
 
@@ -423,10 +418,7 @@
             }
 
             const info = getSmartStationInfo(origin, destination);
-            if (!info) {
-                console.log("⚠️ 字典裡找不到這個站點組合的方向邏輯！");
-                return null;
-            }
+            if (!info) return null;
             
             const originCode = info.originCode;
             const terminuses = info.terminuses;
@@ -464,10 +456,7 @@
                         }
                     }
                 });
-                
-                if (lastTrainTimeStr !== "") {
-                    return lastTrainTimeStr;
-                }
+                if (lastTrainTimeStr !== "") return lastTrainTimeStr;
             } 
             return null;
         } catch (error) {
@@ -476,25 +465,23 @@
         }
     }
 
-    // --- 🌟 動態選單產生器 ---
+    // --- 🌟 改良版的選項更新器：現在是去餵飽 <datalist> ---
     function updateStationOptions(point) {
         const typeSelect = document.getElementById(point + '-type');
-        const stationSelect = document.getElementById(point + '-station');
+        const dataList = document.getElementById(point + '-station-list');
+        const inputField = document.getElementById(point + '-station-input');
         const selectedType = typeSelect.value;
         
-        stationSelect.innerHTML = '';
+        // 清空清單與輸入框
+        dataList.innerHTML = '';
+        inputField.value = '';
 
         if (globalStationData && globalStationData[selectedType] && globalStationData[selectedType].options) {
-            // 從 JSON 裡面把該交通工具的所有站點倒出來，變成 option
             globalStationData[selectedType].options.forEach(station => {
                 const opt = document.createElement('option');
-                opt.value = station.id;
-                opt.textContent = station.name;
-                stationSelect.appendChild(opt);
+                opt.value = station.name; // 使用者看到並輸入的是中文名稱
+                dataList.appendChild(opt);
             });
-        } else {
-            // 萬一 JSON 還沒載入好，給個預設畫面
-            stationSelect.innerHTML = `<option value="">請稍候...</option>`;
         }
     }
 
@@ -511,11 +498,9 @@
                 display.innerHTML = "來不及了💸";
                 display.style.fontSize = "50px"; 
                 display.style.color = "#ff5252";
-                
                 actionBtn.style.display = "none";
                 cancelBtn.style.display = "none"; 
                 planBContainer.style.display = "flex";
-                
                 document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex");
                 statusText.innerHTML = "人生不是只有末班車...";
                 return;
@@ -538,9 +523,23 @@
 
     async function handleAction() {
         const startType = document.getElementById('start-type').value;
-        const startStation = document.getElementById('start-station').value;
         const endType = document.getElementById('end-type').value;
-        const endStation = document.getElementById('end-station').value;
+        
+        // 🌟 防呆翻譯機：把使用者輸入的「中文名稱」轉換回「英文 ID」
+        const startStationName = document.getElementById('start-station-input').value;
+        const endStationName = document.getElementById('end-station-input').value;
+
+        // 從字典裡找出對應的車站物件
+        const startStationObj = globalStationData[startType]?.options.find(s => s.name === startStationName);
+        const endStationObj = globalStationData[endType]?.options.find(s => s.name === endStationName);
+
+        if (!startStationObj || !endStationObj) {
+            alert("⚠️ 找不到這個車站，請確認是否有錯字，或從選單中直接點選！");
+            return; // 煞車，不讓系統報錯
+        }
+
+        const startStation = startStationObj.id;
+        const endStation = endStationObj.id;
 
         if (startType === endType && startStation === endStation) {
             clearInterval(timer); 
