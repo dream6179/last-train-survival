@@ -13,7 +13,7 @@
     <meta property="og:description" content="趕不上末班車？一鍵查詢真實末班車發車倒數，專屬夜歸人的極限生存指南。">
     <meta property="og:image" content="https://images.unsplash.com/photo-1517737272895-17d1cc961cb3?q=80&w=1200&auto=format&fit=crop">
     <meta property="og:type" content="website">
-    
+
     <style>
         :root {
             --bg-color: #121212;
@@ -98,8 +98,15 @@
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 90; }
         .overlay.active { opacity: 1; pointer-events: all; }
 
-        .bottom-sheet { position: fixed; bottom: 0; left: 0; width: 100%; height: 80vh; background-color: var(--card-bg); border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); z-index: 100; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
-        .bottom-sheet.active { transform: translateY(0); }
+        /* 🌟 修正：讓彈出視窗在電腦螢幕上也會置中並限制寬度 */
+        .bottom-sheet { 
+            position: fixed; bottom: 0; left: 50%; width: 100%; max-width: 400px; height: 80vh; 
+            background-color: var(--card-bg); border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); 
+            transform: translate(-50%, 100%); transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); 
+            z-index: 100; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; 
+        }
+        .bottom-sheet.active { transform: translate(-50%, 0); }
+        
         .sheet-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
         .sheet-header h3 { margin: 0; font-size: 18px; color: var(--text-main); }
         .close-sheet-btn { background: var(--danger); color: white; border: none; padding: 5px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
@@ -206,7 +213,6 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.41 終極字首轉乘版)</span>
         <div class="footer-links-container">
             <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
             <a class="footer-toggle" onclick="openSettingsSheet()">⚙️ 設定與說明</a>
@@ -240,6 +246,10 @@
             <li>系統會優先連線交通部 TDX，若遇斷網則自動啟動離線演算法。</li>
             <li>倒數開始後，點擊紅色按鈕可開啟「發車通知」，倒數 10 分鐘時會響鈴！</li>
         </ul>
+        
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px;">
+            本服務由綠茶地瓜維護 (v1.42 桌面視覺優化版)
+        </div>
     </div>
 </div>
 
@@ -485,8 +495,6 @@
        try {
             let finalTime = "23:59"; let status = "即時連線";
 
-            // 🌟 霸王級優先權：第一步，先把官方轉乘死線查出來！
-            // 🚨 更新：這裡加入了 offlineTimetableData 跟 startType 讓大腦可以比對字首
             const transferTime = getOfficialTransferTime(transferTimetableData, offlineTimetableData, startStationName, endStationName, startType);
 
             if (transferTime) {
@@ -503,11 +511,11 @@
                 }
 
                 if (realTime && realTime !== "TOKEN_EXPIRED") {
-                    finalTime = realTime; // 第 1 層：API 直達
+                    finalTime = realTime; 
                 } else {
                     const offlineComputedTime = calculateOfflineTime(offlineTimetableData, startStationName, endStationName, startType);
                     if (offlineComputedTime) { 
-                        finalTime = offlineComputedTime; status = "離線演算法"; // 第 2 層：離線推演直達
+                        finalTime = offlineComputedTime; status = "離線演算法"; 
                     } else {
                         status = "系統預設"; alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。"); 
                     }
