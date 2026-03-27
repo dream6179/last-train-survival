@@ -1,8 +1,8 @@
 // ==========================================
-// 隱藏彩蛋雙引擎 (v3.0 跑酷 & 下樓梯豪華版)
+// 隱藏彩蛋雙引擎 (v3.1 養生休閒版)
 // ==========================================
 
-let activeGame = null; // 'runner' 或是 'diver'
+let activeGame = null; 
 let gameAnimationId;
 let frameCount = 0;
 let score = 0;
@@ -14,14 +14,14 @@ let runnerPlayer = { x: 280, y: 140, w: 20, h: 30, dy: 0, gravity: 0.6, jumpPowe
 let runnerObstacles = [];
 let runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
 
-// === 下樓梯遊戲 (Diver) 變數 ===
+// === 下樓梯遊戲 (Diver) 變數 (🌟 速度全面減半，改為養生模式) ===
 let diverClicks = 0; let diverTimer;
-let diverPlayer = { x: 165, y: 50, w: 20, h: 30, dx: 0, dy: 0, speed: 4, gravity: 0.4 };
+let diverPlayer = { x: 165, y: 50, w: 20, h: 30, dx: 0, dy: 0, speed: 2, gravity: 0.2 }; 
 let platforms = [];
 let diverHighScore = localStorage.getItem('deepStationHighScore') || 0;
 let keys = { left: false, right: false };
 let touchLeft = false; let touchRight = false;
-let platformSpeed = 2; // 樓梯上升速度
+let platformSpeed = 1; // 🌟 初始上升速度減半
 
 // === 觸發器 ===
 function triggerEasterEgg(force = false) {
@@ -57,7 +57,6 @@ function initGameCanvas() {
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
     
-    // 依據遊戲調整畫布高度
     canvas.height = activeGame === 'runner' ? 200 : 300;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
@@ -72,7 +71,7 @@ function initGameCanvas() {
         document.getElementById('game-high-score').innerText = `歷史最高: ${runnerHighScore} 秒`;
     } else {
         document.getElementById('game-title').innerText = '🚇 直奔最深月台';
-        document.getElementById('game-hint').innerText = '點擊畫面左右半邊，或用鍵盤左右鍵移動！';
+        document.getElementById('game-hint').innerText = '點擊畫面左右半邊，或用鍵盤左右移動！';
         diverHighScore = localStorage.getItem('deepStationHighScore') || 0;
         document.getElementById('game-high-score').innerText = `歷史最高: ${diverHighScore} 秒`;
     }
@@ -90,8 +89,7 @@ function startActiveGame() {
         runnerLoop();
     } else {
         diverPlayer.x = 165; diverPlayer.y = 50; diverPlayer.dx = 0; diverPlayer.dy = 0;
-        platforms = []; platformSpeed = 2; keys.left = false; keys.right = false;
-        // 初始第一塊安全平台
+        platforms = []; platformSpeed = 1; keys.left = false; keys.right = false; // 🌟 確保重新開始時速度是慢的
         platforms.push({ x: 140, y: 150, w: 70, h: 10, type: 'safe' });
         diverLoop();
     }
@@ -102,7 +100,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('game-canvas');
     if (!canvas) return;
 
-    // 電腦鍵盤
     document.addEventListener('keydown', (e) => { 
         if (!document.getElementById('game-sheet').classList.contains('active')) return;
         if (activeGame === 'runner' && (e.code === 'Space' || e.code === 'ArrowUp')) { e.preventDefault(); jumpRunner(); }
@@ -118,11 +115,9 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 手機觸控與滑鼠
     canvas.addEventListener('mousedown', (e) => handleTouchPoint(e, canvas));
     canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchPoint(e.touches[0], canvas); }, {passive: false});
     
-    // 釋放觸控 (專門給 Diver)
     canvas.addEventListener('mouseup', () => { touchLeft = false; touchRight = false; });
     canvas.addEventListener('touchend', () => { touchLeft = false; touchRight = false; });
 });
@@ -197,15 +192,15 @@ function runnerLoop() {
     gameAnimationId = requestAnimationFrame(runnerLoop);
 }
 
-// === 2. 下樓梯遊戲邏輯 (Diver) ===
+// === 2. 下樓梯遊戲邏輯 (Diver) 養生版 ===
 function diverLoop() {
     if (!isGameRunning || activeGame !== 'diver') return;
     const canvas = document.getElementById('game-canvas'); const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frameCount++;
 
-    // 隨時間加快平台速度
-    if (frameCount % 600 === 0) platformSpeed += 0.2; 
+    // 🌟 加速幅度也變緩慢
+    if (frameCount % 600 === 0) platformSpeed += 0.1; 
 
     // 控制左右
     if (keys.left || touchLeft) diverPlayer.x -= diverPlayer.speed;
@@ -221,9 +216,8 @@ function diverLoop() {
 
     for (let i = 0; i < platforms.length; i++) {
         let p = platforms[i];
-        p.y -= platformSpeed; // 平台往上移
+        p.y -= platformSpeed; 
 
-        // 碰撞判定：玩家往下掉，且腳底碰到平台上方
         if (diverPlayer.dy > 0 && 
             diverPlayer.x + diverPlayer.w > p.x && 
             diverPlayer.x < p.x + p.w && 
@@ -236,42 +230,38 @@ function diverLoop() {
             
             onPlatform = true;
             diverPlayer.y = p.y - diverPlayer.h;
-            diverPlayer.dy = 0; // 站在平台上不往下掉
+            diverPlayer.dy = 0; 
             
-            // 輸送帶效果
-            if (p.type === 'belt_left') diverPlayer.x -= 2;
-            if (p.type === 'belt_right') diverPlayer.x += 2;
+            // 🌟 輸送帶效果減半
+            if (p.type === 'belt_left') diverPlayer.x -= 1;
+            if (p.type === 'belt_right') diverPlayer.x += 1;
         }
         
-        // 畫出平台
         if (p.type === 'safe') ctx.fillStyle = '#4caf50';
         else if (p.type === 'danger') ctx.fillStyle = '#ff5252';
-        else ctx.fillStyle = '#ffb300'; // 輸送帶
+        else ctx.fillStyle = '#ffb300'; 
         ctx.fillRect(p.x, p.y, p.w, p.h);
     }
 
-    if (!onPlatform) { diverPlayer.y += diverPlayer.dy; } // 如果沒踩在平台上，繼續往下掉
+    if (!onPlatform) { diverPlayer.y += diverPlayer.dy; } 
 
-    // 畫出主角
     ctx.font = '25px Arial'; ctx.fillText('🏃‍♂️', diverPlayer.x - 5, diverPlayer.y + 25);
 
-    // 死亡判定
     if (diverPlayer.y < -30) return gameOver('動作太慢，被關在閘門外了💸');
     if (diverPlayer.y > canvas.height) return gameOver('踩空摔斷腿，急診室見🚑');
 
-    // 隨機生成新平台
-    if (frameCount % 45 === 0) {
+    // 🌟 讓平台更密集：每 60 幀生成，配合變慢的速度，畫面上的階梯會變多
+    if (frameCount % 60 === 0) {
         let w = 70 + Math.random() * 40;
         let x = Math.random() * (canvas.width - w);
         let rand = Math.random();
         let type = 'safe';
-        if (rand > 0.8) type = 'danger'; // 20% 是危險平台
-        else if (rand > 0.6) type = 'belt_left'; // 20% 向左
-        else if (rand > 0.4) type = 'belt_right'; // 20% 向右
+        if (rand > 0.8) type = 'danger'; 
+        else if (rand > 0.6) type = 'belt_left'; 
+        else if (rand > 0.4) type = 'belt_right'; 
         platforms.push({ x: x, y: canvas.height + 10, w: w, h: 10, type: type });
     }
 
-    // 清除畫面上方的平台
     platforms = platforms.filter(p => p.y > -20);
 
     if (frameCount % 60 === 0) { score++; document.getElementById('game-score').innerText = `深入月台: B${score} 層`; }
