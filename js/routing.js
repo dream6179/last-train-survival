@@ -1,5 +1,5 @@
 // ==========================================
-// 末班車生存戰 - 核心路徑分揀與運算引擎 (v1.3)
+// 末班車生存戰 - 核心路徑分揀與運算引擎 (v1.4 終極字首轉乘版)
 // ==========================================
 
 const operatorMap = {
@@ -250,29 +250,36 @@ async function fetchSingleStationTime(stationName, type, offlineTimetableData, c
     
     return { status: finalStatus, data: finalResults };
 }
-// 4. 🌟 終極轉乘防線：官方轉乘死線字典
-function getOfficialTransferTime(transferData, startName, endName) {
-    // 檢查字典在不在，以及起點有沒有建檔
-    if (!transferData || !transferData[startName]) return null;
-    
-    const routes = transferData[startName];
-    let possibleTimes = [];
 
-    for (let key in routes) {
-        // 處理格式：如果是 "文湖線-南港展覽館"，切出 "南港展覽館"；如果是 "小碧潭"，就直接用
-        const destPart = key.includes('-') ? key.split('-')[1] : key;
-        
-        // 絕對精準比對終點站名稱！
-        if (destPart === endName) {
-            possibleTimes.push(routes[key]);
+// 4. 🌟 終極轉乘防線：自動辨識字首換線
+function getOfficialTransferTime(transferData, offlineTimetableData, startName, endName, type) {
+    if (!transferData || !transferData[startName]) return null;
+    const routes = transferData[startName];
+    
+    // 1. 點名道姓的特例站點直接命中 (專門保留給：新北投、小碧潭)
+    if (routes[endName]) return routes[endName];
+
+    // 2. 取得字首陣列來判斷是否需要「換線」
+    const table = offlineTimetableData[type];
+    if (!table) return null;
+    
+    const startKeys = Object.keys(table).filter(k => table[k].name === startName);
+    const endKeys = Object.keys(table).filter(k => table[k].name === endName);
+    
+    // 抽出英文字首 (例如 中山會抽出 ['G', 'R'])
+    const startPrefixes = startKeys.map(k => k.match(/[A-Z]+/)[0]);
+    const endPrefixes = endKeys.map(k => k.match(/[A-Z]+/)[0]);
+
+    // 🌟 核心邏輯：檢查起點和終點是否「沒有」共通的字首 (沒有共通點，代表一定要跨線轉乘)
+    const isCrossLine = !startPrefixes.some(p => endPrefixes.includes(p));
+    
+    if (isCrossLine) {
+        // 如果確定要跨線，就去字典裡找終點站的路線字首（例如找 "BR", "O", "BL"）
+        for (let p of endPrefixes) {
+            if (routes[p]) return routes[p];
         }
     }
-
-    if (possibleTimes.length > 0) {
-        // 如果有多條路線都能到（比如板南跟文湖都能去南港展覽館）
-        // 為了求生安全，我們取最嚴格（最早）的時間！
-        possibleTimes.sort();
-        return possibleTimes[0];
-    }
+    
+    // 如果沒有跨線 (代表是直達車)，或者字典沒建檔，就回傳 null 讓系統去跑下一層的直達車演算法！
     return null;
 }
