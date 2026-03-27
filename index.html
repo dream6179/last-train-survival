@@ -98,8 +98,6 @@
         .close-sheet-btn { background: var(--danger); color: white; border: none; padding: 5px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .sheet-content { flex-grow: 1; overflow-y: auto; color: var(--text-sub); font-size: 14px; line-height: 1.5; }
         
-        // .search-result-box { margin-top: 15px; background: #222; border-radius: 10px; padding: 15px; min-height: 150px; display: flex; justify-content: center; align-items: center; color: #666; font-size: 13px; border: 1px dashed #444; }
-    // /* 查詢結果的虛擬框 */
         .search-result-box { margin-top: 15px; background: #222; border-radius: 10px; padding: 15px; min-height: 150px; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #666; font-size: 13px; border: 1px dashed #444; }
         .search-result-box::-webkit-scrollbar { width: 6px; }
         .search-result-box::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
@@ -201,7 +199,7 @@
     </div>
 
     <div class="footer">
-        <span>本服務由綠茶地瓜維護 (v1.40 防彈裝甲版)</span>
+        <span>本服務由綠茶地瓜維護 (v1.41 終極字首轉乘版)</span>
         <div class="footer-links-container">
             <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
             <a class="footer-toggle" onclick="openSettingsSheet()">⚙️ 設定與說明</a>
@@ -316,7 +314,7 @@
     let isCountingDown = false; let timeLeft = 0; let timer; let cachedTdxToken = ""; 
     let offlineTimetableData = null; 
     let globalStationData = null; 
-    let transferTimetableData = null; // 🌟 新增：存放轉乘死線的變數
+    let transferTimetableData = null; 
 
     let isNotificationEnabled = false; let notificationTriggered = false;
 
@@ -339,7 +337,6 @@
             if (timeRes.ok) offlineTimetableData = await timeRes.json();
         } catch (e) { console.error("離線時刻表載入失敗", e); }
 
-        // 🌟 讀取你的官方轉乘寶典！
         try {
             const transferRes = await fetch('/data/transfer-timetable.json');
             if (transferRes.ok) transferTimetableData = await transferRes.json();
@@ -482,14 +479,13 @@
             let finalTime = "23:59"; let status = "即時連線";
 
             // 🌟 霸王級優先權：第一步，先把官方轉乘死線查出來！
-            // 只要字典有寫（代表它一定是個需要注意的轉乘/支線任務），我們就直接採用！
-            const transferTime = getOfficialTransferTime(transferTimetableData, startStationName, endStationName);
+            // 🚨 更新：這裡加入了 offlineTimetableData 跟 startType 讓大腦可以比對字首
+            const transferTime = getOfficialTransferTime(transferTimetableData, offlineTimetableData, startStationName, endStationName, startType);
 
             if (transferTime) {
                 finalTime = transferTime; 
                 status = "官方轉乘死線"; 
             } 
-            // 🌟 如果轉乘字典沒寫（代表這是一般的直達車），才開始用常規的同線演算法
             else if (['trtc', 'tymetro', 'krtc', 'tmrt'].includes(startType) && startType === endType) {
                 if (!cachedTdxToken) { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; }
                 let realTime = await fetchRealLastTrainTime(globalStationData, cachedTdxToken, startStation, endStation, startType);
@@ -506,7 +502,6 @@
                     if (offlineComputedTime) { 
                         finalTime = offlineComputedTime; status = "離線演算法"; // 第 2 層：離線推演直達
                     } else {
-                        // 第 4 層：字典沒寫，也不是直達車，退回 23:59
                         status = "系統預設"; alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。"); 
                     }
                 }
