@@ -32,7 +32,6 @@
         .container { text-align: center; width: 90%; max-width: 400px; height: 92vh; max-height: 680px; background-color: var(--card-bg); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; justify-content: center; padding: 0 20px; box-sizing: border-box; gap: 6px; position: relative; }
         
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        /* 🌟 標題加上游標樣式，暗示它可以點擊 */
         .header-row h1 { font-size: 22px; color: var(--danger); margin: 0; cursor: pointer; transition: transform 0.1s; }
         .header-row h1:active { transform: scale(0.95); }
         
@@ -118,18 +117,18 @@
         .search-result-box::-webkit-scrollbar { width: 6px; }
         .search-result-box::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
         
-        /* 🌟 小遊戲專屬樣式 */
         #game-canvas { background: #111; border-radius: 10px; border: 2px dashed #444; width: 100%; height: 200px; touch-action: none; margin-top: 10px; cursor: pointer; }
-        .game-score-box { font-size: 20px; font-weight: bold; color: var(--warning); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+        .game-score-box { font-size: 20px; font-weight: bold; color: var(--warning); font-variant-numeric: tabular-nums; }
     </style>
     
     <script src="/js/routing.js"></script>
+    <script src="/js/game.js"></script>
 </head>
 <body>
 
 <div class="container">
     <div class="header-row">
-        <h1 id="main-title" onclick="triggerEasterEgg()">末班車生存戰</h1>
+        <h1 id="main-title" onclick="if(typeof triggerEasterEgg === 'function') triggerEasterEgg()">末班車生存戰</h1>
         <button class="mode-toggle-btn" id="mode-toggle-btn" onclick="toggleAppMode()" title="切換至全查詢模式">🔍</button>
     </div>
 
@@ -253,8 +252,15 @@
             <li>系統會優先連線交通部 TDX，若遇斷網則自動啟動離線演算法。</li>
             <li>倒數開始後，點擊紅色按鈕可開啟「發車通知」，倒數 10 分鐘時會響鈴！</li>
         </ul>
-        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px;">
-            當前版本：v1.43 (社畜衝刺彩蛋版)
+        
+        <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px;">
+            <h4 style="color: var(--warning); margin-top: 0; margin-bottom: 10px;">🏆 隱藏彩蛋收集冊</h4>
+            <div id="collection-list" style="display: flex; flex-direction: column; gap: 8px;">
+                </div>
+        </div>
+
+        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px;">
+            當前版本：v1.50 (社畜大逃亡成就解鎖版)
         </div>
     </div>
 </div>
@@ -265,10 +271,11 @@
         <button class="close-sheet-btn" onclick="closeAllSheets()">返回現實</button>
     </div>
     <div class="sheet-content" style="text-align: center; padding-top: 10px; overflow: hidden;">
-        <div class="game-score-box" id="game-score">存活時間: 0 秒</div>
-        <p style="font-size: 11px; margin: 0; color: #888;">點擊黑色畫布跳躍，閃避捷運閘門！</p>
+        <div class="game-score-box" id="game-score" style="margin-bottom: 5px;">存活時間: 0 秒</div>
+        <div id="game-high-score" style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: bold;">歷史最高: 0 秒</div>
+        <p style="font-size: 11px; margin: 0; color: #888;">點擊黑色畫布跳躍，閃避障礙物！</p>
         <canvas id="game-canvas" width="350" height="200"></canvas>
-        <button id="start-game-btn" class="main-action-btn" style="background-color: var(--info); width: auto; padding: 10px 30px; margin-top: 15px;" onclick="startRunnerGame()">開始衝刺</button>
+        <button id="start-game-btn" class="main-action-btn" style="background-color: var(--info); width: auto; padding: 10px 30px; margin-top: 15px;" onclick="if(typeof startRunnerGame === 'function') startRunnerGame()">開始衝刺</button>
     </div>
 </div>
 
@@ -367,7 +374,37 @@
 
     const defaultStations = { 'trtc': '台北車站', 'tymetro': '台北車站', 'krtc': '高雄車站', 'tmrt': '高鐵台中站', 'tra': '台北車站', 'thsr': '台北車站', 'intercity': '台北車站', 'bus': '台北車站' };
 
+    // 🌟 更新收集冊 UI
+    function updateCollectionUI() {
+        const list = document.getElementById('collection-list');
+        const isRunnerUnlocked = localStorage.getItem('unlock_runner') === 'true';
+        const runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
+
+        let html = '';
+        if (isRunnerUnlocked) {
+            html += `<button class="plan-b-option" style="background-color: #2c2c2c; color: white; border: 1px solid var(--warning);" onclick="closeAllSheets(); setTimeout(() => triggerEasterEgg(true), 300);">
+                        <span class="option-name">🏃‍♂️ 社畜的最後衝刺 <span class="option-meta" style="color: var(--warning);">已解鎖</span></span>
+                        <span class="option-price" style="color: var(--warning); font-size: 13px;">最高分: ${runnerHighScore}</span>
+                     </button>`;
+        } else {
+            html += `<div class="plan-b-option" style="background-color: #1a1a1a; color: #555; border: 1px dashed #333; cursor: default;">
+                        <span class="option-name">🔒 未知彩蛋</span>
+                        <span class="option-price" style="font-size: 11px;">提示: 首頁標題...</span>
+                     </div>`;
+        }
+        
+        // 預留第二個神祕彩蛋的位置
+        html += `<div class="plan-b-option" style="background-color: #1a1a1a; color: #555; border: 1px dashed #333; cursor: default;">
+                    <span class="option-name">🔒 神秘彩蛋</span>
+                    <span class="option-price" style="font-size: 11px;">尚未實裝</span>
+                 </div>`;
+
+        list.innerHTML = html;
+    }
+
     window.onload = async () => {
+        updateCollectionUI(); // 載入圖鑑
+
         try {
             const timeRes = await fetch('/data/offline-timetable.json');
             if (timeRes.ok) offlineTimetableData = await timeRes.json();
@@ -570,122 +607,15 @@
     function openAdvancedSheet() { document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
     function openSettingsSheet() { document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
     
-    /* 🌟 修改 closeAllSheets 讓它連遊戲視窗一起關 */
     function closeAllSheets() { 
         document.getElementById('overlay').classList.remove('active'); 
         document.getElementById('advanced-sheet').classList.remove('active'); 
         document.getElementById('settings-sheet').classList.remove('active'); 
         document.getElementById('game-sheet').classList.remove('active');
-        isGameRunning = false; // 關閉時停止遊戲
+        if (typeof isGameRunning !== 'undefined') isGameRunning = false; 
     }
     
     function shareApp() { if (navigator.share) navigator.share({ title: '末班車生存戰', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href }); else { navigator.clipboard.writeText(window.location.href); alert("✅ 網址已複製！"); } }
-
-    /* ==========================================
-       🌟 隱藏彩蛋：社畜的最後衝刺 遊戲引擎
-       ========================================== */
-    let eggClicks = 0; let eggTimer;
-    function triggerEasterEgg() {
-        eggClicks++;
-        clearTimeout(eggTimer);
-        eggTimer = setTimeout(() => { eggClicks = 0; }, 1500);
-        if (eggClicks >= 5) {
-            eggClicks = 0;
-            document.getElementById('overlay').classList.add('active');
-            document.getElementById('game-sheet').classList.add('active');
-            initGameCanvas();
-        }
-    }
-
-    const canvas = document.getElementById('game-canvas');
-    const ctx = canvas.getContext('2d');
-    let isGameRunning = false;
-    let score = 0;
-    let frameCount = 0;
-    let player = { x: 40, y: 140, width: 20, height: 30, dy: 0, gravity: 0.6, jumpPower: -10, isGrounded: true };
-    let obstacles = [];
-
-    function initGameCanvas() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#666'; ctx.font = '16px sans-serif';
-        ctx.fillText('準備好衝刺了嗎？', 100, 100);
-        document.getElementById('start-game-btn').style.display = 'inline-block';
-        document.getElementById('start-game-btn').innerText = '開始衝刺';
-        document.getElementById('game-score').innerText = '存活時間: 0 秒';
-    }
-
-    function startRunnerGame() {
-        player.y = 140; player.dy = 0; player.isGrounded = true;
-        obstacles = []; score = 0; frameCount = 0; isGameRunning = true;
-        document.getElementById('start-game-btn').style.display = 'none';
-        gameLoop();
-    }
-
-    function jump() {
-        if (player.isGrounded && isGameRunning) {
-            player.dy = player.jumpPower; player.isGrounded = false;
-        }
-    }
-
-    // 支援手機點擊與電腦空白鍵跳躍
-    canvas.addEventListener('mousedown', jump);
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
-    document.addEventListener('keydown', (e) => { 
-        if ((e.code === 'Space' || e.code === 'ArrowUp') && document.getElementById('game-sheet').classList.contains('active')) {
-            e.preventDefault(); jump(); 
-        } 
-    });
-
-    function gameLoop() {
-        if (!isGameRunning) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        frameCount++;
-
-        // 1. 物理引擎 (重力)
-        player.dy += player.gravity;
-        player.y += player.dy;
-        if (player.y >= 140) { player.y = 140; player.dy = 0; player.isGrounded = true; }
-
-        // 2. 畫出主角 (奔跑的社畜)
-        ctx.font = '35px Arial';
-        ctx.fillText('🏃‍♂️', player.x, player.y + 30);
-
-        // 3. 生成與移動障礙物 (捷運閘門/打掃阿姨)
-        if (frameCount % 90 === 0 || (frameCount % 130 === 0 && Math.random() > 0.5)) {
-            obstacles.push({ x: canvas.width, y: 145, w: 20, h: 25, type: Math.random() > 0.4 ? '🚧' : '🧹' });
-        }
-
-        for (let i = 0; i < obstacles.length; i++) {
-            let obs = obstacles[i];
-            obs.x -= 5; // 跑酷速度
-            ctx.font = '25px Arial';
-            ctx.fillText(obs.type, obs.x, obs.y + 25);
-
-            // 4. 碰撞判定 (超簡單方塊碰撞)
-            let px = player.x + 10, py = player.y + 10, pw = 15, ph = 25; 
-            let ox = obs.x + 5, oy = obs.y + 5, ow = 15, oh = 20;
-            if (px < ox + ow && px + pw > ox && py < oy + oh && py + ph > oy) {
-                isGameRunning = false;
-                ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = 'var(--danger)'; ctx.font = '24px bold sans-serif';
-                ctx.fillText('慘了，錯過車了💸', 80, 100);
-                document.getElementById('start-game-btn').style.display = 'inline-block';
-                document.getElementById('start-game-btn').innerText = '不甘心，再跑一次';
-                return;
-            }
-        }
-        
-        // 清除跑出畫面的障礙物
-        obstacles = obstacles.filter(o => o.x > -30);
-
-        // 5. 計分板 (每 60 幀約 1 秒)
-        if (frameCount % 60 === 0) { 
-            score++; 
-            document.getElementById('game-score').innerText = `存活時間: ${score} 秒`; 
-        }
-
-        requestAnimationFrame(gameLoop);
-    }
 </script>
 </body>
 </html>
