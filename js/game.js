@@ -1,5 +1,5 @@
 // ==========================================
-// 隱藏彩蛋：社畜的最後衝刺 (v2.0 模組化與最高分版)
+// 隱藏彩蛋：社畜的最後衝刺 (v2.1 收集冊與成就版)
 // ==========================================
 
 let eggClicks = 0; 
@@ -10,17 +10,23 @@ let frameCount = 0;
 let gameAnimationId;
 let highScore = localStorage.getItem('lateCommuterHighScore') || 0;
 
-// 🌟 修正方向：人物放在右邊 (x: 280)
+// 🌟 人物放在右邊 (x: 280)，模擬向左跑
 let player = { x: 280, y: 140, width: 20, height: 30, dy: 0, gravity: 0.6, jumpPower: -10, isGrounded: true };
 let obstacles = [];
 
-function triggerEasterEgg() {
+// force 參數是為了讓收集冊可以直接點擊啟動遊戲
+function triggerEasterEgg(force = false) {
     eggClicks++;
     clearTimeout(eggTimer);
     eggTimer = setTimeout(() => { eggClicks = 0; }, 1500);
     
-    if (eggClicks >= 5) {
+    if (eggClicks >= 5 || force) {
         eggClicks = 0;
+        
+        // 🌟 核心：只要觸發過一次，就永久解鎖這個彩蛋！
+        localStorage.setItem('unlock_runner', 'true');
+        if (typeof updateCollectionUI === 'function') updateCollectionUI(); // 通知首頁更新圖鑑
+
         document.getElementById('overlay').classList.add('active');
         document.getElementById('game-sheet').classList.add('active');
         initGameCanvas();
@@ -40,9 +46,9 @@ function initGameCanvas() {
     document.getElementById('start-game-btn').innerText = '開始衝刺';
     document.getElementById('game-score').innerText = '存活時間: 0 秒';
     
-    // 更新最高分顯示
     highScore = localStorage.getItem('lateCommuterHighScore') || 0;
     document.getElementById('game-high-score').innerText = `歷史最高: ${highScore} 秒`;
+    document.getElementById('game-high-score').style.color = '#888';
 }
 
 function startRunnerGame() {
@@ -67,8 +73,8 @@ function jumpGamePlayer() {
     }
 }
 
-// 綁定事件 (因為是外部載入，確保只綁定一次，可以在 HTML 裡處理，這裡用 window 監聽)
-window.addEventListener('DOMContentLoaded', (event) => {
+// 綁定跳躍事件
+window.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('game-canvas');
     if (canvas) {
         canvas.addEventListener('mousedown', jumpGamePlayer);
@@ -100,15 +106,14 @@ function gameLoop() {
     ctx.font = '35px Arial';
     ctx.fillText('🏃‍♂️', player.x, player.y + 30);
 
-    // 3. 生成與移動障礙物 (改成從左邊出現)
+    // 3. 生成與移動障礙物 (從左邊出現，往右飛)
     if (frameCount % 90 === 0 || (frameCount % 130 === 0 && Math.random() > 0.5)) {
-        // 🌟 修正方向：從 x = -30 產生
         obstacles.push({ x: -30, y: 145, w: 20, h: 25, type: Math.random() > 0.4 ? '🚧' : '🧹' });
     }
 
     for (let i = 0; i < obstacles.length; i++) {
         let obs = obstacles[i];
-        obs.x += 5; // 🌟 修正方向：向右跑
+        obs.x += 5; // 往右跑
         
         ctx.font = '25px Arial';
         ctx.fillText(obs.type, obs.x, obs.y + 25);
@@ -126,12 +131,13 @@ function gameLoop() {
             document.getElementById('start-game-btn').style.display = 'inline-block';
             document.getElementById('start-game-btn').innerText = '不甘心，再跑一次';
             
-            // 🌟 紀錄最高分
+            // 紀錄最高分
             if (score > highScore) {
                 highScore = score;
                 localStorage.setItem('lateCommuterHighScore', highScore);
                 document.getElementById('game-high-score').innerText = `歷史最高: ${highScore} 秒 (新紀錄!)`;
                 document.getElementById('game-high-score').style.color = 'var(--danger)';
+                if (typeof updateCollectionUI === 'function') updateCollectionUI(); // 更新圖鑑分數
             }
             return;
         }
@@ -140,7 +146,7 @@ function gameLoop() {
     // 清除跑出畫面右側的障礙物
     obstacles = obstacles.filter(o => o.x < canvas.width + 30);
 
-    // 5. 計分板 (每 60 幀約 1 秒)
+    // 5. 計分板 
     if (frameCount % 60 === 0) { 
         score++; 
         document.getElementById('game-score').innerText = `存活時間: ${score} 秒`; 
