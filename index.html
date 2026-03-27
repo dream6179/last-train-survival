@@ -27,12 +27,15 @@
         }
 
         html, body { overflow: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); overscroll-behavior: none; }
-        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--text-main); display: flex; justify-content: center; align-items: center; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--text-main); display: flex; justify-content: center; align-items: center; user-select: none; -webkit-user-select: none; }
 
         .container { text-align: center; width: 90%; max-width: 400px; height: 92vh; max-height: 680px; background-color: var(--card-bg); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; justify-content: center; padding: 0 20px; box-sizing: border-box; gap: 6px; position: relative; }
         
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .header-row h1 { font-size: 22px; color: var(--danger); margin: 0; }
+        /* 🌟 標題加上游標樣式，暗示它可以點擊 */
+        .header-row h1 { font-size: 22px; color: var(--danger); margin: 0; cursor: pointer; transition: transform 0.1s; }
+        .header-row h1:active { transform: scale(0.95); }
+        
         .mode-toggle-btn { background: #333; color: white; border: none; border-radius: 50%; width: 35px; height: 35px; font-size: 16px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .mode-toggle-btn:active { transform: scale(0.9); background: #555; }
 
@@ -98,7 +101,6 @@
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 90; }
         .overlay.active { opacity: 1; pointer-events: all; }
 
-        /* 🌟 電腦螢幕置中與限制寬度 */
         .bottom-sheet { 
             position: fixed; bottom: 0; left: 50%; width: 100%; max-width: 400px; height: 80vh; 
             background-color: var(--card-bg); border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); 
@@ -115,6 +117,10 @@
         .search-result-box { margin-top: 15px; background: #222; border-radius: 10px; padding: 15px; min-height: 150px; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #666; font-size: 13px; border: 1px dashed #444; }
         .search-result-box::-webkit-scrollbar { width: 6px; }
         .search-result-box::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+        
+        /* 🌟 小遊戲專屬樣式 */
+        #game-canvas { background: #111; border-radius: 10px; border: 2px dashed #444; width: 100%; height: 200px; touch-action: none; margin-top: 10px; cursor: pointer; }
+        .game-score-box { font-size: 20px; font-weight: bold; color: var(--warning); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
     </style>
     
     <script src="/js/routing.js"></script>
@@ -123,7 +129,7 @@
 
 <div class="container">
     <div class="header-row">
-        <h1 id="main-title">末班車生存戰</h1>
+        <h1 id="main-title" onclick="triggerEasterEgg()">末班車生存戰</h1>
         <button class="mode-toggle-btn" id="mode-toggle-btn" onclick="toggleAppMode()" title="切換至全查詢模式">🔍</button>
     </div>
 
@@ -247,10 +253,22 @@
             <li>系統會優先連線交通部 TDX，若遇斷網則自動啟動離線演算法。</li>
             <li>倒數開始後，點擊紅色按鈕可開啟「發車通知」，倒數 10 分鐘時會響鈴！</li>
         </ul>
-        
         <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px;">
-            當前版本：v1.42 (桌面視覺優化版)
+            當前版本：v1.43 (社畜衝刺彩蛋版)
         </div>
+    </div>
+</div>
+
+<div class="bottom-sheet" id="game-sheet" style="height: auto; min-height: 50vh;">
+    <div class="sheet-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+        <h3 style="color: var(--warning);">🏃‍♂️ 社畜的最後衝刺</h3>
+        <button class="close-sheet-btn" onclick="closeAllSheets()">返回現實</button>
+    </div>
+    <div class="sheet-content" style="text-align: center; padding-top: 10px; overflow: hidden;">
+        <div class="game-score-box" id="game-score">存活時間: 0 秒</div>
+        <p style="font-size: 11px; margin: 0; color: #888;">點擊黑色畫布跳躍，閃避捷運閘門！</p>
+        <canvas id="game-canvas" width="350" height="200"></canvas>
+        <button id="start-game-btn" class="main-action-btn" style="background-color: var(--info); width: auto; padding: 10px 30px; margin-top: 15px;" onclick="startRunnerGame()">開始衝刺</button>
     </div>
 </div>
 
@@ -551,8 +569,123 @@
     function toggleContact() { const l = document.getElementById('contact-links'); l.style.display = l.style.display === "flex" ? "none" : "flex"; }
     function openAdvancedSheet() { document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
     function openSettingsSheet() { document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
-    function closeAllSheets() { document.getElementById('overlay').classList.remove('active'); document.getElementById('advanced-sheet').classList.remove('active'); document.getElementById('settings-sheet').classList.remove('active'); }
+    
+    /* 🌟 修改 closeAllSheets 讓它連遊戲視窗一起關 */
+    function closeAllSheets() { 
+        document.getElementById('overlay').classList.remove('active'); 
+        document.getElementById('advanced-sheet').classList.remove('active'); 
+        document.getElementById('settings-sheet').classList.remove('active'); 
+        document.getElementById('game-sheet').classList.remove('active');
+        isGameRunning = false; // 關閉時停止遊戲
+    }
+    
     function shareApp() { if (navigator.share) navigator.share({ title: '末班車生存戰', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href }); else { navigator.clipboard.writeText(window.location.href); alert("✅ 網址已複製！"); } }
+
+    /* ==========================================
+       🌟 隱藏彩蛋：社畜的最後衝刺 遊戲引擎
+       ========================================== */
+    let eggClicks = 0; let eggTimer;
+    function triggerEasterEgg() {
+        eggClicks++;
+        clearTimeout(eggTimer);
+        eggTimer = setTimeout(() => { eggClicks = 0; }, 1500);
+        if (eggClicks >= 5) {
+            eggClicks = 0;
+            document.getElementById('overlay').classList.add('active');
+            document.getElementById('game-sheet').classList.add('active');
+            initGameCanvas();
+        }
+    }
+
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    let isGameRunning = false;
+    let score = 0;
+    let frameCount = 0;
+    let player = { x: 40, y: 140, width: 20, height: 30, dy: 0, gravity: 0.6, jumpPower: -10, isGrounded: true };
+    let obstacles = [];
+
+    function initGameCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#666'; ctx.font = '16px sans-serif';
+        ctx.fillText('準備好衝刺了嗎？', 100, 100);
+        document.getElementById('start-game-btn').style.display = 'inline-block';
+        document.getElementById('start-game-btn').innerText = '開始衝刺';
+        document.getElementById('game-score').innerText = '存活時間: 0 秒';
+    }
+
+    function startRunnerGame() {
+        player.y = 140; player.dy = 0; player.isGrounded = true;
+        obstacles = []; score = 0; frameCount = 0; isGameRunning = true;
+        document.getElementById('start-game-btn').style.display = 'none';
+        gameLoop();
+    }
+
+    function jump() {
+        if (player.isGrounded && isGameRunning) {
+            player.dy = player.jumpPower; player.isGrounded = false;
+        }
+    }
+
+    // 支援手機點擊與電腦空白鍵跳躍
+    canvas.addEventListener('mousedown', jump);
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
+    document.addEventListener('keydown', (e) => { 
+        if ((e.code === 'Space' || e.code === 'ArrowUp') && document.getElementById('game-sheet').classList.contains('active')) {
+            e.preventDefault(); jump(); 
+        } 
+    });
+
+    function gameLoop() {
+        if (!isGameRunning) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        frameCount++;
+
+        // 1. 物理引擎 (重力)
+        player.dy += player.gravity;
+        player.y += player.dy;
+        if (player.y >= 140) { player.y = 140; player.dy = 0; player.isGrounded = true; }
+
+        // 2. 畫出主角 (奔跑的社畜)
+        ctx.font = '35px Arial';
+        ctx.fillText('🏃‍♂️', player.x, player.y + 30);
+
+        // 3. 生成與移動障礙物 (捷運閘門/打掃阿姨)
+        if (frameCount % 90 === 0 || (frameCount % 130 === 0 && Math.random() > 0.5)) {
+            obstacles.push({ x: canvas.width, y: 145, w: 20, h: 25, type: Math.random() > 0.4 ? '🚧' : '🧹' });
+        }
+
+        for (let i = 0; i < obstacles.length; i++) {
+            let obs = obstacles[i];
+            obs.x -= 5; // 跑酷速度
+            ctx.font = '25px Arial';
+            ctx.fillText(obs.type, obs.x, obs.y + 25);
+
+            // 4. 碰撞判定 (超簡單方塊碰撞)
+            let px = player.x + 10, py = player.y + 10, pw = 15, ph = 25; 
+            let ox = obs.x + 5, oy = obs.y + 5, ow = 15, oh = 20;
+            if (px < ox + ow && px + pw > ox && py < oy + oh && py + ph > oy) {
+                isGameRunning = false;
+                ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'var(--danger)'; ctx.font = '24px bold sans-serif';
+                ctx.fillText('慘了，錯過車了💸', 80, 100);
+                document.getElementById('start-game-btn').style.display = 'inline-block';
+                document.getElementById('start-game-btn').innerText = '不甘心，再跑一次';
+                return;
+            }
+        }
+        
+        // 清除跑出畫面的障礙物
+        obstacles = obstacles.filter(o => o.x > -30);
+
+        // 5. 計分板 (每 60 幀約 1 秒)
+        if (frameCount % 60 === 0) { 
+            score++; 
+            document.getElementById('game-score').innerText = `存活時間: ${score} 秒`; 
+        }
+
+        requestAnimationFrame(gameLoop);
+    }
 </script>
 </body>
 </html>
