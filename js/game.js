@@ -1,5 +1,5 @@
 // ==========================================
-// 隱藏彩蛋雙引擎 (v3.1 養生休閒版)
+// 隱藏彩蛋雙引擎 (v3.2 極致養生防必殺版)
 // ==========================================
 
 let activeGame = null; 
@@ -14,14 +14,15 @@ let runnerPlayer = { x: 280, y: 140, w: 20, h: 30, dy: 0, gravity: 0.6, jumpPowe
 let runnerObstacles = [];
 let runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
 
-// === 下樓梯遊戲 (Diver) 變數 (🌟 速度全面減半，改為養生模式) ===
+// === 下樓梯遊戲 (Diver) 變數 (🌟 再次降速，極致養生) ===
 let diverClicks = 0; let diverTimer;
-let diverPlayer = { x: 165, y: 50, w: 20, h: 30, dx: 0, dy: 0, speed: 2, gravity: 0.2 }; 
+// 速度 2 -> 1.8，重力 0.2 -> 0.15，讓掉落感更像羽毛
+let diverPlayer = { x: 165, y: 50, w: 20, h: 30, dx: 0, dy: 0, speed: 1.8, gravity: 0.15 }; 
 let platforms = [];
 let diverHighScore = localStorage.getItem('deepStationHighScore') || 0;
 let keys = { left: false, right: false };
 let touchLeft = false; let touchRight = false;
-let platformSpeed = 1; // 🌟 初始上升速度減半
+let platformSpeed = 0.8; // 🌟 平台上升速度 1 -> 0.8
 
 // === 觸發器 ===
 function triggerEasterEgg(force = false) {
@@ -73,7 +74,7 @@ function initGameCanvas() {
         document.getElementById('game-title').innerText = '🚇 直奔最深月台';
         document.getElementById('game-hint').innerText = '點擊畫面左右半邊，或用鍵盤左右移動！';
         diverHighScore = localStorage.getItem('deepStationHighScore') || 0;
-        document.getElementById('game-high-score').innerText = `歷史最高: ${diverHighScore} 秒`;
+        document.getElementById('game-high-score').innerText = `歷史最高: ${diverHighScore} 層`;
     }
     document.getElementById('game-high-score').style.color = '#888';
 }
@@ -89,7 +90,7 @@ function startActiveGame() {
         runnerLoop();
     } else {
         diverPlayer.x = 165; diverPlayer.y = 50; diverPlayer.dx = 0; diverPlayer.dy = 0;
-        platforms = []; platformSpeed = 1; keys.left = false; keys.right = false; // 🌟 確保重新開始時速度是慢的
+        platforms = []; platformSpeed = 0.8; keys.left = false; keys.right = false; 
         platforms.push({ x: 140, y: 150, w: 70, h: 10, type: 'safe' });
         diverLoop();
     }
@@ -154,7 +155,7 @@ function gameOver(reason) {
         document.getElementById('game-high-score').style.color = 'var(--danger)';
     } else if (activeGame === 'diver' && score > diverHighScore) {
         diverHighScore = score; localStorage.setItem('deepStationHighScore', diverHighScore);
-        document.getElementById('game-high-score').innerText = `歷史最高: ${diverHighScore} 秒 (新紀錄!)`;
+        document.getElementById('game-high-score').innerText = `歷史最高: B${diverHighScore} 層 (新紀錄!)`;
         document.getElementById('game-high-score').style.color = 'var(--danger)';
     }
     if (typeof updateCollectionUI === 'function') updateCollectionUI();
@@ -192,25 +193,23 @@ function runnerLoop() {
     gameAnimationId = requestAnimationFrame(runnerLoop);
 }
 
-// === 2. 下樓梯遊戲邏輯 (Diver) 養生版 ===
+// === 2. 下樓梯遊戲邏輯 (Diver) 極致養生防呆版 ===
 function diverLoop() {
     if (!isGameRunning || activeGame !== 'diver') return;
     const canvas = document.getElementById('game-canvas'); const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frameCount++;
 
-    // 🌟 加速幅度也變緩慢
-    if (frameCount % 600 === 0) platformSpeed += 0.1; 
+    // 🌟 加速幅度調到超級平緩
+    if (frameCount % 600 === 0) platformSpeed += 0.05; 
 
     // 控制左右
     if (keys.left || touchLeft) diverPlayer.x -= diverPlayer.speed;
     if (keys.right || touchRight) diverPlayer.x += diverPlayer.speed;
     
-    // 牆壁邊界
     if (diverPlayer.x < 0) diverPlayer.x = 0;
     if (diverPlayer.x + diverPlayer.w > canvas.width) diverPlayer.x = canvas.width - diverPlayer.w;
 
-    // 物理與碰撞
     let onPlatform = false;
     diverPlayer.dy += diverPlayer.gravity;
 
@@ -224,17 +223,15 @@ function diverLoop() {
             diverPlayer.y + diverPlayer.h >= p.y && 
             diverPlayer.y + diverPlayer.h <= p.y + diverPlayer.dy + platformSpeed + 5) {
             
-            if (p.type === 'danger') {
-                return gameOver('踩到碎玻璃受傷，急診送醫🚑');
-            }
+            if (p.type === 'danger') return gameOver('踩到碎玻璃受傷，急診送醫🚑');
             
             onPlatform = true;
             diverPlayer.y = p.y - diverPlayer.h;
             diverPlayer.dy = 0; 
             
-            // 🌟 輸送帶效果減半
-            if (p.type === 'belt_left') diverPlayer.x -= 1;
-            if (p.type === 'belt_right') diverPlayer.x += 1;
+            // 輸送帶變很緩慢
+            if (p.type === 'belt_left') diverPlayer.x -= 0.8;
+            if (p.type === 'belt_right') diverPlayer.x += 0.8;
         }
         
         if (p.type === 'safe') ctx.fillStyle = '#4caf50';
@@ -250,16 +247,36 @@ function diverLoop() {
     if (diverPlayer.y < -30) return gameOver('動作太慢，被關在閘門外了💸');
     if (diverPlayer.y > canvas.height) return gameOver('踩空摔斷腿，急診室見🚑');
 
-    // 🌟 讓平台更密集：每 60 幀生成，配合變慢的速度，畫面上的階梯會變多
+    // 🌟 保證生路：每次生成平台，絕對會有一塊綠色/黃色安全區
     if (frameCount % 60 === 0) {
-        let w = 70 + Math.random() * 40;
-        let x = Math.random() * (canvas.width - w);
-        let rand = Math.random();
-        let type = 'safe';
-        if (rand > 0.8) type = 'danger'; 
-        else if (rand > 0.6) type = 'belt_left'; 
-        else if (rand > 0.4) type = 'belt_right'; 
-        platforms.push({ x: x, y: canvas.height + 10, w: w, h: 10, type: type });
+        let yPos = canvas.height + 10;
+        
+        // 1. 產生絕對能踩的安全平台
+        let safeW = 70 + Math.random() * 40;
+        let safeX = Math.random() * (canvas.width - safeW);
+        let safeType = 'safe';
+        let r = Math.random();
+        if (r > 0.8) safeType = 'belt_left';
+        else if (r > 0.6) safeType = 'belt_right';
+        
+        platforms.push({ x: safeX, y: yPos, w: safeW, h: 10, type: safeType });
+
+        // 2. 30% 機率「伴隨」產生紅色危險平台，且保證放在安全平台的另外一側
+        if (Math.random() > 0.7) {
+            let dangerW = 50 + Math.random() * 30;
+            let dangerX;
+            if (safeX > canvas.width / 2) {
+                // 安全區在右，危險區放左
+                dangerX = Math.random() * (safeX - dangerW - 10); 
+            } else {
+                // 安全區在左，危險區放右
+                dangerX = safeX + safeW + 10 + Math.random() * (canvas.width - (safeX + safeW + 10) - dangerW);
+            }
+            if (dangerX < 0) dangerX = 0;
+            if (dangerX + dangerW > canvas.width) dangerX = canvas.width - dangerW;
+            
+            platforms.push({ x: dangerX, y: yPos, w: dangerW, h: 10, type: 'danger' });
+        }
     }
 
     platforms = platforms.filter(p => p.y > -20);
