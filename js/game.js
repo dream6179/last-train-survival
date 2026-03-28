@@ -1,5 +1,5 @@
 // ==========================================
-// 隱藏彩蛋三引擎 (v4.4 道具平衡與二段跳版)
+// 隱藏彩蛋三引擎 (v4.5 強制衝刺與二段跳版)
 // ==========================================
 
 let activeGame = null; 
@@ -18,9 +18,8 @@ let runnerPlayer = { x: 280, y: 140, w: 20, h: 30, dy: 0, gravity: 0.6, jumpPowe
 let runnerObstacles = [];
 let runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
 let runnerItems = [];
-let shoeTimer = 0;    // 增高鞋(二段跳)計時器
-let rocketTimer = 0;  // 火箭計時器
-let inputPressing = false; // 追蹤是否正在長按 (用於火箭推進)
+let shoeTimer = 0;    // 增高鞋(二段跳)計時器：10秒 (600 frames)
+let dashTimer = 0;    // 衝刺計時器：3秒 (180 frames)
 
 // === 下樓梯遊戲 (Diver) ===
 let diverClicks = 0; let diverTimer;
@@ -162,7 +161,7 @@ function initGameCanvas() {
 
         if (activeGame === 'runner') {
             document.getElementById('game-title').innerText = '🏃‍♂️ 社畜的最後衝刺';
-            document.getElementById('game-hint').innerText = '點擊跳躍，可撿二段跳與火箭道具！';
+            document.getElementById('game-hint').innerText = '點擊跳躍，可撿二段跳與衝刺道具！';
             runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
             document.getElementById('game-high-score').innerText = `歷史最高: ${runnerHighScore} 秒`;
         } else {
@@ -184,7 +183,7 @@ function startActiveGame() {
     if (activeGame === 'runner') {
         runnerPlayer.y = 140; runnerPlayer.dy = 0; runnerPlayer.isGrounded = true; runnerPlayer.doubleJumpsLeft = 1;
         runnerObstacles = []; runnerItems = []; 
-        shoeTimer = 0; rocketTimer = 0; inputPressing = false;
+        shoeTimer = 0; dashTimer = 0;
         runnerLoop(performance.now());
     } else if (activeGame === 'diver') {
         diverPlayer.x = 165; diverPlayer.y = 50; diverPlayer.dx = 0; diverPlayer.dy = 0;
@@ -206,7 +205,6 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!document.getElementById('game-sheet').classList.contains('active')) return;
         if (activeGame === 'runner' && (e.code === 'Space' || e.code === 'ArrowUp')) { 
             e.preventDefault(); 
-            inputPressing = true;
             if (!e.repeat) jumpRunner(); 
         }
         if (activeGame === 'diver') {
@@ -220,17 +218,16 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
     document.addEventListener('keyup', (e) => { 
-        if (activeGame === 'runner' && (e.code === 'Space' || e.code === 'ArrowUp')) inputPressing = false;
         if (activeGame === 'diver') {
             if (e.code === 'ArrowLeft') keys.left = false;
             if (e.code === 'ArrowRight') keys.right = false;
         }
     });
 
-    canvas.addEventListener('mousedown', (e) => { inputPressing = true; handleTouchPoint(e, canvas); });
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); inputPressing = true; handleTouchPoint(e.touches[0], canvas); }, {passive: false});
-    canvas.addEventListener('mouseup', () => { inputPressing = false; touchLeft = false; touchRight = false; });
-    canvas.addEventListener('touchend', () => { inputPressing = false; touchLeft = false; touchRight = false; });
+    canvas.addEventListener('mousedown', (e) => { handleTouchPoint(e, canvas); });
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchPoint(e.touches[0], canvas); }, {passive: false});
+    canvas.addEventListener('mouseup', () => { touchLeft = false; touchRight = false; });
+    canvas.addEventListener('touchend', () => { touchLeft = false; touchRight = false; });
 });
 
 function handleTouchPoint(e, canvas) {
@@ -245,7 +242,7 @@ function handleTouchPoint(e, canvas) {
 }
 
 function jumpRunner() {
-    let isDashing = (rocketTimer > 0 && inputPressing); 
+    let isDashing = (dashTimer > 0); 
     if (isGameRunning && !isDashing) { 
         // 第一次跳躍
         if (runnerPlayer.isGrounded) { 
@@ -262,7 +259,7 @@ function jumpRunner() {
 }
 
 function gameOver(reason) {
-    isGameRunning = false; inputPressing = false;
+    isGameRunning = false;
     document.getElementById('start-game-btn').style.display = 'inline-block';
     document.getElementById('start-game-btn').innerText = '再玩一次';
 
@@ -296,7 +293,7 @@ function gameOver(reason) {
     if (typeof updateCollectionUI === 'function') updateCollectionUI();
 }
 
-// === 1. 跑酷遊戲 (Runner) FPS 鎖定版 + 10秒二段跳/火箭 ===
+// === 1. 跑酷遊戲 (Runner) FPS 鎖定版 + 10秒二段跳 / 3秒衝刺 ===
 function runnerLoop(currentTime) {
     if (!isGameRunning || activeGame !== 'runner') return;
     gameAnimationId = requestAnimationFrame(runnerLoop);
@@ -310,14 +307,15 @@ function runnerLoop(currentTime) {
     frameCount++;
 
     if (shoeTimer > 0) shoeTimer--;
-    if (rocketTimer > 0) rocketTimer--;
+    if (dashTimer > 0) dashTimer--;
 
-    let isDashing = (rocketTimer > 0 && inputPressing);
+    let isDashing = (dashTimer > 0);
 
     if (isDashing) {
-        runnerPlayer.y = 90; 
-        runnerPlayer.dy = 0; runnerPlayer.gravity = 0; runnerPlayer.isGrounded = false;
-        ctx.font = '35px Arial'; ctx.fillText('🚀', runnerPlayer.x, runnerPlayer.y + 30);
+        // 強制在地面衝刺，不會掉下去也不會跳起來
+        runnerPlayer.y = 140; 
+        runnerPlayer.dy = 0; runnerPlayer.gravity = 0; runnerPlayer.isGrounded = true;
+        ctx.font = '35px Arial'; ctx.fillText('🏃‍♂️💨', runnerPlayer.x, runnerPlayer.y + 30); // 加個衝刺氣流特效
     } else {
         runnerPlayer.gravity = 0.6;
         runnerPlayer.dy += runnerPlayer.gravity; runnerPlayer.y += runnerPlayer.dy;
@@ -336,24 +334,24 @@ function runnerLoop(currentTime) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.font = '12px sans-serif';
     let uiY = 20;
     if (shoeTimer > 0) { ctx.fillText(`👟 二段跳: ${Math.ceil(shoeTimer/60)}s`, 10, uiY); uiY += 18; }
-    if (rocketTimer > 0) { ctx.fillText(`🚀 火箭(長按): ${Math.ceil(rocketTimer/60)}s`, 10, uiY); }
+    if (dashTimer > 0) { ctx.fillText(`⚡ 無敵衝刺: ${Math.ceil(dashTimer/60)}s`, 10, uiY); }
 
     // 生成道具
     if (frameCount % 360 === 0) {
-        runnerItems.push({ x: -30, y: 70 + Math.random() * 20, w: 25, h: 25, type: Math.random() > 0.5 ? 'shoe' : 'rocket' });
+        runnerItems.push({ x: -30, y: 70 + Math.random() * 20, w: 25, h: 25, type: Math.random() > 0.5 ? 'shoe' : 'dash' });
     }
 
     // 更新道具
     for (let i = runnerItems.length - 1; i >= 0; i--) {
         let item = runnerItems[i];
         item.x += 5 * speedMult;
-        ctx.font = '25px Arial'; ctx.fillText(item.type === 'shoe' ? '👟' : '🚀', item.x, item.y + 25);
+        ctx.font = '25px Arial'; ctx.fillText(item.type === 'shoe' ? '👟' : '⚡', item.x, item.y + 25);
 
         let px = runnerPlayer.x, py = runnerPlayer.y, pw = 20, ph = 30;
         if (px < item.x + item.w && px + pw > item.x && py < item.y + item.h && py + ph > item.y) {
-            // 新道具覆蓋舊道具，重置 10 秒 (600 frames)
-            if (item.type === 'shoe') { shoeTimer = 600; rocketTimer = 0; }
-            if (item.type === 'rocket') { rocketTimer = 600; shoeTimer = 0; }
+            // 新道具覆蓋舊道具，重置時間
+            if (item.type === 'shoe') { shoeTimer = 600; dashTimer = 0; } // 二段跳 10 秒
+            if (item.type === 'dash') { dashTimer = 180; shoeTimer = 0; } // 衝刺 3 秒
             runnerItems.splice(i, 1);
         } else if (item.x > canvas.width + 30) {
             runnerItems.splice(i, 1);
