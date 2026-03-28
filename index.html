@@ -124,7 +124,10 @@
 <div class="container">
     <div class="header-row">
         <h1 id="main-title" onclick="if(typeof triggerEasterEgg === 'function') triggerEasterEgg()">末班車生存戰</h1>
-        <button class="mode-toggle-btn" id="mode-toggle-btn" onclick="toggleAppMode()" title="切換至全查詢模式">🔍</button>
+        <div style="display: flex; gap: 8px;">
+            <button class="mode-toggle-btn" id="header-mute-btn" onclick="toggleMute()" title="開關背景音樂">🔇</button>
+            <button class="mode-toggle-btn" id="mode-toggle-btn" onclick="toggleAppMode()" title="切換至全查詢模式">🔍</button>
+        </div>
     </div>
 
     <div id="mode-survival">
@@ -234,8 +237,8 @@
         <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px;">
             <h4 style="color: white; margin-top: 0; margin-bottom: 10px;">🎵 背景音樂設定</h4>
             <div style="display: flex; align-items: center; gap: 15px; background: #2c2c2c; padding: 10px 15px; border-radius: 10px;">
-                <button id="mute-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0;" onclick="toggleMute()">🔊</button>
-                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5" style="flex-grow: 1;" oninput="updateVolume(this.value)">
+                <button id="mute-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0;" onclick="toggleMute()">🔇</button>
+                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0" style="flex-grow: 1;" oninput="updateVolume(this.value)">
             </div>
             <p style="font-size: 11px; color: #888; margin-top: 5px; text-align: center;">深夜的月台，適合來點 Lo-Fi 放鬆一下</p>
         </div>
@@ -283,23 +286,32 @@
 
 <script>
     let currentMode = 'survival'; 
-    let bgmVolume = 0.5;
-    let isBgmMuted = false;
+    let bgmVolume = 0.5; // 記憶預設音量
+    let isBgmMuted = true; // 改為預設關閉
     let bgmStarted = false; 
 
-    // 音量控制
+    // 音量控制 (支援雙按鈕同步)
     function toggleMute() {
         isBgmMuted = !isBgmMuted;
-        const btn = document.getElementById('mute-btn');
+        
+        // 如果解除靜音但音量是 0，給個基本音量，免得打開了還是沒聲音
+        if (!isBgmMuted && bgmVolume === 0) bgmVolume = 0.5;
+
+        const settingBtn = document.getElementById('mute-btn');
+        const headerBtn = document.getElementById('header-mute-btn');
         const slider = document.getElementById('volume-slider');
         const bgm = document.getElementById('bgm-audio');
 
-        btn.innerText = isBgmMuted ? '🔇' : '🔊';
-        slider.value = isBgmMuted ? 0 : bgmVolume;
+        const icon = isBgmMuted ? '🔇' : '🔊';
+        if(settingBtn) settingBtn.innerText = icon;
+        if(headerBtn) headerBtn.innerText = icon;
+        if(slider) slider.value = isBgmMuted ? 0 : bgmVolume;
 
         if (bgm) {
-            bgm.volume = slider.value;
-            if (!isBgmMuted && bgm.paused) {
+            if (isBgmMuted) {
+                bgm.pause();
+            } else {
+                bgm.volume = bgmVolume;
                 bgm.play().catch(e => console.log(e));
                 bgmStarted = true;
             }
@@ -307,16 +319,23 @@
     }
 
     function updateVolume(val) {
-        bgmVolume = val;
-        isBgmMuted = (val == 0);
-        document.getElementById('mute-btn').innerText = isBgmMuted ? '🔇' : '🔊';
+        bgmVolume = parseFloat(val);
+        isBgmMuted = (bgmVolume === 0);
+        
+        const icon = isBgmMuted ? '🔇' : '🔊';
+        const settingBtn = document.getElementById('mute-btn');
+        const headerBtn = document.getElementById('header-mute-btn');
+        if(settingBtn) settingBtn.innerText = icon;
+        if(headerBtn) headerBtn.innerText = icon;
 
         const bgm = document.getElementById('bgm-audio');
         if (bgm) {
             bgm.volume = bgmVolume;
-            if (bgmVolume > 0 && bgm.paused) {
-                bgm.play().catch(e => console.log(e));
+            if (bgmVolume > 0) {
+                if (bgm.paused) bgm.play().catch(e => console.log(e));
                 bgmStarted = true;
+            } else {
+                bgm.pause();
             }
         }
     }
@@ -325,6 +344,7 @@
     window.addEventListener('DOMContentLoaded', () => {
         document.body.addEventListener('click', () => {
             const bgm = document.getElementById('bgm-audio');
+            // 現在預設是靜音，所以點擊畫面不再強制播放，除非玩家主動打開開關
             if (bgm && !bgmStarted && !isBgmMuted) {
                 bgm.volume = bgmVolume;
                 bgm.play().catch(e => console.log("等待互動以播放音樂"));
