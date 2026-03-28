@@ -1,5 +1,5 @@
 // ==========================================
-// 隱藏彩蛋雙引擎 (v3.2 極致養生防必殺版)
+// 隱藏彩蛋三引擎 (v4.0 跑酷、下樓梯、終極密碼)
 // ==========================================
 
 let activeGame = null; 
@@ -8,21 +8,27 @@ let frameCount = 0;
 let score = 0;
 let isGameRunning = false;
 
-// === 跑酷遊戲 (Runner) 變數 ===
+// === 跑酷遊戲 (Runner) ===
 let runnerClicks = 0; let runnerTimer;
 let runnerPlayer = { x: 280, y: 140, w: 20, h: 30, dy: 0, gravity: 0.6, jumpPower: -10, isGrounded: true };
 let runnerObstacles = [];
 let runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
 
-// === 下樓梯遊戲 (Diver) 變數 (🌟 再次降速，極致養生) ===
+// === 下樓梯遊戲 (Diver) ===
 let diverClicks = 0; let diverTimer;
-// 速度 2 -> 1.8，重力 0.2 -> 0.15，讓掉落感更像羽毛
 let diverPlayer = { x: 165, y: 50, w: 20, h: 30, dx: 0, dy: 0, speed: 1.8, gravity: 0.15 }; 
 let platforms = [];
 let diverHighScore = localStorage.getItem('deepStationHighScore') || 0;
 let keys = { left: false, right: false };
 let touchLeft = false; let touchRight = false;
-let platformSpeed = 0.8; // 🌟 平台上升速度 1 -> 0.8
+let platformSpeed = 0.8; 
+
+// === 終極密碼 (Password) ===
+let pwdClicks = 0; let pwdTimer;
+let pwdTarget = 0;
+let pwdGuesses = 0;
+let pwdMin = 1; let pwdMax = 9;
+let pwdHighScore = localStorage.getItem('passwordHighScore') || 999; // 越低越好
 
 // === 觸發器 ===
 function triggerEasterEgg(force = false) {
@@ -47,6 +53,18 @@ function triggerEasterEgg2(force = false) {
     }
 }
 
+// 🌟 第三彩蛋：終極密碼觸發
+function triggerEasterEgg3(force = false) {
+    pwdClicks++; clearTimeout(pwdTimer);
+    pwdTimer = setTimeout(() => { pwdClicks = 0; }, 1500);
+    if (pwdClicks >= 5 || force) {
+        pwdClicks = 0; activeGame = 'password';
+        localStorage.setItem('unlock_password', 'true');
+        if (typeof updateCollectionUI === 'function') updateCollectionUI();
+        openGameSheet();
+    }
+}
+
 function openGameSheet() {
     document.getElementById('overlay').classList.add('active');
     document.getElementById('game-sheet').classList.add('active');
@@ -56,25 +74,41 @@ function openGameSheet() {
 // === 遊戲初始化與共用控制 ===
 function initGameCanvas() {
     const canvas = document.getElementById('game-canvas');
+    const pwdUI = document.getElementById('password-ui');
     const ctx = canvas.getContext('2d');
-    
-    canvas.height = activeGame === 'runner' ? 200 : 300;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     document.getElementById('start-game-btn').style.display = 'inline-block';
     document.getElementById('start-game-btn').innerText = '開始挑戰';
-    document.getElementById('game-score').innerText = '存活時間: 0 秒';
+    document.getElementById('game-score').innerText = '準備中...';
 
-    if (activeGame === 'runner') {
-        document.getElementById('game-title').innerText = '🏃‍♂️ 社畜的最後衝刺';
-        document.getElementById('game-hint').innerText = '點擊畫面跳躍，閃避障礙物！';
-        runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
-        document.getElementById('game-high-score').innerText = `歷史最高: ${runnerHighScore} 秒`;
+    // 依照遊戲切換畫布與 UI
+    if (activeGame === 'password') {
+        canvas.style.display = 'none';
+        pwdUI.style.display = 'grid';
+        document.getElementById('game-title').innerText = '🔢 終極密碼 (1-9)';
+        document.getElementById('game-hint').innerText = '請點擊下方按鈕猜數字！';
+        pwdHighScore = localStorage.getItem('passwordHighScore') || 999;
+        let showScore = pwdHighScore == 999 ? '無' : `${pwdHighScore} 次`;
+        document.getElementById('game-high-score').innerText = `最佳運氣: ${showScore}`;
+        pwdUI.innerHTML = ''; // 清空按鈕
     } else {
-        document.getElementById('game-title').innerText = '🚇 直奔最深月台';
-        document.getElementById('game-hint').innerText = '點擊畫面左右半邊，或用鍵盤左右移動！';
-        diverHighScore = localStorage.getItem('deepStationHighScore') || 0;
-        document.getElementById('game-high-score').innerText = `歷史最高: ${diverHighScore} 層`;
+        canvas.style.display = 'block';
+        pwdUI.style.display = 'none';
+        canvas.height = activeGame === 'runner' ? 200 : 300;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#666'; ctx.font = '16px sans-serif'; ctx.fillText('準備好挑戰了嗎？', 100, 100);
+
+        if (activeGame === 'runner') {
+            document.getElementById('game-title').innerText = '🏃‍♂️ 社畜的最後衝刺';
+            document.getElementById('game-hint').innerText = '點擊畫面跳躍，閃避障礙物！';
+            runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
+            document.getElementById('game-high-score').innerText = `歷史最高: ${runnerHighScore} 秒`;
+        } else {
+            document.getElementById('game-title').innerText = '🚇 直奔最深月台';
+            document.getElementById('game-hint').innerText = '點擊畫面左右半邊，閃避紅梯！';
+            diverHighScore = localStorage.getItem('deepStationHighScore') || 0;
+            document.getElementById('game-high-score').innerText = `歷史最高: B${diverHighScore} 層`;
+        }
     }
     document.getElementById('game-high-score').style.color = '#888';
 }
@@ -88,15 +122,17 @@ function startActiveGame() {
         runnerPlayer.y = 140; runnerPlayer.dy = 0; runnerPlayer.isGrounded = true;
         runnerObstacles = [];
         runnerLoop();
-    } else {
+    } else if (activeGame === 'diver') {
         diverPlayer.x = 165; diverPlayer.y = 50; diverPlayer.dx = 0; diverPlayer.dy = 0;
         platforms = []; platformSpeed = 0.8; keys.left = false; keys.right = false; 
         platforms.push({ x: 140, y: 150, w: 70, h: 10, type: 'safe' });
         diverLoop();
+    } else if (activeGame === 'password') {
+        startPasswordGame();
     }
 }
 
-// === 輸入綁定 ===
+// === 輸入綁定 (Runner & Diver) ===
 window.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('game-canvas');
     if (!canvas) return;
@@ -118,7 +154,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
     canvas.addEventListener('mousedown', (e) => handleTouchPoint(e, canvas));
     canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchPoint(e.touches[0], canvas); }, {passive: false});
-    
     canvas.addEventListener('mouseup', () => { touchLeft = false; touchRight = false; });
     canvas.addEventListener('touchend', () => { touchLeft = false; touchRight = false; });
 });
@@ -128,7 +163,7 @@ function handleTouchPoint(e, canvas) {
     if (activeGame === 'runner') { jumpRunner(); }
     else if (activeGame === 'diver') {
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
         if (x < canvas.width / 2) { touchLeft = true; touchRight = false; }
         else { touchRight = true; touchLeft = false; }
     }
@@ -140,28 +175,40 @@ function jumpRunner() {
 
 function gameOver(reason) {
     isGameRunning = false;
-    const canvas = document.getElementById('game-canvas');
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'var(--danger)'; ctx.font = '22px bold sans-serif';
-    ctx.fillText(reason, 40, canvas.height / 2);
-    
     document.getElementById('start-game-btn').style.display = 'inline-block';
-    document.getElementById('start-game-btn').innerText = '不甘心，再試一次';
+    document.getElementById('start-game-btn').innerText = '再玩一次';
 
-    if (activeGame === 'runner' && score > runnerHighScore) {
-        runnerHighScore = score; localStorage.setItem('lateCommuterHighScore', runnerHighScore);
-        document.getElementById('game-high-score').innerText = `歷史最高: ${runnerHighScore} 秒 (新紀錄!)`;
-        document.getElementById('game-high-score').style.color = 'var(--danger)';
-    } else if (activeGame === 'diver' && score > diverHighScore) {
-        diverHighScore = score; localStorage.setItem('deepStationHighScore', diverHighScore);
-        document.getElementById('game-high-score').innerText = `歷史最高: B${diverHighScore} 層 (新紀錄!)`;
-        document.getElementById('game-high-score').style.color = 'var(--danger)';
+    if (activeGame === 'runner' || activeGame === 'diver') {
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'var(--danger)'; ctx.font = '22px bold sans-serif';
+        ctx.fillText(reason, 40, canvas.height / 2);
+
+        if (activeGame === 'runner' && score > runnerHighScore) {
+            runnerHighScore = score; localStorage.setItem('lateCommuterHighScore', runnerHighScore);
+            document.getElementById('game-high-score').innerText = `歷史最高: ${runnerHighScore} 秒 (新紀錄!)`;
+            document.getElementById('game-high-score').style.color = 'var(--danger)';
+        } else if (activeGame === 'diver' && score > diverHighScore) {
+            diverHighScore = score; localStorage.setItem('deepStationHighScore', diverHighScore);
+            document.getElementById('game-high-score').innerText = `歷史最高: B${diverHighScore} 層 (新紀錄!)`;
+            document.getElementById('game-high-score').style.color = 'var(--danger)';
+        }
+    } else if (activeGame === 'password') {
+        document.getElementById('game-hint').innerText = reason;
+        document.getElementById('game-hint').style.color = 'var(--success)';
+        document.getElementById('game-hint').style.fontSize = '16px';
+        
+        if (pwdGuesses < pwdHighScore) {
+            pwdHighScore = pwdGuesses; localStorage.setItem('passwordHighScore', pwdHighScore);
+            document.getElementById('game-high-score').innerText = `最佳運氣: ${pwdHighScore} 次 (新紀錄!)`;
+            document.getElementById('game-high-score').style.color = 'var(--danger)';
+        }
     }
     if (typeof updateCollectionUI === 'function') updateCollectionUI();
 }
 
-// === 1. 跑酷遊戲邏輯 (Runner) ===
+// === 1. 跑酷遊戲 (Runner) ===
 function runnerLoop() {
     if (!isGameRunning || activeGame !== 'runner') return;
     const canvas = document.getElementById('game-canvas'); const ctx = canvas.getContext('2d');
@@ -183,104 +230,118 @@ function runnerLoop() {
 
         let px = runnerPlayer.x + 5, py = runnerPlayer.y + 5, pw = 15, ph = 25; 
         let ox = obs.x + 5, oy = obs.y + 5, ow = 15, oh = 20;
-        if (px < ox + ow && px + pw > ox && py < oy + oh && py + ph > oy) {
-            return gameOver('慘了，被絆倒錯過車了💸');
-        }
+        if (px < ox + ow && px + pw > ox && py < oy + oh && py + ph > oy) return gameOver('慘了，被絆倒錯過車了💸');
     }
     runnerObstacles = runnerObstacles.filter(o => o.x < canvas.width + 30);
-
     if (frameCount % 60 === 0) { score++; document.getElementById('game-score').innerText = `存活時間: ${score} 秒`; }
     gameAnimationId = requestAnimationFrame(runnerLoop);
 }
 
-// === 2. 下樓梯遊戲邏輯 (Diver) 極致養生防呆版 ===
+// === 2. 下樓梯遊戲 (Diver) ===
 function diverLoop() {
     if (!isGameRunning || activeGame !== 'diver') return;
     const canvas = document.getElementById('game-canvas'); const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frameCount++;
 
-    // 🌟 加速幅度調到超級平緩
     if (frameCount % 600 === 0) platformSpeed += 0.05; 
 
-    // 控制左右
     if (keys.left || touchLeft) diverPlayer.x -= diverPlayer.speed;
     if (keys.right || touchRight) diverPlayer.x += diverPlayer.speed;
-    
     if (diverPlayer.x < 0) diverPlayer.x = 0;
     if (diverPlayer.x + diverPlayer.w > canvas.width) diverPlayer.x = canvas.width - diverPlayer.w;
 
-    let onPlatform = false;
-    diverPlayer.dy += diverPlayer.gravity;
+    let onPlatform = false; diverPlayer.dy += diverPlayer.gravity;
 
     for (let i = 0; i < platforms.length; i++) {
-        let p = platforms[i];
-        p.y -= platformSpeed; 
-
-        if (diverPlayer.dy > 0 && 
-            diverPlayer.x + diverPlayer.w > p.x && 
-            diverPlayer.x < p.x + p.w && 
-            diverPlayer.y + diverPlayer.h >= p.y && 
-            diverPlayer.y + diverPlayer.h <= p.y + diverPlayer.dy + platformSpeed + 5) {
-            
+        let p = platforms[i]; p.y -= platformSpeed; 
+        if (diverPlayer.dy > 0 && diverPlayer.x + diverPlayer.w > p.x && diverPlayer.x < p.x + p.w && diverPlayer.y + diverPlayer.h >= p.y && diverPlayer.y + diverPlayer.h <= p.y + diverPlayer.dy + platformSpeed + 5) {
             if (p.type === 'danger') return gameOver('踩到碎玻璃受傷，急診送醫🚑');
-            
-            onPlatform = true;
-            diverPlayer.y = p.y - diverPlayer.h;
-            diverPlayer.dy = 0; 
-            
-            // 輸送帶變很緩慢
+            onPlatform = true; diverPlayer.y = p.y - diverPlayer.h; diverPlayer.dy = 0; 
             if (p.type === 'belt_left') diverPlayer.x -= 0.8;
             if (p.type === 'belt_right') diverPlayer.x += 0.8;
         }
-        
         if (p.type === 'safe') ctx.fillStyle = '#4caf50';
         else if (p.type === 'danger') ctx.fillStyle = '#ff5252';
         else ctx.fillStyle = '#ffb300'; 
         ctx.fillRect(p.x, p.y, p.w, p.h);
     }
-
     if (!onPlatform) { diverPlayer.y += diverPlayer.dy; } 
-
     ctx.font = '25px Arial'; ctx.fillText('🏃‍♂️', diverPlayer.x - 5, diverPlayer.y + 25);
 
     if (diverPlayer.y < -30) return gameOver('動作太慢，被關在閘門外了💸');
     if (diverPlayer.y > canvas.height) return gameOver('踩空摔斷腿，急診室見🚑');
 
-    // 🌟 保證生路：每次生成平台，絕對會有一塊綠色/黃色安全區
     if (frameCount % 60 === 0) {
         let yPos = canvas.height + 10;
-        
-        // 1. 產生絕對能踩的安全平台
-        let safeW = 70 + Math.random() * 40;
-        let safeX = Math.random() * (canvas.width - safeW);
-        let safeType = 'safe';
-        let r = Math.random();
-        if (r > 0.8) safeType = 'belt_left';
-        else if (r > 0.6) safeType = 'belt_right';
-        
+        let safeW = 70 + Math.random() * 40; let safeX = Math.random() * (canvas.width - safeW);
+        let safeType = 'safe'; let r = Math.random();
+        if (r > 0.8) safeType = 'belt_left'; else if (r > 0.6) safeType = 'belt_right';
         platforms.push({ x: safeX, y: yPos, w: safeW, h: 10, type: safeType });
 
-        // 2. 30% 機率「伴隨」產生紅色危險平台，且保證放在安全平台的另外一側
         if (Math.random() > 0.7) {
-            let dangerW = 50 + Math.random() * 30;
-            let dangerX;
-            if (safeX > canvas.width / 2) {
-                // 安全區在右，危險區放左
-                dangerX = Math.random() * (safeX - dangerW - 10); 
-            } else {
-                // 安全區在左，危險區放右
-                dangerX = safeX + safeW + 10 + Math.random() * (canvas.width - (safeX + safeW + 10) - dangerW);
-            }
-            if (dangerX < 0) dangerX = 0;
-            if (dangerX + dangerW > canvas.width) dangerX = canvas.width - dangerW;
-            
+            let dangerW = 50 + Math.random() * 30; let dangerX;
+            if (safeX > canvas.width / 2) dangerX = Math.random() * (safeX - dangerW - 10); 
+            else dangerX = safeX + safeW + 10 + Math.random() * (canvas.width - (safeX + safeW + 10) - dangerW);
+            if (dangerX < 0) dangerX = 0; if (dangerX + dangerW > canvas.width) dangerX = canvas.width - dangerW;
             platforms.push({ x: dangerX, y: yPos, w: dangerW, h: 10, type: 'danger' });
         }
     }
-
     platforms = platforms.filter(p => p.y > -20);
-
     if (frameCount % 60 === 0) { score++; document.getElementById('game-score').innerText = `深入月台: B${score} 層`; }
     gameAnimationId = requestAnimationFrame(diverLoop);
+}
+
+// === 3. 終極密碼 (Password) 邏輯 ===
+function startPasswordGame() {
+    pwdTarget = Math.floor(Math.random() * 9) + 1; // 產生 1~9 隨機數
+    pwdGuesses = 0;
+    pwdMin = 1; pwdMax = 9;
+    
+    document.getElementById('game-score').innerText = `目前猜了: 0 次`;
+    document.getElementById('game-hint').innerText = '目標在 1 到 9 之間！';
+    document.getElementById('game-hint').style.color = '#888';
+    
+    const ui = document.getElementById('password-ui');
+    ui.innerHTML = ''; // 清空重新生成按鈕
+    
+    for (let i = 1; i <= 9; i++) {
+        let btn = document.createElement('button');
+        btn.innerText = i;
+        btn.className = 'pwd-btn';
+        btn.id = 'pwd-btn-' + i;
+        btn.onclick = () => guessPassword(i);
+        ui.appendChild(btn);
+    }
+}
+
+function guessPassword(num) {
+    if (!isGameRunning) return;
+    pwdGuesses++;
+    document.getElementById('game-score').innerText = `目前猜了: ${pwdGuesses} 次`;
+    
+    if (num === pwdTarget) {
+        document.getElementById('pwd-btn-' + num).classList.add('correct');
+        gameOver(`🎉 答對了！密碼就是 ${pwdTarget}！`);
+    } else {
+        document.getElementById('pwd-btn-' + num).classList.add('wrong');
+        document.getElementById('pwd-btn-' + num).disabled = true;
+        
+        if (num > pwdTarget) {
+            document.getElementById('game-hint').innerText = `${num} 太大了！往下猜👇`;
+            // 自動把比 num 大的按鈕都禁掉
+            for(let i = num; i <= 9; i++) {
+                let b = document.getElementById('pwd-btn-' + i);
+                if(b) { b.disabled = true; b.classList.add('wrong'); }
+            }
+        } else {
+            document.getElementById('game-hint').innerText = `${num} 太小了！往上猜👆`;
+            // 自動把比 num 小的按鈕都禁掉
+            for(let i = 1; i <= num; i++) {
+                let b = document.getElementById('pwd-btn-' + i);
+                if(b) { b.disabled = true; b.classList.add('wrong'); }
+            }
+        }
+        document.getElementById('game-hint').style.color = 'var(--warning)';
+    }
 }
