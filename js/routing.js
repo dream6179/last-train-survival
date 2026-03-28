@@ -1,5 +1,5 @@
 // ==========================================
-// 末班車生存戰 - 核心路徑分揀與運算引擎 (v1.4 終極字首轉乘版)
+// 末班車生存戰 - 核心路徑分揀與運算引擎
 // ==========================================
 
 const operatorMap = {
@@ -15,6 +15,7 @@ function getSmartStationInfo(globalStationData, origin, dest, type) {
     return globalStationData[type].routes[routeKey] || null;
 }
 
+// 🌟 離線演算法 (加入直達車支線保命邏輯)
 function calculateOfflineTime(offlineTimetableData, startName, endName, type) {
     if (!offlineTimetableData || !offlineTimetableData[type]) return null;
     const table = offlineTimetableData[type];
@@ -24,19 +25,25 @@ function calculateOfflineTime(offlineTimetableData, startName, endName, type) {
 
     for (let sKey of startKeys) {
         for (let eKey of endKeys) {
-            const sLine = sKey.match(/[A-Z]+/)[0];
-            const eLine = eKey.match(/[A-Z]+/)[0];
+            const sLineMatch = sKey.match(/[A-Z]+/);
+            const eLineMatch = eKey.match(/[A-Z]+/);
+            if (!sLineMatch || !eLineMatch) continue;
+            
+            const sLine = sLineMatch[0];
+            const eLine = eLineMatch[0];
 
             if (sLine === eLine) {
                 const sData = table[sKey];
 
-                // 🌟 終極防禦：不管方向，只要出發站的 up 或 down 裡面有「專屬目標代碼」，直接抓時間！
                 if (sData.up && typeof sData.up === 'object' && sData.up[eKey] && sData.up[eKey] !== "00:00") return sData.up[eKey];
                 if (sData.down && typeof sData.down === 'object' && sData.down[eKey] && sData.down[eKey] !== "00:00") return sData.down[eKey];
 
-                // 如果不是專屬月台，再用傳統的數字比大小來算方向
-                const sNum = parseInt(sKey.match(/\d+/)[0]);
-                const eNum = parseInt(eKey.match(/\d+/)[0]);
+                const sNumMatch = sKey.match(/\d+/);
+                const eNumMatch = eKey.match(/\d+/);
+                if (!sNumMatch || !eNumMatch) continue;
+                
+                const sNum = parseInt(sNumMatch[0]);
+                const eNum = parseInt(eNumMatch[0]);
                 
                 const direction = sNum < eNum ? 'up' : 'down';
                 const timeData = sData[direction];
@@ -47,10 +54,9 @@ function calculateOfflineTime(offlineTimetableData, startName, endName, type) {
                     return timeData;
                 }
                 else if (typeof timeData === 'object') {
-                    // 🌟 支線精確制導：如果目的地代碼直接就在這個物件裡，直接拿時間！
                     if (timeData[eKey]) return timeData[eKey];
                     
-                    // 橘線 (O) 專屬智慧分流邏輯
+                    // 橘線專屬分流
                     if (sLine === 'O') {
                         if (eNum >= 50) return timeData["O54"] || null;
                         if (eNum >= 13 && eNum <= 21) return timeData["O21"] || null;
@@ -59,6 +65,14 @@ function calculateOfflineTime(offlineTimetableData, startName, endName, type) {
                             times.sort().reverse(); 
                             return times[0];
                         }
+                    }
+                    
+                    // 🌟 修復 2：綠線/紅線直達車支線盲區！
+                    // 如果找不到特定終點的時刻，一律取該方向「最早」的末班車保命！
+                    const times = Object.values(timeData).filter(t => t !== "00:00");
+                    if (times.length > 0) {
+                        times.sort();
+                        return times[0];
                     }
                 }
             }
@@ -127,23 +141,19 @@ function getDirectionName(line, dir) {
     return map[line] ? map[line][dir] : (dir === 'up' ? '上行方向' : '下行方向');
 }
 
-// 核心檢索：撈出該車站所有路線、所有方向的末班車
 async function fetchSingleStationTime(stationName, type, offlineTimetableData, cachedTdxToken) {
     let resultsMap = new Map(); 
     let isOnline = false;
     const operatorCode = operatorMap[type];
     
-    // 🛡️ 防彈裝甲加回來：先嚴格檢查資料是不是壞的！
     if (!offlineTimetableData || !offlineTimetableData[type]) {
         return { status: "error", data: [] };
     }
     
     const table = offlineTimetableData[type];
-
     const stationKeys = Object.keys(table).filter(k => table[k].name === stationName);
     if (stationKeys.length === 0) return { status: "not_found", data: [] };
 
-    // 🕒 幫大腦建立「現在幾點」的跨日判斷基準
     const now = new Date();
     const currentHour = now.getHours();
     const currentMins = now.getMinutes();
@@ -251,35 +261,33 @@ async function fetchSingleStationTime(stationName, type, offlineTimetableData, c
     return { status: finalStatus, data: finalResults };
 }
 
-// 4. 🌟 終極轉乘防線：自動辨識字首換線
+// 4. 🌟 終極轉乘防線：自動辨識字首換線 (加入空值防呆)
 function getOfficialTransferTime(transferData, offlineTimetableData, startName, endName, type) {
     if (!transferData || !transferData[startName]) return null;
     const routes = transferData[startName];
     
-    // 1. 點名道姓的特例站點直接命中 (專門保留給：新北投、小碧潭)
     if (routes[endName]) return routes[endName];
 
-    // 2. 取得字首陣列來判斷是否需要「換線」
+    // 🌟 修復 1：防呆檢查，如果離線字典根本沒載入成功，直接跳過，避免 null 崩潰
+    if (!offlineTimetableData || !offlineTimetableData[type]) return null;
+    
     const table = offlineTimetableData[type];
-    if (!table) return null;
     
     const startKeys = Object.keys(table).filter(k => table[k].name === startName);
     const endKeys = Object.keys(table).filter(k => table[k].name === endName);
     
-    // 抽出英文字首 (例如 中山會抽出 ['G', 'R'])
+    if(startKeys.length === 0 || endKeys.length === 0) return null;
+
     const startPrefixes = startKeys.map(k => k.match(/[A-Z]+/)[0]);
     const endPrefixes = endKeys.map(k => k.match(/[A-Z]+/)[0]);
 
-    // 🌟 核心邏輯：檢查起點和終點是否「沒有」共通的字首 (沒有共通點，代表一定要跨線轉乘)
     const isCrossLine = !startPrefixes.some(p => endPrefixes.includes(p));
     
     if (isCrossLine) {
-        // 如果確定要跨線，就去字典裡找終點站的路線字首（例如找 "BR", "O", "BL"）
         for (let p of endPrefixes) {
             if (routes[p]) return routes[p];
         }
     }
     
-    // 如果沒有跨線 (代表是直達車)，或者字典沒建檔，就回傳 null 讓系統去跑下一層的直達車演算法！
     return null;
 }
