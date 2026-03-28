@@ -1,5 +1,5 @@
 // ==========================================
-// 隱藏彩蛋三引擎 (v4.1 FPS鎖定與 1~99 密碼版)
+// 隱藏彩蛋三引擎 (v4.2 FPS鎖定與 1~99 小鍵盤密碼版)
 // ==========================================
 
 let activeGame = null; 
@@ -33,6 +33,68 @@ let pwdTarget = 0;
 let pwdGuesses = 0;
 let pwdMin = 1; let pwdMax = 99;
 let pwdHighScore = localStorage.getItem('passwordHighScore') || 999; 
+let currentPwdInput = ""; // 儲存當前小鍵盤輸入的數字字串
+
+// 建立小鍵盤 UI (動態插入 DOM)
+function createPasswordKeyboard() {
+    let keyboardHTML = `
+        <div id="custom-keyboard" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 280px; margin-top: 15px;">
+            <button class="pwd-key" onclick="handlePwdKey(1)">1</button>
+            <button class="pwd-key" onclick="handlePwdKey(2)">2</button>
+            <button class="pwd-key" onclick="handlePwdKey(3)">3</button>
+            <button class="pwd-key" onclick="handlePwdKey(4)">4</button>
+            <button class="pwd-key" onclick="handlePwdKey(5)">5</button>
+            <button class="pwd-key" onclick="handlePwdKey(6)">6</button>
+            <button class="pwd-key" onclick="handlePwdKey(7)">7</button>
+            <button class="pwd-key" onclick="handlePwdKey(8)">8</button>
+            <button class="pwd-key" onclick="handlePwdKey(9)">9</button>
+            <button class="pwd-key action-key" onclick="handlePwdKey('backspace')" style="background-color: var(--danger);">⌫</button>
+            <button class="pwd-key" onclick="handlePwdKey(0)">0</button>
+            <button class="pwd-key action-key" id="pwd-submit-key" onclick="submitPasswordGuess()" style="background-color: var(--success);">↵</button>
+        </div>
+        <style>
+            .pwd-key {
+                background-color: #333; color: white; border: none; border-radius: 10px; font-size: 24px; font-weight: bold; padding: 15px 0; cursor: pointer; transition: 0.1s; user-select: none;
+            }
+            .pwd-key:active { transform: scale(0.9); background-color: #555; }
+            .pwd-key:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+            #pwd-display-box {
+                width: 150px; height: 50px; font-size: 32px; font-weight: bold; text-align: center; border-radius: 12px; border: 2px solid #555; background: #222; color: white; display: flex; align-items: center; justify-content: center; letter-spacing: 2px;
+            }
+        </style>
+    `;
+    
+    const uiContainer = document.getElementById('password-ui');
+    if (!document.getElementById('custom-keyboard')) {
+        // 替換原本的 input 框為一個顯示框
+        uiContainer.innerHTML = `
+            <div id="pwd-range-display" style="font-size: 32px; font-weight: bold; color: white; letter-spacing: 2px;">1 ~ 99</div>
+            <div id="pwd-display-box">?</div>
+            ${keyboardHTML}
+        `;
+    }
+}
+
+// 處理小鍵盤按鍵邏輯
+function handlePwdKey(key) {
+    if (!isGameRunning) return;
+    
+    const displayBox = document.getElementById('pwd-display-box');
+    
+    if (key === 'backspace') {
+        currentPwdInput = currentPwdInput.slice(0, -1);
+    } else {
+        // 限制最多輸入兩位數 (因為範圍是 1~99)
+        if (currentPwdInput.length < 2) {
+            // 如果第一個數字是 0，忽略 (除非你未來要開放 0 開頭的彩蛋)
+            if (currentPwdInput.length === 0 && key === 0) return;
+            currentPwdInput += key;
+        }
+    }
+    
+    displayBox.innerText = currentPwdInput === "" ? "?" : currentPwdInput;
+}
+
 
 // === 觸發器 ===
 function triggerEasterEgg(force = false) {
@@ -93,12 +155,17 @@ function initGameCanvas() {
         let showScore = pwdHighScore == 999 ? '無' : `${pwdHighScore} 次`;
         document.getElementById('game-high-score').innerText = `最佳運氣: ${showScore}`;
         
-        // 初始化密碼 UI 狀態
+        createPasswordKeyboard(); // 動態載入小鍵盤 UI
+        
+        // 初始化狀態
         document.getElementById('pwd-range-display').innerText = '1 ~ 99';
         document.getElementById('pwd-range-display').style.color = 'white';
-        document.getElementById('pwd-input').value = '';
-        document.getElementById('pwd-input').disabled = true;
-        document.getElementById('pwd-submit-btn').disabled = true;
+        document.getElementById('pwd-display-box').innerText = '?';
+        currentPwdInput = "";
+        
+        // 禁用按鍵直到遊戲開始
+        document.querySelectorAll('.pwd-key').forEach(btn => btn.disabled = true);
+        
     } else {
         canvas.style.display = 'block';
         pwdUI.style.display = 'none';
@@ -153,10 +220,11 @@ window.addEventListener('DOMContentLoaded', () => {
             if (e.code === 'ArrowLeft') keys.left = true;
             if (e.code === 'ArrowRight') keys.right = true;
         }
-        // 終極密碼支援 Enter 鍵
-        if (activeGame === 'password' && e.code === 'Enter') {
-            e.preventDefault();
-            if(isGameRunning) submitPasswordGuess();
+        // 實體鍵盤支援
+        if (activeGame === 'password') {
+            if (e.code === 'Enter') { e.preventDefault(); if(isGameRunning) submitPasswordGuess(); }
+            if (e.code === 'Backspace') { e.preventDefault(); handlePwdKey('backspace'); }
+            if (e.key >= '0' && e.key <= '9') { handlePwdKey(parseInt(e.key)); }
         }
     });
     document.addEventListener('keyup', (e) => { 
@@ -212,8 +280,9 @@ function gameOver(reason) {
         document.getElementById('game-hint').innerText = reason;
         document.getElementById('game-hint').style.color = 'var(--success)';
         document.getElementById('game-hint').style.fontSize = '16px';
-        document.getElementById('pwd-input').disabled = true;
-        document.getElementById('pwd-submit-btn').disabled = true;
+        
+        // 禁用小鍵盤
+        document.querySelectorAll('.pwd-key').forEach(btn => btn.disabled = true);
         
         if (pwdGuesses < pwdHighScore) {
             pwdHighScore = pwdGuesses; localStorage.setItem('passwordHighScore', pwdHighScore);
@@ -320,41 +389,47 @@ function diverLoop(currentTime) {
     if (frameCount % 60 === 0) { score++; document.getElementById('game-score').innerText = `深入月台: B${score} 層`; }
 }
 
-// === 3. 終極密碼 (Password 1~99) ===
+// === 3. 終極密碼 (Password 1~99) 小鍵盤版 ===
 function startPasswordGame() {
     pwdTarget = Math.floor(Math.random() * 99) + 1; 
     pwdGuesses = 0;
     pwdMin = 1; pwdMax = 99;
+    currentPwdInput = "";
     
     document.getElementById('game-score').innerText = `目前猜了: 0 次`;
-    document.getElementById('game-hint').innerText = '請輸入數字並點擊猜測！';
+    document.getElementById('game-hint').innerText = '請點擊數字並猜測！';
     document.getElementById('game-hint').style.color = '#888';
     
     document.getElementById('pwd-range-display').innerText = `${pwdMin} ~ ${pwdMax}`;
     document.getElementById('pwd-range-display').style.color = 'white';
     
-    const inputObj = document.getElementById('pwd-input');
-    inputObj.value = '';
-    inputObj.disabled = false;
-    document.getElementById('pwd-submit-btn').disabled = false;
-    inputObj.focus(); // 自動幫手機叫出鍵盤
+    document.getElementById('pwd-display-box').innerText = '?';
+    
+    // 啟用小鍵盤
+    document.querySelectorAll('.pwd-key').forEach(btn => btn.disabled = false);
 }
 
 function submitPasswordGuess() {
-    if (!isGameRunning) return;
-    const inputObj = document.getElementById('pwd-input');
-    const num = parseInt(inputObj.value);
+    if (!isGameRunning || currentPwdInput === "") return;
+    
+    const num = parseInt(currentPwdInput);
     
     if (isNaN(num) || num <= pwdMin || num >= pwdMax) {
         document.getElementById('game-hint').innerText = `請輸入大於 ${pwdMin} 且小於 ${pwdMax} 的數字！`;
         document.getElementById('game-hint').style.color = 'var(--warning)';
-        inputObj.value = '';
+        
+        // 輸入錯誤清空
+        currentPwdInput = "";
+        document.getElementById('pwd-display-box').innerText = "?";
         return;
     }
     
     pwdGuesses++;
     document.getElementById('game-score').innerText = `目前猜了: ${pwdGuesses} 次`;
-    inputObj.value = '';
+    
+    // 送出後清空輸入
+    currentPwdInput = "";
+    document.getElementById('pwd-display-box').innerText = "?";
     
     if (num === pwdTarget) {
         document.getElementById('pwd-range-display').innerText = `🎉 ${pwdTarget} 🎉`;
@@ -376,5 +451,4 @@ function submitPasswordGuess() {
             document.getElementById('game-hint').innerText = `只剩一個數字了，你沒得選啦🤣`;
         }
     }
-    inputObj.focus();
 }
