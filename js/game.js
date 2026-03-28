@@ -1,5 +1,5 @@
 // ==========================================
-// 隱藏彩蛋三引擎 (v4.3 道具擴充與策略版)
+// 隱藏彩蛋三引擎 (v4.4 道具平衡與二段跳版)
 // ==========================================
 
 let activeGame = null; 
@@ -14,12 +14,11 @@ const FRAME_MIN_TIME = 1000 / 60; // 鎖定最高 60 FPS
 
 // === 跑酷遊戲 (Runner) ===
 let runnerClicks = 0; let runnerTimer;
-let runnerPlayer = { x: 280, y: 140, w: 20, h: 30, dy: 0, gravity: 0.6, jumpPower: -10, isGrounded: true };
+let runnerPlayer = { x: 280, y: 140, w: 20, h: 30, dy: 0, gravity: 0.6, jumpPower: -10, isGrounded: true, doubleJumpsLeft: 1 };
 let runnerObstacles = [];
 let runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
-// 新增道具系統
 let runnerItems = [];
-let shoeTimer = 0;    // 增高鞋計時器
+let shoeTimer = 0;    // 增高鞋(二段跳)計時器
 let rocketTimer = 0;  // 火箭計時器
 let inputPressing = false; // 追蹤是否正在長按 (用於火箭推進)
 
@@ -31,8 +30,7 @@ let diverHighScore = localStorage.getItem('deepStationHighScore') || 0;
 let keys = { left: false, right: false };
 let touchLeft = false; let touchRight = false;
 let platformSpeed = 0.8; 
-// 新增愛心系統
-let diverHearts = 0;
+let diverHearts = 0; // 愛心系統 (上限 3)
 let diverItems = [];
 
 // === 終極密碼 (Password) 1~99 ===
@@ -164,7 +162,7 @@ function initGameCanvas() {
 
         if (activeGame === 'runner') {
             document.getElementById('game-title').innerText = '🏃‍♂️ 社畜的最後衝刺';
-            document.getElementById('game-hint').innerText = '點擊跳躍，可撿增高鞋與火箭道具！';
+            document.getElementById('game-hint').innerText = '點擊跳躍，可撿二段跳與火箭道具！';
             runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
             document.getElementById('game-high-score').innerText = `歷史最高: ${runnerHighScore} 秒`;
         } else {
@@ -184,7 +182,7 @@ function startActiveGame() {
     lastRenderTime = performance.now(); 
 
     if (activeGame === 'runner') {
-        runnerPlayer.y = 140; runnerPlayer.dy = 0; runnerPlayer.isGrounded = true;
+        runnerPlayer.y = 140; runnerPlayer.dy = 0; runnerPlayer.isGrounded = true; runnerPlayer.doubleJumpsLeft = 1;
         runnerObstacles = []; runnerItems = []; 
         shoeTimer = 0; rocketTimer = 0; inputPressing = false;
         runnerLoop(performance.now());
@@ -247,10 +245,19 @@ function handleTouchPoint(e, canvas) {
 }
 
 function jumpRunner() {
-    let isDashing = (rocketTimer > 0 && inputPressing); // 衝刺狀態不可普通跳躍
-    if (runnerPlayer.isGrounded && isGameRunning && !isDashing) { 
-        runnerPlayer.dy = runnerPlayer.jumpPower; 
-        runnerPlayer.isGrounded = false; 
+    let isDashing = (rocketTimer > 0 && inputPressing); 
+    if (isGameRunning && !isDashing) { 
+        // 第一次跳躍
+        if (runnerPlayer.isGrounded) { 
+            runnerPlayer.dy = runnerPlayer.jumpPower; 
+            runnerPlayer.isGrounded = false; 
+            runnerPlayer.doubleJumpsLeft = 1; // 離開地面重置一次二段跳扣打
+        } 
+        // 擁有增高鞋道具的二段跳
+        else if (shoeTimer > 0 && runnerPlayer.doubleJumpsLeft > 0) {
+            runnerPlayer.dy = runnerPlayer.jumpPower; 
+            runnerPlayer.doubleJumpsLeft--; // 扣除二段跳次數
+        }
     }
 }
 
@@ -289,7 +296,7 @@ function gameOver(reason) {
     if (typeof updateCollectionUI === 'function') updateCollectionUI();
 }
 
-// === 1. 跑酷遊戲 (Runner) FPS 鎖定版 + 道具 ===
+// === 1. 跑酷遊戲 (Runner) FPS 鎖定版 + 10秒二段跳/火箭 ===
 function runnerLoop(currentTime) {
     if (!isGameRunning || activeGame !== 'runner') return;
     gameAnimationId = requestAnimationFrame(runnerLoop);
@@ -305,30 +312,33 @@ function runnerLoop(currentTime) {
     if (shoeTimer > 0) shoeTimer--;
     if (rocketTimer > 0) rocketTimer--;
 
-    // 判斷狀態
     let isDashing = (rocketTimer > 0 && inputPressing);
-    runnerPlayer.jumpPower = (shoeTimer > 0) ? -13 : -10; // 增高鞋強化跳躍
 
     if (isDashing) {
-        runnerPlayer.y = 90; // 火箭起飛高度
+        runnerPlayer.y = 90; 
         runnerPlayer.dy = 0; runnerPlayer.gravity = 0; runnerPlayer.isGrounded = false;
         ctx.font = '35px Arial'; ctx.fillText('🚀', runnerPlayer.x, runnerPlayer.y + 30);
     } else {
         runnerPlayer.gravity = 0.6;
         runnerPlayer.dy += runnerPlayer.gravity; runnerPlayer.y += runnerPlayer.dy;
-        if (runnerPlayer.y >= 140) { runnerPlayer.y = 140; runnerPlayer.dy = 0; runnerPlayer.isGrounded = true; }
+        if (runnerPlayer.y >= 140) { 
+            runnerPlayer.y = 140; 
+            runnerPlayer.dy = 0; 
+            runnerPlayer.isGrounded = true; 
+            runnerPlayer.doubleJumpsLeft = 1; // 落地補充二段跳
+        }
         ctx.font = '35px Arial'; ctx.fillText('🏃‍♂️', runnerPlayer.x, runnerPlayer.y + 30);
     }
 
-    let speedMult = isDashing ? 3 : 1; // 衝刺時畫面背景(障礙物)加速
+    let speedMult = isDashing ? 3 : 1; 
 
     // 繪製增益 UI
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.font = '12px sans-serif';
     let uiY = 20;
-    if (shoeTimer > 0) { ctx.fillText(`👟 增高鞋: ${Math.ceil(shoeTimer/60)}s`, 10, uiY); uiY += 18; }
+    if (shoeTimer > 0) { ctx.fillText(`👟 二段跳: ${Math.ceil(shoeTimer/60)}s`, 10, uiY); uiY += 18; }
     if (rocketTimer > 0) { ctx.fillText(`🚀 火箭(長按): ${Math.ceil(rocketTimer/60)}s`, 10, uiY); }
 
-    // 生成道具 (約每 6 秒)
+    // 生成道具
     if (frameCount % 360 === 0) {
         runnerItems.push({ x: -30, y: 70 + Math.random() * 20, w: 25, h: 25, type: Math.random() > 0.5 ? 'shoe' : 'rocket' });
     }
@@ -341,8 +351,9 @@ function runnerLoop(currentTime) {
 
         let px = runnerPlayer.x, py = runnerPlayer.y, pw = 20, ph = 30;
         if (px < item.x + item.w && px + pw > item.x && py < item.y + item.h && py + ph > item.y) {
-            if (item.type === 'shoe') shoeTimer = 1800; // 重置為 30秒
-            if (item.type === 'rocket') rocketTimer = 1800;
+            // 新道具覆蓋舊道具，重置 10 秒 (600 frames)
+            if (item.type === 'shoe') { shoeTimer = 600; rocketTimer = 0; }
+            if (item.type === 'rocket') { rocketTimer = 600; shoeTimer = 0; }
             runnerItems.splice(i, 1);
         } else if (item.x > canvas.width + 30) {
             runnerItems.splice(i, 1);
@@ -362,7 +373,6 @@ function runnerLoop(currentTime) {
         let px = runnerPlayer.x + 5, py = runnerPlayer.y + 5, pw = 15, ph = 25; 
         let ox = obs.x + 5, oy = obs.y + 5, ow = 15, oh = 20;
         
-        // 只有在非衝刺狀態才會被絆倒
         if (!isDashing && px < ox + ow && px + pw > ox && py < oy + oh && py + ph > oy) {
             return gameOver('慘了，被絆倒錯過車了💸');
         }
@@ -372,7 +382,7 @@ function runnerLoop(currentTime) {
     if (frameCount % 60 === 0) { score++; document.getElementById('game-score').innerText = `存活時間: ${score} 秒`; }
 }
 
-// === 2. 下樓梯遊戲 (Diver) FPS 鎖定版 + 愛心 ===
+// === 2. 下樓梯遊戲 (Diver) FPS 鎖定版 + 3血量上限 ===
 function diverLoop(currentTime) {
     if (!isGameRunning || activeGame !== 'diver') return;
     gameAnimationId = requestAnimationFrame(diverLoop);
@@ -385,9 +395,10 @@ function diverLoop(currentTime) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frameCount++;
 
-    // 繪製愛心 UI
+    // 繪製愛心 UI (滿 3 顆顯示 MAX)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.font = '16px sans-serif';
-    ctx.fillText(`❤️ x ${diverHearts}`, canvas.width - 65, 25);
+    let heartText = `❤️ x ${diverHearts}${diverHearts >= 3 ? ' (MAX)' : ''}`;
+    ctx.fillText(heartText, canvas.width - (diverHearts >= 3 ? 95 : 65), 25);
 
     if (frameCount % 600 === 0) platformSpeed += 0.05; 
 
@@ -402,11 +413,10 @@ function diverLoop(currentTime) {
         let p = platforms[i]; p.y -= platformSpeed; 
         if (diverPlayer.dy > 0 && diverPlayer.x + diverPlayer.w > p.x && diverPlayer.x < p.x + p.w && diverPlayer.y + diverPlayer.h >= p.y && diverPlayer.y + diverPlayer.h <= p.y + diverPlayer.dy + platformSpeed + 5) {
             
-            // 碰到紅梯，優先消耗愛心
             if (p.type === 'danger') {
                 if (diverHearts > 0) {
                     diverHearts--;
-                    p.type = 'safe'; // 淨化紅梯
+                    p.type = 'safe'; 
                 } else {
                     return gameOver('踩到碎玻璃受傷，急診送醫🚑');
                 }
@@ -445,7 +455,6 @@ function diverLoop(currentTime) {
 
         score++; document.getElementById('game-score').innerText = `深入月台: B${score} 層`; 
         
-        // 每 20 層生成一顆愛心在剛剛生成的安全平台上
         if (score > 0 && score % 20 === 0) {
             let target = platforms.find(p => p.y === yPos && p.type !== 'danger') || platforms[platforms.length - 1];
             diverItems.push({ x: target.x + target.w / 2 - 10, y: yPos - 25, w: 20, h: 20, type: 'heart' });
@@ -460,7 +469,8 @@ function diverLoop(currentTime) {
 
         let px = diverPlayer.x, py = diverPlayer.y, pw = diverPlayer.w, ph = diverPlayer.h;
         if (px < item.x + item.w && px + pw > item.x && py < item.y + item.h && py + ph > item.y) {
-            diverHearts++; diverItems.splice(i, 1);
+            if (diverHearts < 3) diverHearts++; // 上限鎖定 3 顆
+            diverItems.splice(i, 1);
         } else if (item.y < -30) {
             diverItems.splice(i, 1);
         }
