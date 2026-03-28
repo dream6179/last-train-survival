@@ -103,6 +103,12 @@
         .pwd-btn:disabled { cursor: not-allowed; transform: none; }
         .pwd-btn.wrong { opacity: 0.3; background-color: #222; border-color: #222; }
         .pwd-btn.correct { background-color: var(--success); border-color: #fff; animation: pop 0.3s; }
+        
+        /* 音量控制條樣式美化 */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--info); cursor: pointer; margin-top: -6px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #444; border-radius: 2px; }
+
         @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
     </style>
     
@@ -123,7 +129,7 @@
             <div class="select-group">
                 <select class="type-select" id="start-type" onchange="updateStationOptions('start')">
                     <option value="trtc" selected>北捷</option>
-                    </select>
+                </select>
                 <div class="autocomplete-wrapper">
                     <input type="text" id="start-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
                     <div id="start-autocomplete-list" class="autocomplete-list"></div>
@@ -138,7 +144,7 @@
             <div class="select-group">
                 <select class="type-select" id="end-type" onchange="updateStationOptions('end')">
                     <option value="trtc" selected>北捷</option>
-                    </select>
+                </select>
                 <div class="autocomplete-wrapper">
                     <input type="text" id="end-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
                     <div id="end-autocomplete-list" class="autocomplete-list"></div>
@@ -171,7 +177,7 @@
             <div class="select-group">
                 <select class="type-select" id="search-type" onchange="updateStationOptions('search')">
                     <option value="trtc" selected>北捷</option>
-                    </select>
+                </select>
                 <div class="autocomplete-wrapper">
                     <input type="text" id="search-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
                     <div id="search-autocomplete-list" class="autocomplete-list"></div>
@@ -211,21 +217,40 @@
         <button class="plan-b-option" onclick="shareApp()" style="background-color: #333; color: white; width: 100%; justify-content: center; margin-bottom: 20px;">
             <span class="option-name">🔗 分享這個求生工具給朋友</span>
         </button>
+        
         <h4 style="color: white; margin-bottom: 10px;">📖 快速使用說明</h4>
         <ul style="padding-left: 20px; line-height: 1.8;">
             <li>點擊標題右側的「🔍」可切換至全查詢模式。</li>
             <li>點擊輸入框時，按一下旁邊的星星「☆」即可加入最愛並置頂。</li>
             <li>系統會優先連線交通部 TDX，若遇斷網則自動啟動離線演算法。</li>
+            <li><span style="color: var(--warning); font-weight: bold;">【轉乘防禦機制】</span>只要偵測到需要跨線轉乘，系統為求安全，一律會自動篩選出「最嚴格（最早）」的發車死線。寧可讓您在月台多滑幾分鐘手機，也絕不讓您錯過末班車！</li>
             <li>倒數開始後，點擊紅色按鈕可開啟「發車通知」，倒數 10 分鐘時會響鈴！</li>
         </ul>
         
+        <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px;">
+            <h4 style="color: white; margin-top: 0; margin-bottom: 10px;">🎵 背景音樂設定</h4>
+            <div style="display: flex; align-items: center; gap: 15px; background: #2c2c2c; padding: 10px 15px; border-radius: 10px;">
+                <button id="mute-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0;" onclick="toggleMute()">🔊</button>
+                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5" style="flex-grow: 1;" oninput="updateVolume(this.value)">
+            </div>
+            <p style="font-size: 11px; color: #888; margin-top: 5px; text-align: center;">電台模組建置中，敬請期待...</p>
+        </div>
+
         <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px;">
             <h4 style="color: var(--warning); margin-top: 0; margin-bottom: 10px;">🏆 隱藏彩蛋收集冊</h4>
             <div id="collection-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
         </div>
 
-        <div onclick="if(typeof triggerEasterEgg3 === 'function') triggerEasterEgg3()" style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px; cursor: pointer;">
-            當前版本：v1.61
+        <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px; text-align: center;">
+            <h4 style="color: white; margin-top: 0; margin-bottom: 15px;">👨‍💻 開發者資訊</h4>
+            <a href="https://home.gamer.com.tw/artwork.php?sn=6310367" target="_blank" class="plan-b-option" style="background-color: #1a1a1a; color: white; border: 1px solid #555; justify-content: center; text-decoration: none;">
+                <span class="option-name">📝 綠茶地瓜的開發日誌 (巴哈姆特)</span>
+            </a>
+            <p style="font-size: 11px; color: #888; margin-top: 8px;">查看最新版本資訊、碎碎念與 App 開發秘辛</p>
+        </div>
+
+        <div onclick="if(typeof triggerEasterEgg3 === 'function') triggerEasterEgg3()" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px; cursor: pointer;">
+            當前版本：v1.62
         </div>
     </div>
 </div>
@@ -254,6 +279,25 @@
 
 <script>
     let currentMode = 'survival'; 
+    let bgmVolume = 0.5;
+    let isBgmMuted = false;
+
+    // 🎵 音量控制函數預備
+    function toggleMute() {
+        isBgmMuted = !isBgmMuted;
+        const btn = document.getElementById('mute-btn');
+        const slider = document.getElementById('volume-slider');
+        btn.innerText = isBgmMuted ? '🔇' : '🔊';
+        slider.value = isBgmMuted ? 0 : bgmVolume;
+        // 未來在這裡對接音檔: if(audioElement) audio.volume = slider.value;
+    }
+
+    function updateVolume(val) {
+        bgmVolume = val;
+        isBgmMuted = (val == 0);
+        document.getElementById('mute-btn').innerText = isBgmMuted ? '🔇' : '🔊';
+        // 未來在這裡對接音檔: if(audioElement) audio.volume = bgmVolume;
+    }
 
     function toggleAppMode() {
         const modeSurvival = document.getElementById('mode-survival');
@@ -345,7 +389,7 @@
     const speedModeText = document.getElementById('speed-mode');
     const planBContainer = document.getElementById('plan-b-container'); 
 
-    const defaultStations = { 'trtc': '台北車站', 'tymetro': '台北車站', 'krtc': '高雄車站', 'tmrt': '高鐵台中站', 'tra': '台北車站', 'thsr': '台北車站', 'intercity': '台北車站', 'bus': '台北車站' };
+    const defaultStations = { 'trtc': '台北車站' };
 
     function updateCollectionUI() {
         const list = document.getElementById('collection-list');
