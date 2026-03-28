@@ -1,5 +1,5 @@
 // ==========================================
-// 隱藏彩蛋三引擎 (v4.9 漸進加速與路人衝撞版)
+// 隱藏彩蛋三引擎 (v5.0 虛擬搖桿與路人衝撞版)
 // ==========================================
 
 let activeGame = null; 
@@ -40,6 +40,59 @@ let pwdMin = 1; let pwdMax = 99;
 let pwdHighScore = localStorage.getItem('passwordHighScore') || 999; 
 let currentPwdInput = ""; 
 
+// 建立虛擬控制按鈕 (動態插入 DOM)
+function createVirtualControls(type) {
+    let controlBox = document.getElementById('virtual-controls');
+    if (!controlBox) {
+        controlBox = document.createElement('div');
+        controlBox.id = 'virtual-controls';
+        controlBox.style.width = '100%';
+        controlBox.style.marginTop = '15px';
+        controlBox.style.marginBottom = '10px';
+        controlBox.style.display = 'none';
+
+        // 插入在 password-ui 前面
+        const pwdUI = document.getElementById('password-ui');
+        pwdUI.parentNode.insertBefore(controlBox, pwdUI);
+    }
+
+    if (type === 'runner') {
+        controlBox.innerHTML = `
+            <button id="v-btn-jump" style="width: 100%; padding: 15px; font-size: 20px; font-weight: bold; border-radius: 12px; background: var(--info); color: white; border: none; touch-action: none; user-select: none; box-shadow: 0 5px 0 #1565C0; transition: 0.1s;">🚀 點此跳躍</button>
+        `;
+        const btn = document.getElementById('v-btn-jump');
+        const press = (e) => { e.preventDefault(); btn.style.transform = 'translateY(5px)'; btn.style.boxShadow = '0 0 0 #1565C0'; jumpRunner(); };
+        const release = (e) => { e.preventDefault(); btn.style.transform = 'translateY(0)'; btn.style.boxShadow = '0 5px 0 #1565C0'; };
+        
+        btn.addEventListener('mousedown', press); btn.addEventListener('touchstart', press, {passive: false});
+        btn.addEventListener('mouseup', release); btn.addEventListener('touchend', release); btn.addEventListener('mouseleave', release);
+        controlBox.style.display = 'block';
+    } else if (type === 'diver') {
+        controlBox.innerHTML = `
+            <div style="display: flex; gap: 15px; justify-content: space-between;">
+                <button id="v-btn-left" style="flex: 1; padding: 15px; font-size: 20px; font-weight: bold; border-radius: 12px; background: var(--warning); color: #121212; border: none; touch-action: none; user-select: none; box-shadow: 0 5px 0 #cc8e00; transition: 0.1s;">◀ 左移</button>
+                <button id="v-btn-right" style="flex: 1; padding: 15px; font-size: 20px; font-weight: bold; border-radius: 12px; background: var(--warning); color: #121212; border: none; touch-action: none; user-select: none; box-shadow: 0 5px 0 #cc8e00; transition: 0.1s;">右移 ▶</button>
+            </div>
+        `;
+        const btnL = document.getElementById('v-btn-left');
+        const btnR = document.getElementById('v-btn-right');
+
+        const pressL = (e) => { e.preventDefault(); touchLeft = true; btnL.style.transform = 'translateY(5px)'; btnL.style.boxShadow = '0 0 0 #cc8e00'; };
+        const releaseL = (e) => { e.preventDefault(); touchLeft = false; btnL.style.transform = 'translateY(0)'; btnL.style.boxShadow = '0 5px 0 #cc8e00'; };
+        btnL.addEventListener('mousedown', pressL); btnL.addEventListener('touchstart', pressL, {passive: false});
+        btnL.addEventListener('mouseup', releaseL); btnL.addEventListener('touchend', releaseL); btnL.addEventListener('mouseleave', releaseL);
+
+        const pressR = (e) => { e.preventDefault(); touchRight = true; btnR.style.transform = 'translateY(5px)'; btnR.style.boxShadow = '0 0 0 #cc8e00'; };
+        const releaseR = (e) => { e.preventDefault(); touchRight = false; btnR.style.transform = 'translateY(0)'; btnR.style.boxShadow = '0 5px 0 #cc8e00'; };
+        btnR.addEventListener('mousedown', pressR); btnR.addEventListener('touchstart', pressR, {passive: false});
+        btnR.addEventListener('mouseup', releaseR); btnR.addEventListener('touchend', releaseR); btnR.addEventListener('mouseleave', releaseR);
+
+        controlBox.style.display = 'block';
+    } else {
+        controlBox.style.display = 'none';
+    }
+}
+
 // 建立小鍵盤 UI
 function createPasswordKeyboard() {
     let keyboardHTML = `
@@ -58,9 +111,9 @@ function createPasswordKeyboard() {
             <button class="pwd-key action-key" id="pwd-submit-key" onclick="submitPasswordGuess()" style="background-color: var(--success);">↵</button>
         </div>
         <style>
-            .pwd-key { background-color: #333; color: white; border: none; border-radius: 10px; font-size: 24px; font-weight: bold; padding: 15px 0; cursor: pointer; transition: 0.1s; user-select: none; }
-            .pwd-key:active { transform: scale(0.9); background-color: #555; }
-            .pwd-key:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+            .pwd-key { background-color: #333; color: white; border: none; border-radius: 10px; font-size: 24px; font-weight: bold; padding: 15px 0; cursor: pointer; transition: 0.1s; user-select: none; box-shadow: 0 4px 0 #222; }
+            .pwd-key:active { transform: translateY(4px); box-shadow: 0 0 0 #222; background-color: #555; }
+            .pwd-key:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
             #pwd-display-box { width: 150px; height: 50px; font-size: 32px; font-weight: bold; text-align: center; border-radius: 12px; border: 2px solid #555; background: #222; color: white; display: flex; align-items: center; justify-content: center; letter-spacing: 2px; }
         </style>
     `;
@@ -138,6 +191,9 @@ function initGameCanvas() {
     document.getElementById('start-game-btn').innerText = '開始挑戰';
     document.getElementById('game-score').innerText = '準備中...';
 
+    // 呼叫虛擬搖桿產生器
+    createVirtualControls(activeGame);
+
     if (activeGame === 'password') {
         canvas.style.display = 'none'; pwdUI.style.display = 'flex';
         document.getElementById('game-title').innerText = '🔢 終極密碼';
@@ -166,7 +222,7 @@ function initGameCanvas() {
             document.getElementById('game-high-score').innerText = `歷史最高: ${runnerHighScore} 秒`;
         } else {
             document.getElementById('game-title').innerText = '🚇 直奔最深月台';
-            document.getElementById('game-hint').innerText = '點擊左右閃避，每20層送愛心抵擋紅梯！';
+            document.getElementById('game-hint').innerText = '躲避紅梯，每20層送愛心抵擋傷害！';
             diverHighScore = localStorage.getItem('deepStationHighScore') || 0;
             document.getElementById('game-high-score').innerText = `歷史最高: B${diverHighScore} 層`;
         }
@@ -224,6 +280,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 保留原本的畫布點擊支援
     canvas.addEventListener('mousedown', (e) => { handleTouchPoint(e, canvas); });
     canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchPoint(e.touches[0], canvas); }, {passive: false});
     canvas.addEventListener('mouseup', () => { touchLeft = false; touchRight = false; });
@@ -264,10 +321,7 @@ function gameOver(reason) {
         ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = 'var(--danger)'; ctx.font = '22px bold sans-serif';
         
-        // 為了讓過長的死因能自動換行或縮小字體顯示
-        if (reason.length > 15) {
-            ctx.font = '16px bold sans-serif';
-        }
+        if (reason.length > 15) { ctx.font = '16px bold sans-serif'; }
         ctx.fillText(reason, 20, canvas.height / 2);
 
         if (activeGame === 'runner' && score > runnerHighScore) {
@@ -294,7 +348,7 @@ function gameOver(reason) {
     if (typeof updateCollectionUI === 'function') updateCollectionUI();
 }
 
-// === 1. 跑酷遊戲 (Runner) FPS 鎖定版 + 路人衝撞機制 ===
+// === 1. 跑酷遊戲 (Runner) ===
 function runnerLoop(currentTime) {
     if (!isGameRunning || activeGame !== 'runner') return;
     gameAnimationId = requestAnimationFrame(runnerLoop);
@@ -309,10 +363,8 @@ function runnerLoop(currentTime) {
 
     if (shoeTimer > 0) shoeTimer--;
 
-    // 漸進加速邏輯
     let speedMult = Math.min(2.0, 1.0 + Math.floor(score / 30) * 0.1);
 
-    // 處理跳躍與重力
     runnerPlayer.gravity = 0.6;
     runnerPlayer.dy += runnerPlayer.gravity; runnerPlayer.y += runnerPlayer.dy;
     
@@ -328,7 +380,6 @@ function runnerLoop(currentTime) {
     }
     ctx.font = '35px Arial'; ctx.fillText('🏃‍♂️', runnerPlayer.x, runnerPlayer.y + 30);
 
-    // 繪製增益 UI
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.font = '12px sans-serif';
     let uiY = 20;
     let skillText = runnerShoesCollected >= 50 ? '三段跳' : (runnerShoesCollected >= 10 ? '二段跳' : '普通跳');
@@ -347,7 +398,6 @@ function runnerLoop(currentTime) {
         ctx.fillText(`⏱️ 體驗二段跳: ${Math.ceil(shoeTimer/60)}s`, 10, uiY); 
     }
 
-    // 生成平地鞋子
     let itemSpawnRate = Math.max(150, Math.floor(300 / speedMult));
     if (frameCount % itemSpawnRate === 0) {
         let isConflict = runnerObstacles.some(obs => obs.x < 50 && obs.x > -80);
@@ -356,7 +406,6 @@ function runnerLoop(currentTime) {
         }
     }
 
-    // 更新道具
     for (let i = runnerItems.length - 1; i >= 0; i--) {
         let item = runnerItems[i];
         item.x += 5 * speedMult;
@@ -372,36 +421,30 @@ function runnerLoop(currentTime) {
         }
     }
 
-    // 生成與更新障礙物 / 飛鳥 / 趕路路人
     let obsSpawnRate1 = Math.max(45, Math.floor(90 / speedMult));
     let obsSpawnRate2 = Math.max(65, Math.floor(130 / speedMult));
     
     if (frameCount % obsSpawnRate1 === 0 || (frameCount % obsSpawnRate2 === 0 && Math.random() > 0.5)) {
         let isConflict = runnerObstacles.some(obs => obs.x < 50 && obs.x > -80);
         
-        // 鞋子越多，鳥越容易出現 (最高 40% 機率)
         let birdChance = 0.05 + Math.min(runnerShoesCollected * 0.015, 0.35); 
         let spawnBird = Math.random() < birdChance;
-        
-        // 解鎖二段跳後，有 25% 機率生成移動極快的「趕路路人」
         let spawnRusher = (runnerShoesCollected >= 10) && (Math.random() < 0.25);
 
         if (spawnBird && !isConflict) {
             let birdY = 70 + Math.random() * 30; 
             runnerObstacles.push({ x: -30, y: birdY, w: 20, h: 20, type: '🐦', speedX: 5.5 });
         } else if (spawnRusher && !isConflict) {
-            // 趕路路人的基礎速度是 9 (一般障礙物是 5)
             runnerObstacles.push({ x: -30, y: 145, w: 20, h: 25, type: '🏃', speedX: 9 });
         } else {
             runnerObstacles.push({ x: -30, y: 145, w: 20, h: 25, type: Math.random() > 0.4 ? '🚧' : '🧹', speedX: 5 });
         }
     }
 
-    // 更新障礙物位置
     for (let i = runnerObstacles.length - 1; i >= 0; i--) {
         let obs = runnerObstacles[i]; 
         let baseSpeed = obs.speedX || 5; 
-        obs.x += baseSpeed * speedMult; // 套用自身速度與全域加速倍率
+        obs.x += baseSpeed * speedMult; 
         
         ctx.font = '25px Arial'; ctx.fillText(obs.type, obs.x, obs.y + 25);
 
