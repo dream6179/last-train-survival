@@ -1,5 +1,5 @@
 // ==========================================
-// 隱藏彩蛋三引擎 (v4.6 鞋子成長系統與飛鳥版)
+// 隱藏彩蛋三引擎 (v4.8 漸進加速硬核版)
 // ==========================================
 
 let activeGame = null; 
@@ -18,8 +18,8 @@ let runnerPlayer = { x: 280, y: 140, w: 20, h: 30, dy: 0, gravity: 0.6, jumpPowe
 let runnerObstacles = [];
 let runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
 let runnerItems = [];
-let shoeTimer = 0; // 暫時二段跳計時器
-let runnerShoesCollected = parseInt(localStorage.getItem('runnerShoesCollected')) || 0; // 永久鞋子收集數
+let shoeTimer = 0; 
+let runnerShoesCollected = 0; // 單局鞋子收集數
 
 // === 下樓梯遊戲 (Diver) ===
 let diverClicks = 0; let diverTimer;
@@ -29,7 +29,7 @@ let diverHighScore = localStorage.getItem('deepStationHighScore') || 0;
 let keys = { left: false, right: false };
 let touchLeft = false; let touchRight = false;
 let platformSpeed = 0.8; 
-let diverHearts = 0; // 愛心系統 (上限 3)
+let diverHearts = 0; 
 let diverItems = [];
 
 // === 終極密碼 (Password) 1~99 ===
@@ -161,7 +161,7 @@ function initGameCanvas() {
 
         if (activeGame === 'runner') {
             document.getElementById('game-title').innerText = '🏃‍♂️ 社畜的最後衝刺';
-            document.getElementById('game-hint').innerText = '收集鞋子可永久進化跳躍能力！小心空中的鳥！';
+            document.getElementById('game-hint').innerText = '收集鞋子進化能力！隨著時間速度會越來越快！';
             runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
             document.getElementById('game-high-score').innerText = `歷史最高: ${runnerHighScore} 秒`;
         } else {
@@ -183,7 +183,7 @@ function startActiveGame() {
     if (activeGame === 'runner') {
         runnerPlayer.y = 140; runnerPlayer.dy = 0; runnerPlayer.isGrounded = true; runnerPlayer.airJumpsLeft = 0;
         runnerObstacles = []; runnerItems = []; 
-        shoeTimer = 0;
+        shoeTimer = 0; runnerShoesCollected = 0; 
         runnerLoop(performance.now());
     } else if (activeGame === 'diver') {
         diverPlayer.x = 165; diverPlayer.y = 50; diverPlayer.dx = 0; diverPlayer.dy = 0;
@@ -289,7 +289,7 @@ function gameOver(reason) {
     if (typeof updateCollectionUI === 'function') updateCollectionUI();
 }
 
-// === 1. 跑酷遊戲 (Runner) FPS 鎖定版 + 永久鞋子收集/飛鳥系統 ===
+// === 1. 跑酷遊戲 (Runner) FPS 鎖定版 + 漸進加速機制 ===
 function runnerLoop(currentTime) {
     if (!isGameRunning || activeGame !== 'runner') return;
     gameAnimationId = requestAnimationFrame(runnerLoop);
@@ -304,6 +304,9 @@ function runnerLoop(currentTime) {
 
     if (shoeTimer > 0) shoeTimer--;
 
+    // 🌟 核心加速邏輯：每 30 秒增加 0.1 (10%)，最高到 2.0 (200%)
+    let speedMult = Math.min(2.0, 1.0 + Math.floor(score / 30) * 0.1);
+
     // 處理跳躍與重力
     runnerPlayer.gravity = 0.6;
     runnerPlayer.dy += runnerPlayer.gravity; runnerPlayer.y += runnerPlayer.dy;
@@ -313,7 +316,7 @@ function runnerLoop(currentTime) {
         runnerPlayer.dy = 0; 
         runnerPlayer.isGrounded = true; 
         
-        // 落地重置空中跳躍次數 (依據收集進度或 Buff)
+        // 落地重置空中跳躍次數
         if (runnerShoesCollected >= 50) runnerPlayer.airJumpsLeft = 2;
         else if (runnerShoesCollected >= 10) runnerPlayer.airJumpsLeft = 1;
         else if (shoeTimer > 0) runnerPlayer.airJumpsLeft = 1;
@@ -325,31 +328,41 @@ function runnerLoop(currentTime) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.font = '12px sans-serif';
     let uiY = 20;
     let skillText = runnerShoesCollected >= 50 ? '三段跳' : (runnerShoesCollected >= 10 ? '二段跳' : '普通跳');
-    ctx.fillText(`👟 收集鞋子: ${runnerShoesCollected} (當前能力: ${skillText})`, 10, uiY); uiY += 18;
+    ctx.fillText(`👟 本局收集: ${runnerShoesCollected} (當前能力: ${skillText})`, 10, uiY); uiY += 18;
     
+    // 顯示當前速度，如果達到滿速就換個顏色或文字提醒
+    if (speedMult >= 2.0) {
+        ctx.fillStyle = 'var(--danger)';
+        ctx.fillText(`⚡ 當前速度: MAX (200%)`, 10, uiY); uiY += 18;
+    } else {
+        ctx.fillStyle = 'var(--warning)';
+        ctx.fillText(`⚡ 當前速度: ${Math.round(speedMult * 100)}%`, 10, uiY); uiY += 18;
+    }
+    
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     if (shoeTimer > 0 && runnerShoesCollected < 10) { 
         ctx.fillText(`⏱️ 體驗二段跳: ${Math.ceil(shoeTimer/60)}s`, 10, uiY); 
     }
 
-    // 生成平地鞋子 (避免跟障礙物重疊)
-    if (frameCount % 300 === 0) {
+    // 生成平地鞋子 (速度越快，生成的 frame 間隔要縮短，保持距離一致)
+    let itemSpawnRate = Math.max(150, Math.floor(300 / speedMult));
+    if (frameCount % itemSpawnRate === 0) {
         let isConflict = runnerObstacles.some(obs => obs.x < 50 && obs.x > -80);
         if (!isConflict) {
             runnerItems.push({ x: -30, y: 145, w: 25, h: 25, type: 'shoe' });
         }
     }
 
-    // 更新道具
+    // 更新道具 (移動速度乘上倍率)
     for (let i = runnerItems.length - 1; i >= 0; i--) {
         let item = runnerItems[i];
-        item.x += 5;
+        item.x += 5 * speedMult;
         ctx.font = '25px Arial'; ctx.fillText('👟', item.x, item.y + 25);
 
         let px = runnerPlayer.x, py = runnerPlayer.y, pw = 20, ph = 30;
         if (px < item.x + item.w && px + pw > item.x && py < item.y + item.h && py + ph > item.y) {
             runnerShoesCollected++;
-            localStorage.setItem('runnerShoesCollected', runnerShoesCollected); // 永久保存
-            shoeTimer = 600; // 給予暫時 buff (如果還沒滿 10 雙)
+            shoeTimer = 600; 
             runnerItems.splice(i, 1);
         } else if (item.x > canvas.width + 30) {
             runnerItems.splice(i, 1);
@@ -357,22 +370,27 @@ function runnerLoop(currentTime) {
     }
 
     // 生成與更新障礙物 / 飛鳥
-    if (frameCount % 90 === 0 || (frameCount % 130 === 0 && Math.random() > 0.5)) {
-        // 鞋子越多，鳥越容易出現 (最高上限約 45% 機率)
+    let obsSpawnRate1 = Math.max(45, Math.floor(90 / speedMult));
+    let obsSpawnRate2 = Math.max(65, Math.floor(130 / speedMult));
+    
+    if (frameCount % obsSpawnRate1 === 0 || (frameCount % obsSpawnRate2 === 0 && Math.random() > 0.5)) {
         let birdChance = 0.05 + Math.min(runnerShoesCollected * 0.015, 0.4); 
         let spawnBird = Math.random() < birdChance;
         let isConflict = runnerObstacles.some(obs => obs.x < 50 && obs.x > -80);
 
         if (spawnBird && !isConflict) {
-            let birdY = 70 + Math.random() * 30; // 出現在空中
+            let birdY = 70 + Math.random() * 30; 
             runnerObstacles.push({ x: -30, y: birdY, w: 20, h: 20, type: '🐦' });
         } else {
             runnerObstacles.push({ x: -30, y: 145, w: 20, h: 25, type: Math.random() > 0.4 ? '🚧' : '🧹' });
         }
     }
 
+    // 更新障礙物位置
     for (let i = runnerObstacles.length - 1; i >= 0; i--) {
-        let obs = runnerObstacles[i]; obs.x += 5;
+        let obs = runnerObstacles[i]; 
+        obs.x += 5 * speedMult; // 障礙物也根據倍率加速
+        
         ctx.font = '25px Arial'; ctx.fillText(obs.type, obs.x, obs.y + 25);
 
         let px = runnerPlayer.x + 5, py = runnerPlayer.y + 5, pw = 15, ph = 25; 
@@ -388,7 +406,7 @@ function runnerLoop(currentTime) {
     if (frameCount % 60 === 0) { score++; document.getElementById('game-score').innerText = `存活時間: ${score} 秒`; }
 }
 
-// === 2. 下樓梯遊戲 (Diver) FPS 鎖定版 + 3血量上限 ===
+// === 2. 下樓梯遊戲 (Diver) ===
 function diverLoop(currentTime) {
     if (!isGameRunning || activeGame !== 'diver') return;
     gameAnimationId = requestAnimationFrame(diverLoop);
@@ -401,7 +419,6 @@ function diverLoop(currentTime) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frameCount++;
 
-    // 繪製愛心 UI (滿 3 顆顯示 MAX)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.font = '16px sans-serif';
     let heartText = `❤️ x ${diverHearts}${diverHearts >= 3 ? ' (MAX)' : ''}`;
     ctx.fillText(heartText, canvas.width - (diverHearts >= 3 ? 95 : 65), 25);
@@ -443,7 +460,6 @@ function diverLoop(currentTime) {
     if (diverPlayer.y < -30) return gameOver('動作太慢，被關在閘門外了💸');
     if (diverPlayer.y > canvas.height) return gameOver('踩空摔斷腿，急診室見🚑');
 
-    // 平台生成與愛心發放
     if (frameCount % 60 === 0) {
         let yPos = canvas.height + 10;
         let safeW = 70 + Math.random() * 40; let safeX = Math.random() * (canvas.width - safeW);
@@ -468,14 +484,13 @@ function diverLoop(currentTime) {
     }
     platforms = platforms.filter(p => p.y > -20);
 
-    // 更新與繪製愛心道具
     for (let i = diverItems.length - 1; i >= 0; i--) {
         let item = diverItems[i]; item.y -= platformSpeed;
         ctx.font = '18px Arial'; ctx.fillText('❤️', item.x, item.y + 18);
 
         let px = diverPlayer.x, py = diverPlayer.y, pw = diverPlayer.w, ph = diverPlayer.h;
         if (px < item.x + item.w && px + pw > item.x && py < item.y + item.h && py + ph > item.y) {
-            if (diverHearts < 3) diverHearts++; // 上限鎖定 3 顆
+            if (diverHearts < 3) diverHearts++; 
             diverItems.splice(i, 1);
         } else if (item.y < -30) {
             diverItems.splice(i, 1);
@@ -483,7 +498,7 @@ function diverLoop(currentTime) {
     }
 }
 
-// === 3. 終極密碼 (Password 1~99) 小鍵盤版 ===
+// === 3. 終極密碼 (Password 1~99) ===
 function startPasswordGame() {
     pwdTarget = Math.floor(Math.random() * 99) + 1; pwdGuesses = 0; pwdMin = 1; pwdMax = 99; currentPwdInput = "";
     document.getElementById('game-score').innerText = `目前猜了: 0 次`;
