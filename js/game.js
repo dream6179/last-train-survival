@@ -1,5 +1,5 @@
 // ==========================================
-// 隱藏彩蛋三引擎 (v4.0 跑酷、下樓梯、終極密碼)
+// 隱藏彩蛋三引擎 (v4.1 FPS鎖定與 1~99 密碼版)
 // ==========================================
 
 let activeGame = null; 
@@ -7,6 +7,10 @@ let gameAnimationId;
 let frameCount = 0;
 let score = 0;
 let isGameRunning = false;
+
+// 🌟 FPS 鎖定引擎 (防止高更新率螢幕遊戲過快)
+let lastRenderTime = 0;
+const FRAME_MIN_TIME = 1000 / 60; // 鎖定最高 60 FPS
 
 // === 跑酷遊戲 (Runner) ===
 let runnerClicks = 0; let runnerTimer;
@@ -23,12 +27,12 @@ let keys = { left: false, right: false };
 let touchLeft = false; let touchRight = false;
 let platformSpeed = 0.8; 
 
-// === 終極密碼 (Password) ===
+// === 終極密碼 (Password) 1~99 ===
 let pwdClicks = 0; let pwdTimer;
 let pwdTarget = 0;
 let pwdGuesses = 0;
-let pwdMin = 1; let pwdMax = 9;
-let pwdHighScore = localStorage.getItem('passwordHighScore') || 999; // 越低越好
+let pwdMin = 1; let pwdMax = 99;
+let pwdHighScore = localStorage.getItem('passwordHighScore') || 999; 
 
 // === 觸發器 ===
 function triggerEasterEgg(force = false) {
@@ -53,7 +57,6 @@ function triggerEasterEgg2(force = false) {
     }
 }
 
-// 🌟 第三彩蛋：終極密碼觸發
 function triggerEasterEgg3(force = false) {
     pwdClicks++; clearTimeout(pwdTimer);
     pwdTimer = setTimeout(() => { pwdClicks = 0; }, 1500);
@@ -71,7 +74,7 @@ function openGameSheet() {
     initGameCanvas();
 }
 
-// === 遊戲初始化與共用控制 ===
+// === 遊戲初始化 ===
 function initGameCanvas() {
     const canvas = document.getElementById('game-canvas');
     const pwdUI = document.getElementById('password-ui');
@@ -81,16 +84,21 @@ function initGameCanvas() {
     document.getElementById('start-game-btn').innerText = '開始挑戰';
     document.getElementById('game-score').innerText = '準備中...';
 
-    // 依照遊戲切換畫布與 UI
     if (activeGame === 'password') {
         canvas.style.display = 'none';
-        pwdUI.style.display = 'grid';
-        document.getElementById('game-title').innerText = '🔢 終極密碼 (1-9)';
-        document.getElementById('game-hint').innerText = '請點擊下方按鈕猜數字！';
+        pwdUI.style.display = 'flex';
+        document.getElementById('game-title').innerText = '🔢 終極密碼';
+        document.getElementById('game-hint').innerText = '在範圍內輸入數字並猜測！';
         pwdHighScore = localStorage.getItem('passwordHighScore') || 999;
         let showScore = pwdHighScore == 999 ? '無' : `${pwdHighScore} 次`;
         document.getElementById('game-high-score').innerText = `最佳運氣: ${showScore}`;
-        pwdUI.innerHTML = ''; // 清空按鈕
+        
+        // 初始化密碼 UI 狀態
+        document.getElementById('pwd-range-display').innerText = '1 ~ 99';
+        document.getElementById('pwd-range-display').style.color = 'white';
+        document.getElementById('pwd-input').value = '';
+        document.getElementById('pwd-input').disabled = true;
+        document.getElementById('pwd-submit-btn').disabled = true;
     } else {
         canvas.style.display = 'block';
         pwdUI.style.display = 'none';
@@ -117,22 +125,23 @@ function startActiveGame() {
     if (gameAnimationId) cancelAnimationFrame(gameAnimationId);
     isGameRunning = true; score = 0; frameCount = 0;
     document.getElementById('start-game-btn').style.display = 'none';
+    lastRenderTime = performance.now(); // 歸零計時器
 
     if (activeGame === 'runner') {
         runnerPlayer.y = 140; runnerPlayer.dy = 0; runnerPlayer.isGrounded = true;
         runnerObstacles = [];
-        runnerLoop();
+        runnerLoop(performance.now());
     } else if (activeGame === 'diver') {
         diverPlayer.x = 165; diverPlayer.y = 50; diverPlayer.dx = 0; diverPlayer.dy = 0;
         platforms = []; platformSpeed = 0.8; keys.left = false; keys.right = false; 
         platforms.push({ x: 140, y: 150, w: 70, h: 10, type: 'safe' });
-        diverLoop();
+        diverLoop(performance.now());
     } else if (activeGame === 'password') {
         startPasswordGame();
     }
 }
 
-// === 輸入綁定 (Runner & Diver) ===
+// === 輸入綁定 ===
 window.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('game-canvas');
     if (!canvas) return;
@@ -143,6 +152,11 @@ window.addEventListener('DOMContentLoaded', () => {
         if (activeGame === 'diver') {
             if (e.code === 'ArrowLeft') keys.left = true;
             if (e.code === 'ArrowRight') keys.right = true;
+        }
+        // 終極密碼支援 Enter 鍵
+        if (activeGame === 'password' && e.code === 'Enter') {
+            e.preventDefault();
+            if(isGameRunning) submitPasswordGuess();
         }
     });
     document.addEventListener('keyup', (e) => { 
@@ -198,6 +212,8 @@ function gameOver(reason) {
         document.getElementById('game-hint').innerText = reason;
         document.getElementById('game-hint').style.color = 'var(--success)';
         document.getElementById('game-hint').style.fontSize = '16px';
+        document.getElementById('pwd-input').disabled = true;
+        document.getElementById('pwd-submit-btn').disabled = true;
         
         if (pwdGuesses < pwdHighScore) {
             pwdHighScore = pwdGuesses; localStorage.setItem('passwordHighScore', pwdHighScore);
@@ -208,9 +224,16 @@ function gameOver(reason) {
     if (typeof updateCollectionUI === 'function') updateCollectionUI();
 }
 
-// === 1. 跑酷遊戲 (Runner) ===
-function runnerLoop() {
+// === 1. 跑酷遊戲 (Runner) FPS 鎖定版 ===
+function runnerLoop(currentTime) {
     if (!isGameRunning || activeGame !== 'runner') return;
+    gameAnimationId = requestAnimationFrame(runnerLoop);
+    
+    // FPS 限制邏輯
+    const deltaTime = currentTime - lastRenderTime;
+    if (deltaTime < FRAME_MIN_TIME) return;
+    lastRenderTime = currentTime - (deltaTime % FRAME_MIN_TIME);
+
     const canvas = document.getElementById('game-canvas'); const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frameCount++;
@@ -234,12 +257,18 @@ function runnerLoop() {
     }
     runnerObstacles = runnerObstacles.filter(o => o.x < canvas.width + 30);
     if (frameCount % 60 === 0) { score++; document.getElementById('game-score').innerText = `存活時間: ${score} 秒`; }
-    gameAnimationId = requestAnimationFrame(runnerLoop);
 }
 
-// === 2. 下樓梯遊戲 (Diver) ===
-function diverLoop() {
+// === 2. 下樓梯遊戲 (Diver) FPS 鎖定版 ===
+function diverLoop(currentTime) {
     if (!isGameRunning || activeGame !== 'diver') return;
+    gameAnimationId = requestAnimationFrame(diverLoop);
+
+    // FPS 限制邏輯
+    const deltaTime = currentTime - lastRenderTime;
+    if (deltaTime < FRAME_MIN_TIME) return;
+    lastRenderTime = currentTime - (deltaTime % FRAME_MIN_TIME);
+
     const canvas = document.getElementById('game-canvas'); const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frameCount++;
@@ -289,59 +318,63 @@ function diverLoop() {
     }
     platforms = platforms.filter(p => p.y > -20);
     if (frameCount % 60 === 0) { score++; document.getElementById('game-score').innerText = `深入月台: B${score} 層`; }
-    gameAnimationId = requestAnimationFrame(diverLoop);
 }
 
-// === 3. 終極密碼 (Password) 邏輯 ===
+// === 3. 終極密碼 (Password 1~99) ===
 function startPasswordGame() {
-    pwdTarget = Math.floor(Math.random() * 9) + 1; // 產生 1~9 隨機數
+    pwdTarget = Math.floor(Math.random() * 99) + 1; 
     pwdGuesses = 0;
-    pwdMin = 1; pwdMax = 9;
+    pwdMin = 1; pwdMax = 99;
     
     document.getElementById('game-score').innerText = `目前猜了: 0 次`;
-    document.getElementById('game-hint').innerText = '目標在 1 到 9 之間！';
+    document.getElementById('game-hint').innerText = '請輸入數字並點擊猜測！';
     document.getElementById('game-hint').style.color = '#888';
     
-    const ui = document.getElementById('password-ui');
-    ui.innerHTML = ''; // 清空重新生成按鈕
+    document.getElementById('pwd-range-display').innerText = `${pwdMin} ~ ${pwdMax}`;
+    document.getElementById('pwd-range-display').style.color = 'white';
     
-    for (let i = 1; i <= 9; i++) {
-        let btn = document.createElement('button');
-        btn.innerText = i;
-        btn.className = 'pwd-btn';
-        btn.id = 'pwd-btn-' + i;
-        btn.onclick = () => guessPassword(i);
-        ui.appendChild(btn);
-    }
+    const inputObj = document.getElementById('pwd-input');
+    inputObj.value = '';
+    inputObj.disabled = false;
+    document.getElementById('pwd-submit-btn').disabled = false;
+    inputObj.focus(); // 自動幫手機叫出鍵盤
 }
 
-function guessPassword(num) {
+function submitPasswordGuess() {
     if (!isGameRunning) return;
+    const inputObj = document.getElementById('pwd-input');
+    const num = parseInt(inputObj.value);
+    
+    if (isNaN(num) || num <= pwdMin || num >= pwdMax) {
+        document.getElementById('game-hint').innerText = `請輸入大於 ${pwdMin} 且小於 ${pwdMax} 的數字！`;
+        document.getElementById('game-hint').style.color = 'var(--warning)';
+        inputObj.value = '';
+        return;
+    }
+    
     pwdGuesses++;
     document.getElementById('game-score').innerText = `目前猜了: ${pwdGuesses} 次`;
+    inputObj.value = '';
     
     if (num === pwdTarget) {
-        document.getElementById('pwd-btn-' + num).classList.add('correct');
-        gameOver(`🎉 答對了！密碼就是 ${pwdTarget}！`);
+        document.getElementById('pwd-range-display').innerText = `🎉 ${pwdTarget} 🎉`;
+        document.getElementById('pwd-range-display').style.color = 'var(--success)';
+        gameOver(`🎉 砰！密碼就是 ${pwdTarget}！`);
     } else {
-        document.getElementById('pwd-btn-' + num).classList.add('wrong');
-        document.getElementById('pwd-btn-' + num).disabled = true;
-        
         if (num > pwdTarget) {
+            pwdMax = num;
             document.getElementById('game-hint').innerText = `${num} 太大了！往下猜👇`;
-            // 自動把比 num 大的按鈕都禁掉
-            for(let i = num; i <= 9; i++) {
-                let b = document.getElementById('pwd-btn-' + i);
-                if(b) { b.disabled = true; b.classList.add('wrong'); }
-            }
         } else {
+            pwdMin = num;
             document.getElementById('game-hint').innerText = `${num} 太小了！往上猜👆`;
-            // 自動把比 num 小的按鈕都禁掉
-            for(let i = 1; i <= num; i++) {
-                let b = document.getElementById('pwd-btn-' + i);
-                if(b) { b.disabled = true; b.classList.add('wrong'); }
-            }
         }
+        document.getElementById('pwd-range-display').innerText = `${pwdMin} ~ ${pwdMax}`;
         document.getElementById('game-hint').style.color = 'var(--warning)';
+        
+        // 必死局處理 (如果範圍只剩一個數字)
+        if (pwdMax - pwdMin === 2 && pwdMin + 1 === pwdTarget) {
+            document.getElementById('game-hint').innerText = `只剩一個數字了，你沒得選啦🤣`;
+        }
     }
+    inputObj.focus();
 }
