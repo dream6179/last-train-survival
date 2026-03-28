@@ -8,7 +8,6 @@
     <meta name="description" content="趕不上末班車？開啟極限求生模式！幫你精準計算捷運末班車時間，並提供 Uber、GoShare 等深夜 Plan B 備案。">
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚇</text></svg>">
-    
     <meta property="og:title" content="末班車生存戰 | 你的深夜回家導航">
     <meta property="og:description" content="趕不上末班車？一鍵查詢真實末班車發車倒數，專屬夜歸人的極限生存指南。">
     <meta property="og:image" content="https://images.unsplash.com/photo-1517737272895-17d1cc961cb3?q=80&w=1200&auto=format&fit=crop">
@@ -45,7 +44,6 @@
         .advanced-toggle-btn:active { background: #333; color: white; }
 
         .time-area { margin: 10px 0; display: flex; flex-direction: column; align-items: center; }
-        /* 🌟 時鐘增加 cursor:pointer 暗示可以點擊 */
         .time-display { font-size: 50px; font-weight: bold; color: #e0e0e0; font-variant-numeric: tabular-nums; letter-spacing: 1px; line-height: 1; transition: 0.2s; cursor: pointer; }
         .time-display:active { transform: scale(0.95); }
         .status { font-size: 13px; color: var(--text-sub); margin: 5px 0; height: 16px; }
@@ -97,8 +95,17 @@
         .search-result-box::-webkit-scrollbar { width: 6px; }
         .search-result-box::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
         
+        /* 🌟 遊戲機台樣式擴充 */
         #game-canvas { background: #111; border-radius: 10px; border: 2px dashed #444; width: 100%; height: 250px; touch-action: none; margin-top: 10px; cursor: pointer; }
         .game-score-box { font-size: 20px; font-weight: bold; color: var(--warning); font-variant-numeric: tabular-nums; }
+        
+        /* 終極密碼按鈕專屬 CSS */
+        .pwd-btn { background-color: #333; color: white; border: 2px solid #555; border-radius: 10px; font-size: 30px; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 15px 0; }
+        .pwd-btn:active { transform: scale(0.9); background-color: #555; }
+        .pwd-btn:disabled { cursor: not-allowed; transform: none; }
+        .pwd-btn.wrong { opacity: 0.3; background-color: #222; border-color: #222; }
+        .pwd-btn.correct { background-color: var(--success); border-color: #fff; animation: pop 0.3s; }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
     </style>
     
     <script src="/js/routing.js"></script>
@@ -239,8 +246,8 @@
                 </div>
         </div>
 
-        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px;">
-            當前版本：v1.51 (雙彩蛋豪華解鎖版)
+        <div onclick="if(typeof triggerEasterEgg3 === 'function') triggerEasterEgg3()" style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px; cursor: pointer;">
+            當前版本：v1.60 (終極密碼解鎖版)
         </div>
     </div>
 </div>
@@ -254,7 +261,12 @@
         <div class="game-score-box" id="game-score" style="margin-bottom: 5px;"></div>
         <div id="game-high-score" style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: bold;"></div>
         <p id="game-hint" style="font-size: 11px; margin: 0; color: #888;"></p>
+        
         <canvas id="game-canvas" width="350" height="250"></canvas>
+        
+        <div id="password-ui" style="display: none; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px auto; max-width: 250px;">
+            </div>
+
         <button id="start-game-btn" class="main-action-btn" style="background-color: var(--info); width: auto; padding: 10px 30px; margin-top: 15px;" onclick="if(typeof startActiveGame === 'function') startActiveGame()">開始</button>
     </div>
 </div>
@@ -354,13 +366,16 @@
 
     const defaultStations = { 'trtc': '台北車站', 'tymetro': '台北車站', 'krtc': '高雄車站', 'tmrt': '高鐵台中站', 'tra': '台北車站', 'thsr': '台北車站', 'intercity': '台北車站', 'bus': '台北車站' };
 
-    // 🌟 更新雙收集冊 UI
+    // 🌟 更新三彩蛋收集冊 UI
     function updateCollectionUI() {
         const list = document.getElementById('collection-list');
         const unlock1 = localStorage.getItem('unlock_runner') === 'true';
         const unlock2 = localStorage.getItem('unlock_diver') === 'true';
+        const unlock3 = localStorage.getItem('unlock_password') === 'true';
+        
         const score1 = localStorage.getItem('lateCommuterHighScore') || 0;
         const score2 = localStorage.getItem('deepStationHighScore') || 0;
+        const score3 = localStorage.getItem('passwordHighScore') || 999;
 
         let html = '';
         
@@ -385,8 +400,22 @@
                      </button>`;
         } else {
             html += `<div class="plan-b-option" style="background-color: #1a1a1a; color: #555; border: 1px dashed #333; cursor: default;">
-                        <span class="option-name">🔒 神秘彩蛋 02</span>
-                        <span class="option-price" style="font-size: 11px;">提示: 會跳動的數字...</span>
+                        <span class="option-name">🔒 未知彩蛋 02</span>
+                        <span class="option-price" style="font-size: 11px;">提示: 跳動的時間...</span>
+                     </div>`;
+        }
+        
+        // 🌟 彩蛋 3
+        if (unlock3) {
+            let showPScore = score3 == 999 ? '無' : `${score3}次`;
+            html += `<button class="plan-b-option" style="background-color: #2c2c2c; color: white; border: 1px solid var(--success);" onclick="closeAllSheets(); setTimeout(() => triggerEasterEgg3(true), 300);">
+                        <span class="option-name">🔢 終極密碼 <span class="option-meta" style="color: var(--success);">已解鎖</span></span>
+                        <span class="option-price" style="color: var(--success); font-size: 13px;">最佳: ${showPScore}</span>
+                     </button>`;
+        } else {
+            html += `<div class="plan-b-option" style="background-color: #1a1a1a; color: #555; border: 1px dashed #333; cursor: default;">
+                        <span class="option-name">🔒 神秘彩蛋 03</span>
+                        <span class="option-price" style="font-size: 11px;">提示: 設定裡的版本...</span>
                      </div>`;
         }
 
