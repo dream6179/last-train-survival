@@ -1,5 +1,5 @@
 // ==========================================
-// 隱藏彩蛋三引擎 (v4.8 漸進加速硬核版)
+// 隱藏彩蛋三引擎 (v4.9 漸進加速與路人衝撞版)
 // ==========================================
 
 let activeGame = null; 
@@ -161,7 +161,7 @@ function initGameCanvas() {
 
         if (activeGame === 'runner') {
             document.getElementById('game-title').innerText = '🏃‍♂️ 社畜的最後衝刺';
-            document.getElementById('game-hint').innerText = '收集鞋子進化能力！隨著時間速度會越來越快！';
+            document.getElementById('game-hint').innerText = '收集鞋子進化能力！當心後方趕路的人！';
             runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
             document.getElementById('game-high-score').innerText = `歷史最高: ${runnerHighScore} 秒`;
         } else {
@@ -263,7 +263,12 @@ function gameOver(reason) {
         const canvas = document.getElementById('game-canvas'); const ctx = canvas.getContext('2d');
         ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = 'var(--danger)'; ctx.font = '22px bold sans-serif';
-        ctx.fillText(reason, 40, canvas.height / 2);
+        
+        // 為了讓過長的死因能自動換行或縮小字體顯示
+        if (reason.length > 15) {
+            ctx.font = '16px bold sans-serif';
+        }
+        ctx.fillText(reason, 20, canvas.height / 2);
 
         if (activeGame === 'runner' && score > runnerHighScore) {
             runnerHighScore = score; localStorage.setItem('lateCommuterHighScore', runnerHighScore);
@@ -289,7 +294,7 @@ function gameOver(reason) {
     if (typeof updateCollectionUI === 'function') updateCollectionUI();
 }
 
-// === 1. 跑酷遊戲 (Runner) FPS 鎖定版 + 漸進加速機制 ===
+// === 1. 跑酷遊戲 (Runner) FPS 鎖定版 + 路人衝撞機制 ===
 function runnerLoop(currentTime) {
     if (!isGameRunning || activeGame !== 'runner') return;
     gameAnimationId = requestAnimationFrame(runnerLoop);
@@ -304,7 +309,7 @@ function runnerLoop(currentTime) {
 
     if (shoeTimer > 0) shoeTimer--;
 
-    // 🌟 核心加速邏輯：每 30 秒增加 0.1 (10%)，最高到 2.0 (200%)
+    // 漸進加速邏輯
     let speedMult = Math.min(2.0, 1.0 + Math.floor(score / 30) * 0.1);
 
     // 處理跳躍與重力
@@ -316,7 +321,6 @@ function runnerLoop(currentTime) {
         runnerPlayer.dy = 0; 
         runnerPlayer.isGrounded = true; 
         
-        // 落地重置空中跳躍次數
         if (runnerShoesCollected >= 50) runnerPlayer.airJumpsLeft = 2;
         else if (runnerShoesCollected >= 10) runnerPlayer.airJumpsLeft = 1;
         else if (shoeTimer > 0) runnerPlayer.airJumpsLeft = 1;
@@ -330,7 +334,6 @@ function runnerLoop(currentTime) {
     let skillText = runnerShoesCollected >= 50 ? '三段跳' : (runnerShoesCollected >= 10 ? '二段跳' : '普通跳');
     ctx.fillText(`👟 本局收集: ${runnerShoesCollected} (當前能力: ${skillText})`, 10, uiY); uiY += 18;
     
-    // 顯示當前速度，如果達到滿速就換個顏色或文字提醒
     if (speedMult >= 2.0) {
         ctx.fillStyle = 'var(--danger)';
         ctx.fillText(`⚡ 當前速度: MAX (200%)`, 10, uiY); uiY += 18;
@@ -344,7 +347,7 @@ function runnerLoop(currentTime) {
         ctx.fillText(`⏱️ 體驗二段跳: ${Math.ceil(shoeTimer/60)}s`, 10, uiY); 
     }
 
-    // 生成平地鞋子 (速度越快，生成的 frame 間隔要縮短，保持距離一致)
+    // 生成平地鞋子
     let itemSpawnRate = Math.max(150, Math.floor(300 / speedMult));
     if (frameCount % itemSpawnRate === 0) {
         let isConflict = runnerObstacles.some(obs => obs.x < 50 && obs.x > -80);
@@ -353,7 +356,7 @@ function runnerLoop(currentTime) {
         }
     }
 
-    // 更新道具 (移動速度乘上倍率)
+    // 更新道具
     for (let i = runnerItems.length - 1; i >= 0; i--) {
         let item = runnerItems[i];
         item.x += 5 * speedMult;
@@ -369,27 +372,36 @@ function runnerLoop(currentTime) {
         }
     }
 
-    // 生成與更新障礙物 / 飛鳥
+    // 生成與更新障礙物 / 飛鳥 / 趕路路人
     let obsSpawnRate1 = Math.max(45, Math.floor(90 / speedMult));
     let obsSpawnRate2 = Math.max(65, Math.floor(130 / speedMult));
     
     if (frameCount % obsSpawnRate1 === 0 || (frameCount % obsSpawnRate2 === 0 && Math.random() > 0.5)) {
-        let birdChance = 0.05 + Math.min(runnerShoesCollected * 0.015, 0.4); 
-        let spawnBird = Math.random() < birdChance;
         let isConflict = runnerObstacles.some(obs => obs.x < 50 && obs.x > -80);
+        
+        // 鞋子越多，鳥越容易出現 (最高 40% 機率)
+        let birdChance = 0.05 + Math.min(runnerShoesCollected * 0.015, 0.35); 
+        let spawnBird = Math.random() < birdChance;
+        
+        // 解鎖二段跳後，有 25% 機率生成移動極快的「趕路路人」
+        let spawnRusher = (runnerShoesCollected >= 10) && (Math.random() < 0.25);
 
         if (spawnBird && !isConflict) {
             let birdY = 70 + Math.random() * 30; 
-            runnerObstacles.push({ x: -30, y: birdY, w: 20, h: 20, type: '🐦' });
+            runnerObstacles.push({ x: -30, y: birdY, w: 20, h: 20, type: '🐦', speedX: 5.5 });
+        } else if (spawnRusher && !isConflict) {
+            // 趕路路人的基礎速度是 9 (一般障礙物是 5)
+            runnerObstacles.push({ x: -30, y: 145, w: 20, h: 25, type: '🏃', speedX: 9 });
         } else {
-            runnerObstacles.push({ x: -30, y: 145, w: 20, h: 25, type: Math.random() > 0.4 ? '🚧' : '🧹' });
+            runnerObstacles.push({ x: -30, y: 145, w: 20, h: 25, type: Math.random() > 0.4 ? '🚧' : '🧹', speedX: 5 });
         }
     }
 
     // 更新障礙物位置
     for (let i = runnerObstacles.length - 1; i >= 0; i--) {
         let obs = runnerObstacles[i]; 
-        obs.x += 5 * speedMult; // 障礙物也根據倍率加速
+        let baseSpeed = obs.speedX || 5; 
+        obs.x += baseSpeed * speedMult; // 套用自身速度與全域加速倍率
         
         ctx.font = '25px Arial'; ctx.fillText(obs.type, obs.x, obs.y + 25);
 
@@ -397,7 +409,10 @@ function runnerLoop(currentTime) {
         let ox = obs.x + 5, oy = obs.y + 5, ow = 15, oh = 20;
         
         if (px < ox + ow && px + pw > ox && py < oy + oh && py + ph > oy) {
-            let deathMsg = obs.type === '🐦' ? '撞到鴿子，一頭栽進軌道裡💸' : '慘了，被絆倒錯過車了💸';
+            let deathMsg = '慘了，被絆倒錯過車了💸';
+            if (obs.type === '🐦') deathMsg = '撞到鴿子，一頭栽進軌道裡💸';
+            if (obs.type === '🏃') deathMsg = '跟趕路的路人互撞，兩個人都跌倒了💸';
+            
             return gameOver(deathMsg);
         }
         if (obs.x > canvas.width + 30) runnerObstacles.splice(i, 1);
