@@ -104,6 +104,7 @@
         .pwd-btn.wrong { opacity: 0.3; background-color: #222; border-color: #222; }
         .pwd-btn.correct { background-color: var(--success); border-color: #fff; animation: pop 0.3s; }
         
+        /* 音量滑桿專屬 CSS */
         input[type=range] { -webkit-appearance: none; background: transparent; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--info); cursor: pointer; margin-top: -6px; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #444; border-radius: 2px; }
@@ -253,7 +254,7 @@
         </div>
 
         <div onclick="if(typeof triggerEasterEgg3 === 'function') triggerEasterEgg3()" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px; cursor: pointer;">
-            當前版本：v1.64
+            當前版本：v1.65 (正式防空洞版)
         </div>
     </div>
 </div>
@@ -286,6 +287,7 @@
     let isBgmMuted = false;
     let bgmStarted = false; 
 
+    // 音量控制
     function toggleMute() {
         isBgmMuted = !isBgmMuted;
         const btn = document.getElementById('mute-btn');
@@ -319,12 +321,13 @@
         }
     }
 
+    // 點擊畫面自動播放背景音樂 (破解瀏覽器限制)
     window.addEventListener('DOMContentLoaded', () => {
         document.body.addEventListener('click', () => {
             const bgm = document.getElementById('bgm-audio');
             if (bgm && !bgmStarted && !isBgmMuted) {
                 bgm.volume = bgmVolume;
-                bgm.play().catch(e => console.log("等待使用者互動以播放音樂"));
+                bgm.play().catch(e => console.log("等待互動以播放音樂"));
                 bgmStarted = true;
             }
         }, { once: true }); 
@@ -347,7 +350,7 @@
         }
     }
 
-    // 🌟 修正：全查詢模式的斷網防空洞
+    // 🌟 全查詢模式 (含斷網防護)
     async function executeFullSearch() {
         const searchType = document.getElementById('search-type').value;
         const searchStationName = document.getElementById('search-station-input').value;
@@ -435,6 +438,7 @@
 
     const defaultStations = { 'trtc': '台北車站' };
 
+    // 🌟 更新彩蛋收集冊 UI
     function updateCollectionUI() {
         const list = document.getElementById('collection-list');
         const unlock1 = localStorage.getItem('unlock_runner') === 'true';
@@ -483,6 +487,7 @@
         list.innerHTML = html;
     }
 
+    // 🌟 載入資料庫
     window.onload = async () => {
         updateCollectionUI();
         try {
@@ -599,7 +604,7 @@
 
     updateClock(); timer = setInterval(updateClock, 1000);
 
-    // 🌟 修正：求生模式的主防空洞
+    // 🌟 求生模式主引擎 (含斷網防空洞)
     async function handleAction() {
         const startType = document.getElementById('start-type').value; const endType = document.getElementById('end-type').value;
         const startStationName = document.getElementById('start-station-input').value; const endStationName = document.getElementById('end-station-input').value;
