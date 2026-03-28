@@ -123,10 +123,7 @@
 <div class="container">
     <div class="header-row">
         <h1 id="main-title" onclick="if(typeof triggerEasterEgg === 'function') triggerEasterEgg()">末班車生存戰</h1>
-        <div style="display: flex; gap: 10px;">
-            <button class="mode-toggle-btn" id="global-mute-btn" onclick="toggleMute()" title="播放/暫停環境音" style="font-size: 14px;">🔇</button>
-            <button class="mode-toggle-btn" id="mode-toggle-btn" onclick="toggleAppMode()" title="切換至全查詢模式">🔍</button>
-        </div>
+        <button class="mode-toggle-btn" id="mode-toggle-btn" onclick="toggleAppMode()" title="切換至全查詢模式">🔍</button>
     </div>
 
     <div id="mode-survival">
@@ -234,10 +231,10 @@
         </ul>
         
         <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px;">
-            <h4 style="color: white; margin-top: 0; margin-bottom: 10px;">🎵 背景環境音設定</h4>
+            <h4 style="color: white; margin-top: 0; margin-bottom: 10px;">🎵 背景音樂設定</h4>
             <div style="display: flex; align-items: center; gap: 15px; background: #2c2c2c; padding: 10px 15px; border-radius: 10px;">
-                <button id="mute-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0;" onclick="toggleMute()">🔇</button>
-                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0" style="flex-grow: 1;" oninput="updateVolume(this.value)">
+                <button id="mute-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0;" onclick="toggleMute()">🔊</button>
+                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5" style="flex-grow: 1;" oninput="updateVolume(this.value)">
             </div>
             <p style="font-size: 11px; color: #888; margin-top: 5px; text-align: center;">深夜的月台，適合來點 Lo-Fi 放鬆一下</p>
         </div>
@@ -256,7 +253,7 @@
         </div>
 
         <div onclick="if(typeof triggerEasterEgg3 === 'function') triggerEasterEgg3()" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px; cursor: pointer;">
-            當前版本：v1.65
+            當前版本：v1.64
         </div>
     </div>
 </div>
@@ -285,30 +282,24 @@
 
 <script>
     let currentMode = 'survival'; 
-    let bgmVolume = 0.3; // 回歸線性音量，預設 30%
-    let isBgmMuted = true; // 🌟 預設為靜音開啟
+    let bgmVolume = 0.5;
+    let isBgmMuted = false;
     let bgmStarted = false; 
 
-    // 🌟 音量控制 (全域按鈕與設定內按鈕連動)
     function toggleMute() {
         isBgmMuted = !isBgmMuted;
         const btn = document.getElementById('mute-btn');
-        const globalBtn = document.getElementById('global-mute-btn');
         const slider = document.getElementById('volume-slider');
         const bgm = document.getElementById('bgm-audio');
 
         btn.innerText = isBgmMuted ? '🔇' : '🔊';
-        if(globalBtn) globalBtn.innerText = isBgmMuted ? '🔇' : '🔊';
-        
         slider.value = isBgmMuted ? 0 : bgmVolume;
 
         if (bgm) {
-            bgm.volume = isBgmMuted ? 0 : bgmVolume;
+            bgm.volume = slider.value;
             if (!isBgmMuted && bgm.paused) {
                 bgm.play().catch(e => console.log(e));
                 bgmStarted = true;
-            } else if (isBgmMuted && !bgm.paused) {
-                bgm.pause(); // 確實暫停音樂
             }
         }
     }
@@ -316,10 +307,7 @@
     function updateVolume(val) {
         bgmVolume = val;
         isBgmMuted = (val == 0);
-        
         document.getElementById('mute-btn').innerText = isBgmMuted ? '🔇' : '🔊';
-        const globalBtn = document.getElementById('global-mute-btn');
-        if(globalBtn) globalBtn.innerText = isBgmMuted ? '🔇' : '🔊';
 
         const bgm = document.getElementById('bgm-audio');
         if (bgm) {
@@ -327,11 +315,20 @@
             if (bgmVolume > 0 && bgm.paused) {
                 bgm.play().catch(e => console.log(e));
                 bgmStarted = true;
-            } else if (bgmVolume == 0 && !bgm.paused) {
-                bgm.pause();
             }
         }
     }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        document.body.addEventListener('click', () => {
+            const bgm = document.getElementById('bgm-audio');
+            if (bgm && !bgmStarted && !isBgmMuted) {
+                bgm.volume = bgmVolume;
+                bgm.play().catch(e => console.log("等待使用者互動以播放音樂"));
+                bgmStarted = true;
+            }
+        }, { once: true }); 
+    });
 
     function toggleAppMode() {
         const modeSurvival = document.getElementById('mode-survival');
@@ -350,6 +347,7 @@
         }
     }
 
+    // 🌟 修正：全查詢模式的斷網防空洞
     async function executeFullSearch() {
         const searchType = document.getElementById('search-type').value;
         const searchStationName = document.getElementById('search-station-input').value;
@@ -363,15 +361,27 @@
         resultBox.innerHTML = `正在為您連線交通部與本地資料庫...`;
 
         try {
-            if (!cachedTdxToken && ['trtc', 'tymetro', 'krtc', 'tmrt'].includes(searchType)) {
-                const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; 
+            try {
+                if (!cachedTdxToken && ['trtc', 'tymetro', 'krtc', 'tmrt'].includes(searchType)) {
+                    const tokenRes = await fetch('/api/get-token'); 
+                    const tokenData = await tokenRes.json(); 
+                    cachedTdxToken = tokenData.access_token; 
+                }
+            } catch(networkErr) {
+                console.log("網路異常，切換至純離線時刻表檢索模式");
             }
             
             let res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken);
             
             if (res.status === "TOKEN_EXPIRED") {
-                const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token;
-                res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken);
+                try {
+                    const tokenRes = await fetch('/api/get-token'); 
+                    const tokenData = await tokenRes.json(); 
+                    cachedTdxToken = tokenData.access_token;
+                    res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken);
+                } catch(networkErr) {
+                     // 斷網已在內部處理
+                }
             }
 
             if (res.status === "not_found" || res.data.length === 0) {
@@ -589,6 +599,7 @@
 
     updateClock(); timer = setInterval(updateClock, 1000);
 
+    // 🌟 修正：求生模式的主防空洞
     async function handleAction() {
         const startType = document.getElementById('start-type').value; const endType = document.getElementById('end-type').value;
         const startStationName = document.getElementById('start-station-input').value; const endStationName = document.getElementById('end-station-input').value;
@@ -628,12 +639,25 @@
                 status = "官方轉乘死線"; 
             } 
             else if (['trtc', 'tymetro', 'krtc', 'tmrt'].includes(startType) && startType === endType) {
-                if (!cachedTdxToken) { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; }
-                let realTime = await fetchRealLastTrainTime(globalStationData, cachedTdxToken, startStation, endStation, startType);
                 
-                if (realTime === "TOKEN_EXPIRED") {
-                    const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token;
+                let realTime = null;
+                
+                try {
+                    if (!cachedTdxToken) { 
+                        const tokenRes = await fetch('/api/get-token'); 
+                        const tokenData = await tokenRes.json(); 
+                        cachedTdxToken = tokenData.access_token; 
+                    }
                     realTime = await fetchRealLastTrainTime(globalStationData, cachedTdxToken, startStation, endStation, startType);
+                    
+                    if (realTime === "TOKEN_EXPIRED") {
+                        const tokenRes = await fetch('/api/get-token'); 
+                        const tokenData = await tokenRes.json(); 
+                        cachedTdxToken = tokenData.access_token;
+                        realTime = await fetchRealLastTrainTime(globalStationData, cachedTdxToken, startStation, endStation, startType);
+                    }
+                } catch(networkErr) {
+                    console.log("網路異常，將強制啟用離線演算法");
                 }
 
                 if (realTime && realTime !== "TOKEN_EXPIRED") {
