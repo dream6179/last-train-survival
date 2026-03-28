@@ -1,5 +1,5 @@
 // ==========================================
-// 隱藏彩蛋三引擎 (v4.5 強制衝刺與二段跳版)
+// 隱藏彩蛋三引擎 (v4.6 鞋子成長系統與飛鳥版)
 // ==========================================
 
 let activeGame = null; 
@@ -14,12 +14,12 @@ const FRAME_MIN_TIME = 1000 / 60; // 鎖定最高 60 FPS
 
 // === 跑酷遊戲 (Runner) ===
 let runnerClicks = 0; let runnerTimer;
-let runnerPlayer = { x: 280, y: 140, w: 20, h: 30, dy: 0, gravity: 0.6, jumpPower: -10, isGrounded: true, doubleJumpsLeft: 1 };
+let runnerPlayer = { x: 280, y: 140, w: 20, h: 30, dy: 0, gravity: 0.6, jumpPower: -10, isGrounded: true, airJumpsLeft: 0 };
 let runnerObstacles = [];
 let runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
 let runnerItems = [];
-let shoeTimer = 0;    // 增高鞋(二段跳)計時器：10秒 (600 frames)
-let dashTimer = 0;    // 衝刺計時器：3秒 (180 frames)
+let shoeTimer = 0; // 暫時二段跳計時器
+let runnerShoesCollected = parseInt(localStorage.getItem('runnerShoesCollected')) || 0; // 永久鞋子收集數
 
 // === 下樓梯遊戲 (Diver) ===
 let diverClicks = 0; let diverTimer;
@@ -161,7 +161,7 @@ function initGameCanvas() {
 
         if (activeGame === 'runner') {
             document.getElementById('game-title').innerText = '🏃‍♂️ 社畜的最後衝刺';
-            document.getElementById('game-hint').innerText = '點擊跳躍，可撿二段跳與衝刺道具！';
+            document.getElementById('game-hint').innerText = '收集鞋子可永久進化跳躍能力！小心空中的鳥！';
             runnerHighScore = localStorage.getItem('lateCommuterHighScore') || 0;
             document.getElementById('game-high-score').innerText = `歷史最高: ${runnerHighScore} 秒`;
         } else {
@@ -181,9 +181,9 @@ function startActiveGame() {
     lastRenderTime = performance.now(); 
 
     if (activeGame === 'runner') {
-        runnerPlayer.y = 140; runnerPlayer.dy = 0; runnerPlayer.isGrounded = true; runnerPlayer.doubleJumpsLeft = 1;
+        runnerPlayer.y = 140; runnerPlayer.dy = 0; runnerPlayer.isGrounded = true; runnerPlayer.airJumpsLeft = 0;
         runnerObstacles = []; runnerItems = []; 
-        shoeTimer = 0; dashTimer = 0;
+        shoeTimer = 0;
         runnerLoop(performance.now());
     } else if (activeGame === 'diver') {
         diverPlayer.x = 165; diverPlayer.y = 50; diverPlayer.dx = 0; diverPlayer.dy = 0;
@@ -242,19 +242,15 @@ function handleTouchPoint(e, canvas) {
 }
 
 function jumpRunner() {
-    let isDashing = (dashTimer > 0); 
-    if (isGameRunning && !isDashing) { 
-        // 第一次跳躍
-        if (runnerPlayer.isGrounded) { 
-            runnerPlayer.dy = runnerPlayer.jumpPower; 
-            runnerPlayer.isGrounded = false; 
-            runnerPlayer.doubleJumpsLeft = 1; // 離開地面重置一次二段跳扣打
-        } 
-        // 擁有增高鞋道具的二段跳
-        else if (shoeTimer > 0 && runnerPlayer.doubleJumpsLeft > 0) {
-            runnerPlayer.dy = runnerPlayer.jumpPower; 
-            runnerPlayer.doubleJumpsLeft--; // 扣除二段跳次數
-        }
+    if (!isGameRunning) return;
+    
+    if (runnerPlayer.isGrounded) { 
+        runnerPlayer.dy = runnerPlayer.jumpPower; 
+        runnerPlayer.isGrounded = false; 
+    } 
+    else if (runnerPlayer.airJumpsLeft > 0) {
+        runnerPlayer.dy = runnerPlayer.jumpPower; 
+        runnerPlayer.airJumpsLeft--; 
     }
 }
 
@@ -293,7 +289,7 @@ function gameOver(reason) {
     if (typeof updateCollectionUI === 'function') updateCollectionUI();
 }
 
-// === 1. 跑酷遊戲 (Runner) FPS 鎖定版 + 10秒二段跳 / 3秒衝刺 ===
+// === 1. 跑酷遊戲 (Runner) FPS 鎖定版 + 永久鞋子收集/飛鳥系統 ===
 function runnerLoop(currentTime) {
     if (!isGameRunning || activeGame !== 'runner') return;
     gameAnimationId = requestAnimationFrame(runnerLoop);
@@ -307,72 +303,84 @@ function runnerLoop(currentTime) {
     frameCount++;
 
     if (shoeTimer > 0) shoeTimer--;
-    if (dashTimer > 0) dashTimer--;
 
-    let isDashing = (dashTimer > 0);
-
-    if (isDashing) {
-        // 強制在地面衝刺，不會掉下去也不會跳起來
+    // 處理跳躍與重力
+    runnerPlayer.gravity = 0.6;
+    runnerPlayer.dy += runnerPlayer.gravity; runnerPlayer.y += runnerPlayer.dy;
+    
+    if (runnerPlayer.y >= 140) { 
         runnerPlayer.y = 140; 
-        runnerPlayer.dy = 0; runnerPlayer.gravity = 0; runnerPlayer.isGrounded = true;
-        ctx.font = '35px Arial'; ctx.fillText('🏃‍♂️💨', runnerPlayer.x, runnerPlayer.y + 30); // 加個衝刺氣流特效
-    } else {
-        runnerPlayer.gravity = 0.6;
-        runnerPlayer.dy += runnerPlayer.gravity; runnerPlayer.y += runnerPlayer.dy;
-        if (runnerPlayer.y >= 140) { 
-            runnerPlayer.y = 140; 
-            runnerPlayer.dy = 0; 
-            runnerPlayer.isGrounded = true; 
-            runnerPlayer.doubleJumpsLeft = 1; // 落地補充二段跳
-        }
-        ctx.font = '35px Arial'; ctx.fillText('🏃‍♂️', runnerPlayer.x, runnerPlayer.y + 30);
+        runnerPlayer.dy = 0; 
+        runnerPlayer.isGrounded = true; 
+        
+        // 落地重置空中跳躍次數 (依據收集進度或 Buff)
+        if (runnerShoesCollected >= 50) runnerPlayer.airJumpsLeft = 2;
+        else if (runnerShoesCollected >= 10) runnerPlayer.airJumpsLeft = 1;
+        else if (shoeTimer > 0) runnerPlayer.airJumpsLeft = 1;
+        else runnerPlayer.airJumpsLeft = 0;
     }
-
-    let speedMult = isDashing ? 3 : 1; 
+    ctx.font = '35px Arial'; ctx.fillText('🏃‍♂️', runnerPlayer.x, runnerPlayer.y + 30);
 
     // 繪製增益 UI
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.font = '12px sans-serif';
     let uiY = 20;
-    if (shoeTimer > 0) { ctx.fillText(`👟 二段跳: ${Math.ceil(shoeTimer/60)}s`, 10, uiY); uiY += 18; }
-    if (dashTimer > 0) { ctx.fillText(`⚡ 無敵衝刺: ${Math.ceil(dashTimer/60)}s`, 10, uiY); }
+    let skillText = runnerShoesCollected >= 50 ? '三段跳' : (runnerShoesCollected >= 10 ? '二段跳' : '普通跳');
+    ctx.fillText(`👟 收集鞋子: ${runnerShoesCollected} (當前能力: ${skillText})`, 10, uiY); uiY += 18;
+    
+    if (shoeTimer > 0 && runnerShoesCollected < 10) { 
+        ctx.fillText(`⏱️ 體驗二段跳: ${Math.ceil(shoeTimer/60)}s`, 10, uiY); 
+    }
 
-    // 生成道具
-    if (frameCount % 360 === 0) {
-        runnerItems.push({ x: -30, y: 70 + Math.random() * 20, w: 25, h: 25, type: Math.random() > 0.5 ? 'shoe' : 'dash' });
+    // 生成平地鞋子 (避免跟障礙物重疊)
+    if (frameCount % 300 === 0) {
+        let isConflict = runnerObstacles.some(obs => obs.x < 50 && obs.x > -80);
+        if (!isConflict) {
+            runnerItems.push({ x: -30, y: 145, w: 25, h: 25, type: 'shoe' });
+        }
     }
 
     // 更新道具
     for (let i = runnerItems.length - 1; i >= 0; i--) {
         let item = runnerItems[i];
-        item.x += 5 * speedMult;
-        ctx.font = '25px Arial'; ctx.fillText(item.type === 'shoe' ? '👟' : '⚡', item.x, item.y + 25);
+        item.x += 5;
+        ctx.font = '25px Arial'; ctx.fillText('👟', item.x, item.y + 25);
 
         let px = runnerPlayer.x, py = runnerPlayer.y, pw = 20, ph = 30;
         if (px < item.x + item.w && px + pw > item.x && py < item.y + item.h && py + ph > item.y) {
-            // 新道具覆蓋舊道具，重置時間
-            if (item.type === 'shoe') { shoeTimer = 600; dashTimer = 0; } // 二段跳 10 秒
-            if (item.type === 'dash') { dashTimer = 180; shoeTimer = 0; } // 衝刺 3 秒
+            runnerShoesCollected++;
+            localStorage.setItem('runnerShoesCollected', runnerShoesCollected); // 永久保存
+            shoeTimer = 600; // 給予暫時 buff (如果還沒滿 10 雙)
             runnerItems.splice(i, 1);
         } else if (item.x > canvas.width + 30) {
             runnerItems.splice(i, 1);
         }
     }
 
-    // 生成與更新障礙物
-    let spawnRate = isDashing ? 30 : 90; 
-    if (frameCount % spawnRate === 0 || (frameCount % 130 === 0 && Math.random() > 0.5)) {
-        runnerObstacles.push({ x: -30, y: 145, w: 20, h: 25, type: Math.random() > 0.4 ? '🚧' : '🧹' });
+    // 生成與更新障礙物 / 飛鳥
+    if (frameCount % 90 === 0 || (frameCount % 130 === 0 && Math.random() > 0.5)) {
+        // 鞋子越多，鳥越容易出現 (最高上限約 45% 機率)
+        let birdChance = 0.05 + Math.min(runnerShoesCollected * 0.015, 0.4); 
+        let spawnBird = Math.random() < birdChance;
+        let isConflict = runnerObstacles.some(obs => obs.x < 50 && obs.x > -80);
+
+        if (spawnBird && !isConflict) {
+            let birdY = 70 + Math.random() * 30; // 出現在空中
+            runnerObstacles.push({ x: -30, y: birdY, w: 20, h: 20, type: '🐦' });
+        } else {
+            runnerObstacles.push({ x: -30, y: 145, w: 20, h: 25, type: Math.random() > 0.4 ? '🚧' : '🧹' });
+        }
     }
 
     for (let i = runnerObstacles.length - 1; i >= 0; i--) {
-        let obs = runnerObstacles[i]; obs.x += 5 * speedMult;
+        let obs = runnerObstacles[i]; obs.x += 5;
         ctx.font = '25px Arial'; ctx.fillText(obs.type, obs.x, obs.y + 25);
 
         let px = runnerPlayer.x + 5, py = runnerPlayer.y + 5, pw = 15, ph = 25; 
         let ox = obs.x + 5, oy = obs.y + 5, ow = 15, oh = 20;
         
-        if (!isDashing && px < ox + ow && px + pw > ox && py < oy + oh && py + ph > oy) {
-            return gameOver('慘了，被絆倒錯過車了💸');
+        if (px < ox + ow && px + pw > ox && py < oy + oh && py + ph > oy) {
+            let deathMsg = obs.type === '🐦' ? '撞到鴿子，一頭栽進軌道裡💸' : '慘了，被絆倒錯過車了💸';
+            return gameOver(deathMsg);
         }
         if (obs.x > canvas.width + 30) runnerObstacles.splice(i, 1);
     }
