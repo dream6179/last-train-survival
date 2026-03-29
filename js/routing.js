@@ -1,293 +1,197 @@
 // ==========================================
-// 末班車生存戰 - 核心路徑分揀與運算引擎
+// 末班車生存戰 核心路由與 API 引擎 (v2.0 全台擴張版)
 // ==========================================
 
-const operatorMap = {
-    'trtc': 'TRTC', 
-    'tymetro': 'TYMC', 
-    'krtc': 'KRTC', 
-    'tmrt': 'TMRT'      
-};
-
-function getSmartStationInfo(globalStationData, origin, dest, type) {
-    if (!globalStationData || !globalStationData[type] || !globalStationData[type].routes) return null;
-    const routeKey = `${origin}-${dest}`;
-    return globalStationData[type].routes[routeKey] || null;
-}
-
-// 🌟 離線演算法 (加入直達車支線保命邏輯)
-function calculateOfflineTime(offlineTimetableData, startName, endName, type) {
-    if (!offlineTimetableData || !offlineTimetableData[type]) return null;
-    const table = offlineTimetableData[type];
-
-    const startKeys = Object.keys(table).filter(k => table[k].name === startName);
-    const endKeys = Object.keys(table).filter(k => table[k].name === endName);
-
-    for (let sKey of startKeys) {
-        for (let eKey of endKeys) {
-            const sLineMatch = sKey.match(/[A-Z]+/);
-            const eLineMatch = eKey.match(/[A-Z]+/);
-            if (!sLineMatch || !eLineMatch) continue;
-            
-            const sLine = sLineMatch[0];
-            const eLine = eLineMatch[0];
-
-            if (sLine === eLine) {
-                const sData = table[sKey];
-
-                if (sData.up && typeof sData.up === 'object' && sData.up[eKey] && sData.up[eKey] !== "00:00") return sData.up[eKey];
-                if (sData.down && typeof sData.down === 'object' && sData.down[eKey] && sData.down[eKey] !== "00:00") return sData.down[eKey];
-
-                const sNumMatch = sKey.match(/\d+/);
-                const eNumMatch = eKey.match(/\d+/);
-                if (!sNumMatch || !eNumMatch) continue;
-                
-                const sNum = parseInt(sNumMatch[0]);
-                const eNum = parseInt(eNumMatch[0]);
-                
-                const direction = sNum < eNum ? 'up' : 'down';
-                const timeData = sData[direction];
-                
-                if (!timeData || timeData === "00:00") continue;
-
-                if (typeof timeData === 'string') {
-                    return timeData;
-                }
-                else if (typeof timeData === 'object') {
-                    if (timeData[eKey]) return timeData[eKey];
-                    
-                    // 橘線專屬分流
-                    if (sLine === 'O') {
-                        if (eNum >= 50) return timeData["O54"] || null;
-                        if (eNum >= 13 && eNum <= 21) return timeData["O21"] || null;
-                        if (eNum <= 12) {
-                            const times = Object.values(timeData);
-                            times.sort().reverse(); 
-                            return times[0];
-                        }
-                    }
-                    
-                    // 🌟 修復 2：綠線/紅線直達車支線盲區！
-                    // 如果找不到特定終點的時刻，一律取該方向「最早」的末班車保命！
-                    const times = Object.values(timeData).filter(t => t !== "00:00");
-                    if (times.length > 0) {
-                        times.sort();
-                        return times[0];
-                    }
-                }
-            }
-        }
-    }
-    return null; 
-}
-
-async function fetchRealLastTrainTime(globalStationData, cachedTdxToken, origin, destination, type) {
-    try {
-        const operatorCode = operatorMap[type];
-        if (!operatorCode) return null;
-
-        const info = getSmartStationInfo(globalStationData, origin, destination, type);
-        if (!info) return null;
-        
-        const originCode = info.originCode;
-        const terminuses = info.terminuses;
-        
-        const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/${operatorCode}?$filter=StationID eq '${originCode}'&$format=JSON`;
-
-        const res = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${cachedTdxToken}` } });
-        const data = await res.json();
-
-        if (data.message === 'Unauthorized' || res.status === 401) return "TOKEN_EXPIRED";
-
-        if (data && data.length > 0) {
-            let maxMinutes = -1;
-            let lastTrainTimeStr = "";
-
-            data.forEach(route => {
-                const tdxDestId = route.DestinationStaionID || route.DestinationStationID;
-                if (terminuses.includes(tdxDestId)) {
-                    if (route.Timetables && route.Timetables.length > 0) {
-                        route.Timetables.forEach(t => {
-                            const timeStr = t.DepartureTime; 
-                            const [h, m] = timeStr.split(':').map(Number);
-                            let adjustedH = h < 4 ? h + 24 : h;
-                            let totalMins = adjustedH * 60 + m;
-
-                            if (totalMins > maxMinutes) {
-                                maxMinutes = totalMins;
-                                lastTrainTimeStr = timeStr;
-                            }
-                        });
-                    }
-                }
-            });
-            if (lastTrainTimeStr !== "") return lastTrainTimeStr;
-        } 
-        return null;
-    } catch (error) {
-        return null;
-    }
-}
-
-function getDirectionName(line, dir) {
-    const map = {
-        'R': { up: '淡水/北投', down: '象山/大安' },
-        'G': { up: '松山', down: '新店/台電大樓' },
-        'BL': { up: '南港展覽館', down: '頂埔/亞東醫院' },
-        'O': { up: '迴龍/蘆洲', down: '南勢角' },
-        'BR': { up: '南港展覽館', down: '動物園' },
-        'Y': { up: '新北產業園區', down: '大坪林' }
-    };
-    return map[line] ? map[line][dir] : (dir === 'up' ? '上行方向' : '下行方向');
-}
-
-async function fetchSingleStationTime(stationName, type, offlineTimetableData, cachedTdxToken) {
-    let resultsMap = new Map(); 
-    let isOnline = false;
-    const operatorCode = operatorMap[type];
-    
-    if (!offlineTimetableData || !offlineTimetableData[type]) {
-        return { status: "error", data: [] };
-    }
-    
-    const table = offlineTimetableData[type];
-    const stationKeys = Object.keys(table).filter(k => table[k].name === stationName);
-    if (stationKeys.length === 0) return { status: "not_found", data: [] };
-
+/**
+ * 取得今天日期的字串 (YYYY-MM-DD)
+ * 考量到深夜通勤，凌晨 0 點 ~ 4 點的查詢，我們會把它算在「前一天」的營運日內
+ */
+function getOperatingDateString() {
     const now = new Date();
-    const currentHour = now.getHours();
-    const currentMins = now.getMinutes();
-    const absoluteCurrentMins = (currentHour < 4 ? currentHour + 24 : currentHour) * 60 + currentMins;
-
-    if (operatorCode && cachedTdxToken) {
-        try {
-            for (let sKey of stationKeys) {
-                const apiUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/${operatorCode}?$filter=StationID eq '${sKey}'&$format=JSON`;
-                const res = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${cachedTdxToken}` } });
-                const data = await res.json();
-
-                if (data.message === 'Unauthorized' || res.status === 401) {
-                    return { status: "TOKEN_EXPIRED", data: [] };
-                }
-
-                if (data && data.length > 0) {
-                    isOnline = true;
-                    data.forEach(route => {
-                        const destName = route.DestinationStationName.Zh_tw;
-                        const routeLine = sKey.match(/[A-Z]+/)[0];
-                        const uniqueKey = `${routeLine}-${destName}`;
-
-                        if (route.Timetables && route.Timetables.length > 0) {
-                            route.Timetables.forEach(t => {
-                                const timeStr = t.DepartureTime;
-                                const [h, m] = timeStr.split(':').map(Number);
-                                
-                                let adjustedH = h < 4 ? h + 24 : h;
-                                let totalMins = adjustedH * 60 + m;
-
-                                if (totalMins >= absoluteCurrentMins) {
-                                    if (!resultsMap.has(uniqueKey)) {
-                                        resultsMap.set(uniqueKey, { time: timeStr, totalMins: totalMins });
-                                    } else {
-                                        if (totalMins > resultsMap.get(uniqueKey).totalMins) {
-                                            resultsMap.set(uniqueKey, { time: timeStr, totalMins: totalMins });
-                                        }
-                                    }
-                                }
-                            });
-                        }
-                    });
-                }
-            }
-        } catch (e) {
-            console.log("API 查詢失敗，降級使用離線資料");
-            isOnline = false; 
-        }
+    if (now.getHours() < 4) {
+        now.setDate(now.getDate() - 1);
     }
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
 
-    if (!isOnline || resultsMap.size === 0) {
-        resultsMap.clear(); 
-        
-        stationKeys.forEach(sKey => {
-            const sData = table[sKey];
-            const sLine = sKey.match(/[A-Z]+/)[0];
+/**
+ * 取得現在時間的字串 (HH:mm)
+ */
+function getNowTimeString() {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
 
-            if (sData.up && sData.up !== "00:00") {
-                if (typeof sData.up === 'object') {
-                    for (let destKey in sData.up) {
-                        if(sData.up[destKey] !== "00:00") {
-                            const destName = table[destKey]? table[destKey].name : destKey;
-                            resultsMap.set(`${sLine}-${destName}`, { time: sData.up[destKey], source: "離線備用" });
-                        }
-                    }
-                } else {
-                    const destName = getDirectionName(sLine, 'up');
-                    resultsMap.set(`${sLine}-${destName}`, { time: sData.up, source: "離線備用" });
-                }
-            }
-
-            if (sData.down && sData.down !== "00:00") {
-                if (typeof sData.down === 'object') {
-                    for (let destKey in sData.down) {
-                        if(sData.down[destKey] !== "00:00") {
-                            const destName = table[destKey]? table[destKey].name : destKey;
-                            resultsMap.set(`${sLine}-${destName}`, { time: sData.down[destKey], source: "離線備用" });
-                        }
-                    }
-                } else {
-                    const destName = getDirectionName(sLine, 'down');
-                    resultsMap.set(`${sLine}-${destName}`, { time: sData.down, source: "離線備用" });
-                }
-            }
-        });
-    }
+/**
+ * 🌟 模式 1：全查詢模式 - 查詢單一車站的所有接下來班次
+ */
+async function fetchSingleStationTime(stationName, type, offlineData, token) {
+    if (!globalStationData || !globalStationData[type]) return { status: "not_found", data: [] };
     
-    let finalResults = [];
-    resultsMap.forEach((val, key) => {
-        const [line, dest] = key.split('-');
-        finalResults.push({
-            line: line,
-            destination: dest,
-            time: val.time,
-            source: val.source || "即時連線"
+    const stationObj = globalStationData[type].options.find(s => s.name === stationName);
+    if (!stationObj) return { status: "not_found", data: [] };
+
+    const stationId = stationObj.id;
+    const today = getOperatingDateString();
+    const nowTime = getNowTimeString();
+
+    let url = "";
+
+    // 依照運具組合對應的 TDX API
+    if (type === 'trtc') {
+        url = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/TRTC?$filter=StationID eq '${stationId}'&$format=JSON`;
+    } else if (type === 'tra') {
+        // 台鐵採用 v3 API
+        url = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyStationTimetable/Today/Station/${stationId}?$format=JSON`;
+    } else if (type === 'thsr') {
+        // 高鐵採用 v2 API
+        url = `https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/Station/${stationId}/${today}?$format=JSON`;
+    } else {
+        return { status: "not_found", data: [] };
+    }
+
+    try {
+        const response = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
         });
+
+        if (response.status === 401) return { status: "TOKEN_EXPIRED", data: [] };
+        if (!response.ok) throw new Error(`TDX API Error: ${response.status}`);
+
+        const data = await response.json();
+        let results = [];
+
+        // 整理各家不同格式的 JSON 資料
+        if (type === 'trtc') {
+            data.forEach(route => {
+                route.Timetables.forEach(t => {
+                    results.push({ destination: t.DestinationStationName.Zh_tw, time: t.DepartureTime, source: "即時連線" });
+                });
+            });
+        } else if (type === 'tra') {
+            if (data.StationTimetables && data.StationTimetables.length > 0) {
+                data.StationTimetables.forEach(dir => {
+                    dir.TimeTables.forEach(t => {
+                        results.push({ destination: t.DestinationStationName.Zh_tw, time: t.DepartureTime, source: "即時連線" });
+                    });
+                });
+            }
+        } else if (type === 'thsr') {
+            data.forEach(t => {
+                // 高鐵的 Direction: 0 是南下(通常往左營), 1 是北上(通常往南港)
+                let dest = t.Direction === 0 ? "左營(南下)" : "南港(北上)";
+                results.push({ destination: dest, time: t.DepartureTime, source: "即時連線" });
+            });
+        }
+
+        // 過濾掉已經開走的車，只保留接下來的班次並排序
+        results = results.filter(r => r.time >= nowTime).sort((a, b) => a.time.localeCompare(b.time));
+
+        // 如果是凌晨時段，可能會有跨夜車次，做個簡單防呆
+        if (results.length === 0) {
+             return { status: "success", data: [{ destination: "本日已無班次", time: "--:--", source: "系統判定" }] };
+        }
+
+        // 取前 10 筆顯示即可，免得畫面塞爆
+        return { status: "success", data: results.slice(0, 10) };
+
+    } catch (err) {
+        console.warn("網路異常或 API 拒絕連線，啟動斷網防空洞 (離線檢索)", err);
+        
+        // 觸發斷網防空洞：從本地 offline-timetable.json 撈取
+        if (offlineData && offlineData[type] && offlineData[type][stationName]) {
+            let offlineResults = offlineData[type][stationName].map(item => ({
+                destination: item.dest,
+                time: item.time,
+                source: "離線備援"
+            }));
+            offlineResults = offlineResults.filter(r => r.time >= nowTime).sort((a, b) => a.time.localeCompare(b.time));
+            return { status: "success", data: offlineResults.slice(0, 10) };
+        }
+        return { status: "not_found", data: [] };
+    }
+}
+
+/**
+ * 🌟 模式 2：求生模式 - 獲取「A站到B站」的最後一班車發車時間
+ */
+async function fetchRealLastTrainTime(globalData, token, startId, endId, type) {
+    const today = getOperatingDateString();
+    let url = "";
+
+    // 針對台鐵與高鐵，我們直接使用強大的 O-D (起迄站) API
+    if (type === 'tra') {
+        url = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyTrainTimetable/OD/${startId}/to/${endId}/${today}?$format=JSON`;
+    } else if (type === 'thsr') {
+        url = `https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/OD/${startId}/to/${endId}/${today}?$format=JSON`;
+    } else if (type === 'trtc') {
+        // 北捷沒有直接的 OD API，我們拋回 Null 讓它進入我們的離線「最嚴格防禦」演算法
+        return null; 
+    }
+
+    try {
+        const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (response.status === 401) return "TOKEN_EXPIRED";
+        if (!response.ok) return null;
+
+        const data = await response.json();
+        let timetables = [];
+
+        // 提取所有發車時間
+        if (type === 'tra' && data.TrainTimetables) {
+            timetables = data.TrainTimetables.map(t => t.OriginStopTime.DepartureTime);
+        } else if (type === 'thsr') {
+            timetables = data.map(t => t.OriginStopTime.DepartureTime);
+        }
+
+        if (timetables.length === 0) return null;
+
+        // 排序後，抓取「今天最後一班車」的時間
+        timetables.sort((a, b) => a.localeCompare(b));
+        return timetables[timetables.length - 1]; 
+
+    } catch (err) {
+        console.warn("TDX O-D 查詢失敗，降級使用離線演算法", err);
+        return null;
+    }
+}
+
+/**
+ * 官方中繼轉乘死線 (針對特定跨線換乘的保底機制)
+ */
+function getOfficialTransferTime(transferData, offlineData, start, end, type) {
+    if (!transferData) return null;
+    const key = `${start}-${end}`;
+    if (transferData[type] && transferData[type][key]) {
+        return transferData[type][key];
+    }
+    return null;
+}
+
+/**
+ * 斷網防空洞 (純離線演算法)
+ * 針對沒有 O-D API (如北捷) 或斷網時，抓取離線字典的最後一班車
+ */
+function calculateOfflineTime(offlineData, start, end, type) {
+    if (!offlineData || !offlineData[type] || !offlineData[type][start]) return null;
+    
+    // 取得該站所有的發車時刻
+    const stationTimes = offlineData[type][start];
+    
+    // 這裡實作最嚴格轉乘死線：我們直接抓取「最晚」發車的那個時間點作為底線
+    let latestTime = "00:00";
+    stationTimes.forEach(item => {
+        // 過濾掉明顯不是當天深夜的班次 (例如早上 6 點)
+        const hour = parseInt(item.time.split(':')[0]);
+        if (hour >= 21 || hour < 3) { 
+            if (item.time > latestTime) {
+                latestTime = item.time;
+            }
+        }
     });
 
-    let finalStatus = isOnline ? "online" : "offline";
-    if (isOnline && finalResults.length === 0) {
-        finalStatus = "all_departed"; 
-    }
-    
-    return { status: finalStatus, data: finalResults };
-}
-
-// 4. 🌟 終極轉乘防線：自動辨識字首換線 (加入空值防呆)
-function getOfficialTransferTime(transferData, offlineTimetableData, startName, endName, type) {
-    if (!transferData || !transferData[startName]) return null;
-    const routes = transferData[startName];
-    
-    if (routes[endName]) return routes[endName];
-
-    // 🌟 修復 1：防呆檢查，如果離線字典根本沒載入成功，直接跳過，避免 null 崩潰
-    if (!offlineTimetableData || !offlineTimetableData[type]) return null;
-    
-    const table = offlineTimetableData[type];
-    
-    const startKeys = Object.keys(table).filter(k => table[k].name === startName);
-    const endKeys = Object.keys(table).filter(k => table[k].name === endName);
-    
-    if(startKeys.length === 0 || endKeys.length === 0) return null;
-
-    const startPrefixes = startKeys.map(k => k.match(/[A-Z]+/)[0]);
-    const endPrefixes = endKeys.map(k => k.match(/[A-Z]+/)[0]);
-
-    const isCrossLine = !startPrefixes.some(p => endPrefixes.includes(p));
-    
-    if (isCrossLine) {
-        for (let p of endPrefixes) {
-            if (routes[p]) return routes[p];
-        }
-    }
-    
-    return null;
+    return latestTime !== "00:00" ? latestTime : null;
 }
