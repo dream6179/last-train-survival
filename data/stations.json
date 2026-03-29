@@ -1,5 +1,6 @@
 {
   "trtc": {
+    "name": "北捷",
     "options": [
       {"id": "NangangExhibitionCenter", "name": "南港展覽館"},
       {"id": "NangangSoftwarePark", "name": "南港軟體園區"},
@@ -119,27 +120,69 @@
       {"id": "XinpuMinsheng", "name": "新埔民生"},
       {"id": "Xingfu", "name": "幸福"},
       {"id": "NewTaipeiIndustrialPark", "name": "新北產業園區"}
-    ],
-    "routes": {
-      "Zhongshan-TaipeiMain": { "originCode": "R11", "terminuses": ["R02", "R05"] },
-      "TaipeiMain-Zhongshan": { "originCode": "R10", "terminuses": ["R28", "R22"] },
-      "Zhongshan-Xindian": { "originCode": "G14", "terminuses": ["G01"] },
-      "Xindian-Zhongshan": { "originCode": "G01", "terminuses": ["G19"] },
-      
-      "TaipeiCityHall-Banqiao": { "originCode": "BL18", "terminuses": ["BL01", "BL05"] },
-      "Banqiao-TaipeiCityHall": { "originCode": "BL07", "terminuses": ["BL23", "BL21"] },
-      
-      "Daan-Tamsui": { "originCode": "R05", "terminuses": ["R28", "R22"] },
-      "Tamsui-Daan": { "originCode": "R28", "terminuses": ["R02", "R05"] },
-      
-      "Gongguan-Songshan": { "originCode": "G07", "terminuses": ["G19"] }
-    }
+    ]
   },
-  "tymetro": { "options": [{"id": "TaipeiMain", "name": "台北車站"}], "routes": {} },
-  "krtc": { "options": [{"id": "KaohsiungMain", "name": "高雄車站"}], "routes": {} },
-  "tmrt": { "options": [{"id": "TaichungHSR", "name": "高鐵台中站"}], "routes": {} },
-  "tra": { "options": [{"id": "TaipeiMain", "name": "台北車站"}], "routes": {} },
-  "thsr": { "options": [{"id": "TaipeiMain", "name": "台北車站"}], "routes": {} },
-  "intercity": { "options": [{"id": "TaipeiMain", "name": "台北車站"}], "routes": {} },
-  "bus": { "options": [{"id": "TaipeiMain", "name": "台北車站"}], "routes": {} }
+  "tymetro": {
+    "name": "機捷",
+    "options": [{"id": "TaipeiMain", "name": "台北車站"}]
+  },
+  "krtc": {
+    "name": "高捷",
+    "options": [{"id": "KaohsiungMain", "name": "高雄車站"}]
+  },
+  "tmrt": {
+    "name": "中捷",
+    "options": [{"id": "TaichungHSR", "name": "高鐵台中站"}]
+  },
+  "tra": {
+    "name": "台鐵",
+    "options": [
+      { "id": "0900", "name": "基隆" },
+      { "id": "0920", "name": "八堵" },
+      { "id": "0930", "name": "七堵" },
+      { "id": "0960", "name": "汐止" },
+      { "id": "0970", "name": "汐科" },
+      { "id": "0980", "name": "南港" },
+      { "id": "0990", "name": "松山" },
+      { "id": "1000", "name": "台北車站" },
+      { "id": "1010", "name": "萬華" },
+      { "id": "1020", "name": "板橋" },
+      { "id": "1030", "name": "浮洲" },
+      { "id": "1040", "name": "樹林" },
+      { "id": "1050", "name": "南樹林" },
+      { "id": "1060", "name": "山佳" },
+      { "id": "1070", "name": "鶯歌" },
+      { "id": "1080", "name": "桃園" },
+      { "id": "1090", "name": "內壢" },
+      { "id": "1100", "name": "中壢" },
+      { "id": "1110", "name": "埔心" },
+      { "id": "1120", "name": "楊梅" },
+      { "id": "1210", "name": "新竹" },
+      { "id": "3360", "name": "台中" },
+      { "id": "3390", "name": "彰化" },
+      { "id": "4080", "name": "嘉義" },
+      { "id": "4220", "name": "台南" },
+      { "id": "4460", "name": "新左營" },
+      { "id": "4400", "name": "高雄" },
+      { "id": "6000", "name": "台東" },
+      { "id": "7000", "name": "花蓮" }
+    ]
+  },
+  "thsr": {
+    "name": "高鐵",
+    "options": [
+      { "id": "0990", "name": "南港" },
+      { "id": "1000", "name": "台北車站" },
+      { "id": "1010", "name": "板橋" },
+      { "id": "1020", "name": "桃園" },
+      { "id": "1030", "name": "新竹" },
+      { "id": "1035", "name": "苗栗" },
+      { "id": "1040", "name": "台中" },
+      { "id": "1043", "name": "彰化" },
+      { "id": "1047", "name": "雲林" },
+      { "id": "1050", "name": "嘉義" },
+      { "id": "1060", "name": "台南" },
+      { "id": "1070", "name": "左營" }
+    ]
+  }
 }
