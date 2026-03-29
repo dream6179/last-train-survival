@@ -1,5 +1,5 @@
 // ==========================================
-// 末班車生存戰 核心路由與 API 引擎 (v2.0 全台擴張版)
+// 末班車生存戰 核心路由與 API 引擎 (v2.1 防空洞強制觸發版)
 // ==========================================
 
 /**
@@ -26,6 +26,16 @@ function getNowTimeString() {
 }
 
 /**
+ * 將時間字串 (HH:mm) 轉換為分鐘數，專門解決跨夜比對問題 (凌晨 0~3 點視為 24~27 點)
+ */
+function timeToMinutes(timeStr) {
+    if (!timeStr || !timeStr.includes(':')) return 0;
+    let [h, m] = timeStr.split(':').map(Number);
+    if (h < 4) h += 24; 
+    return h * 60 + m;
+}
+
+/**
  * 🌟 模式 1：全查詢模式 - 查詢單一車站的所有接下來班次
  */
 async function fetchSingleStationTime(stationName, type, offlineData, token) {
@@ -44,19 +54,15 @@ async function fetchSingleStationTime(stationName, type, offlineData, token) {
     if (type === 'trtc') {
         url = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/TRTC?$filter=StationID eq '${stationId}'&$format=JSON`;
     } else if (type === 'tra') {
-        // 台鐵採用 v3 API
         url = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyStationTimetable/Today/Station/${stationId}?$format=JSON`;
     } else if (type === 'thsr') {
-        // 高鐵採用 v2 API
         url = `https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/Station/${stationId}/${today}?$format=JSON`;
     } else {
         return { status: "not_found", data: [] };
     }
 
     try {
-        const response = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
 
         if (response.status === 401) return { status: "TOKEN_EXPIRED", data: [] };
         if (!response.ok) throw new Error(`TDX API Error: ${response.status}`);
@@ -81,34 +87,35 @@ async function fetchSingleStationTime(stationName, type, offlineData, token) {
             }
         } else if (type === 'thsr') {
             data.forEach(t => {
-                // 高鐵的 Direction: 0 是南下(通常往左營), 1 是北上(通常往南港)
                 let dest = t.Direction === 0 ? "左營(南下)" : "南港(北上)";
                 results.push({ destination: dest, time: t.DepartureTime, source: "即時連線" });
             });
         }
 
-        // 過濾掉已經開走的車，只保留接下來的班次並排序
+        // 過濾掉已經開走的車
         results = results.filter(r => r.time >= nowTime).sort((a, b) => a.time.localeCompare(b.time));
 
-        // 如果是凌晨時段，可能會有跨夜車次，做個簡單防呆
+        // 🚨 關鍵防禦：如果 TDX 回傳空陣列 (代表 ID 不對或沒抓到)，強制丟出錯誤，啟動離線防空洞！
         if (results.length === 0) {
-             return { status: "success", data: [{ destination: "本日已無班次", time: "--:--", source: "系統判定" }] };
+             throw new Error("TDX 查無資料，強制轉入離線備援");
         }
 
-        // 取前 10 筆顯示即可，免得畫面塞爆
         return { status: "success", data: results.slice(0, 10) };
 
     } catch (err) {
-        console.warn("網路異常或 API 拒絕連線，啟動斷網防空洞 (離線檢索)", err);
+        console.warn("API 異常或無資料，已進入離線防空洞:", err.message);
         
         // 觸發斷網防空洞：從本地 offline-timetable.json 撈取
         if (offlineData && offlineData[type] && offlineData[type][stationName]) {
             let offlineResults = offlineData[type][stationName].map(item => ({
-                destination: item.dest,
+                destination: item.dest || item.destination || "末班車",
                 time: item.time,
                 source: "離線備援"
             }));
-            offlineResults = offlineResults.filter(r => r.time >= nowTime).sort((a, b) => a.time.localeCompare(b.time));
+            
+            // 離線字典通常存的是深夜末班車，直接用時間數值排序並全數顯示
+            offlineResults.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+            
             return { status: "success", data: offlineResults.slice(0, 10) };
         }
         return { status: "not_found", data: [] };
@@ -122,13 +129,13 @@ async function fetchRealLastTrainTime(globalData, token, startId, endId, type) {
     const today = getOperatingDateString();
     let url = "";
 
-    // 針對台鐵與高鐵，我們直接使用強大的 O-D (起迄站) API
+    // 針對台鐵與高鐵，使用強大的 O-D (起迄站) API
     if (type === 'tra') {
         url = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyTrainTimetable/OD/${startId}/to/${endId}/${today}?$format=JSON`;
     } else if (type === 'thsr') {
         url = `https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/OD/${startId}/to/${endId}/${today}?$format=JSON`;
     } else if (type === 'trtc') {
-        // 北捷沒有直接的 OD API，我們拋回 Null 讓它進入我們的離線「最嚴格防禦」演算法
+        // 北捷沒有直接的 OD API，拋回 Null 進入離線「最嚴格防禦」演算法
         return null; 
     }
 
@@ -140,7 +147,6 @@ async function fetchRealLastTrainTime(globalData, token, startId, endId, type) {
         const data = await response.json();
         let timetables = [];
 
-        // 提取所有發車時間
         if (type === 'tra' && data.TrainTimetables) {
             timetables = data.TrainTimetables.map(t => t.OriginStopTime.DepartureTime);
         } else if (type === 'thsr') {
@@ -149,8 +155,8 @@ async function fetchRealLastTrainTime(globalData, token, startId, endId, type) {
 
         if (timetables.length === 0) return null;
 
-        // 排序後，抓取「今天最後一班車」的時間
-        timetables.sort((a, b) => a.localeCompare(b));
+        // 利用數值排序找出真正的「最晚一班車」
+        timetables.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
         return timetables[timetables.length - 1]; 
 
     } catch (err) {
@@ -173,25 +179,22 @@ function getOfficialTransferTime(transferData, offlineData, start, end, type) {
 
 /**
  * 斷網防空洞 (純離線演算法)
- * 針對沒有 O-D API (如北捷) 或斷網時，抓取離線字典的最後一班車
+ * 針對沒有 O-D API (如北捷) 或斷網時，抓取離線字典的最晚發車時間
  */
 function calculateOfflineTime(offlineData, start, end, type) {
     if (!offlineData || !offlineData[type] || !offlineData[type][start]) return null;
     
-    // 取得該站所有的發車時刻
     const stationTimes = offlineData[type][start];
-    
-    // 這裡實作最嚴格轉乘死線：我們直接抓取「最晚」發車的那個時間點作為底線
-    let latestTime = "00:00";
+    let maxMins = -1;
+    let latestTimeStr = null;
+
     stationTimes.forEach(item => {
-        // 過濾掉明顯不是當天深夜的班次 (例如早上 6 點)
-        const hour = parseInt(item.time.split(':')[0]);
-        if (hour >= 21 || hour < 3) { 
-            if (item.time > latestTime) {
-                latestTime = item.time;
-            }
+        let mins = timeToMinutes(item.time);
+        if (mins > maxMins) {
+            maxMins = mins;
+            latestTimeStr = item.time;
         }
     });
 
-    return latestTime !== "00:00" ? latestTime : null;
+    return latestTimeStr;
 }
