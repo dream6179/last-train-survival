@@ -1,5 +1,5 @@
 // ==========================================
-// 末班車生存戰 核心路由與 API 引擎 (v2.5 時間過濾修正版)
+// 末班車生存戰 核心路由與 API 引擎 (v2.6 智慧方向翻譯機版)
 // ==========================================
 
 function getOperatingDateString() {
@@ -16,26 +16,65 @@ function getNowTimeString() {
 function timeToMinutes(timeStr) {
     if (!timeStr || !timeStr.includes(':')) return 0;
     let [h, m] = timeStr.split(':').map(Number);
-    if (h < 4) h += 24; // 將凌晨 0~3 點轉換為 24~27 點
+    if (h < 4) h += 24; 
     return h * 60 + m;
 }
 
-function parseOfflineData(stationNode) {
+/**
+ * 解析高級 offline-timetable.json 結構
+ * 自動將 up/down 轉換為對應路線的真實終點站名
+ */
+function parseOfflineData(stationCode, stationNode, lineData) {
     let results = [];
+    
+    // 從代碼提取路線字首 (如 R11 -> R, BL12 -> BL)
+    let prefixMatch = stationCode.match(/^[A-Z]+/);
+    let prefix = prefixMatch ? prefixMatch[0] : "";
+
+    let upDest = "上行方向";
+    let downDest = "下行方向";
+
+    // 根據路線代碼判斷真正的端點站
+    // 規則：大號碼方向(up)、小號碼方向(down)
+    switch(prefix) {
+        case 'R': upDest = "淡水 / 北投"; downDest = "象山 / 大安"; break;
+        case 'G': upDest = "松山"; downDest = "新店 / 小碧潭"; break;
+        case 'BL': upDest = "南港展覽館 / 昆陽"; downDest = "頂埔 / 亞東"; break;
+        case 'O': upDest = "迴龍 / 蘆洲"; downDest = "南勢角"; break;
+        case 'BR': upDest = "南港展覽館"; downDest = "動物園"; break;
+        case 'Y': upDest = "新北產業園區"; downDest = "大坪林"; break;
+    }
+
+    // 處理 up (往大號碼方向)
     if (typeof stationNode.up === 'string') {
-        results.push({ destination: "上行方向", time: stationNode.up, source: "離線備援" });
+        // 如果當前車站就是終點站，就不顯示往自己方向的末班車
+        if (!upDest.includes(stationNode.name)) {
+            results.push({ destination: upDest, time: stationNode.up, source: "離線備援" });
+        }
     } else if (typeof stationNode.up === 'object') {
+        // 處理有分支路線的狀況 (如新北投、小碧潭)
         for (let destCode in stationNode.up) {
-            results.push({ destination: `往 ${destCode} 方向`, time: stationNode.up[destCode], source: "離線備援" });
+            let destName = lineData[destCode] ? lineData[destCode].name : destCode;
+            if(destName !== stationNode.name) {
+                 results.push({ destination: destName, time: stationNode.up[destCode], source: "離線備援" });
+            }
         }
     }
+
+    // 處理 down (往小號碼方向)
     if (typeof stationNode.down === 'string') {
-        results.push({ destination: "下行方向", time: stationNode.down, source: "離線備援" });
+        if (!downDest.includes(stationNode.name)) {
+            results.push({ destination: downDest, time: stationNode.down, source: "離線備援" });
+        }
     } else if (typeof stationNode.down === 'object') {
         for (let destCode in stationNode.down) {
-            results.push({ destination: `往 ${destCode} 方向`, time: stationNode.down[destCode], source: "離線備援" });
+            let destName = lineData[destCode] ? lineData[destCode].name : destCode;
+            if(destName !== stationNode.name) {
+                results.push({ destination: destName, time: stationNode.down[destCode], source: "離線備援" });
+            }
         }
     }
+
     return results;
 }
 
@@ -51,7 +90,7 @@ async function fetchSingleStationTime(stationName, type, offlineData, token) {
     const stationId = stationObj.id;
     const today = getOperatingDateString();
     const nowTime = getNowTimeString();
-    const currentMins = timeToMinutes(nowTime); // 取得現在的分鐘數
+    const currentMins = timeToMinutes(nowTime); 
     
     let results = [];
 
@@ -92,7 +131,6 @@ async function fetchSingleStationTime(stationName, type, offlineData, token) {
             }
         }
 
-        // 🚨 修正：全面改用 timeToMinutes 過濾與排序，終結字串比大小的 Bug
         results = results.filter(r => timeToMinutes(r.time) >= currentMins)
                          .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
 
@@ -104,17 +142,18 @@ async function fetchSingleStationTime(stationName, type, offlineData, token) {
         
         if (offlineData && offlineData[type]) {
             let targetNode = null;
+            let targetCode = null;
             for (let code in offlineData[type]) {
                 if (offlineData[type][code].name === stationName) {
                     targetNode = offlineData[type][code];
+                    targetCode = code;
                     break;
                 }
             }
 
             if (targetNode) {
-                let offlineResults = parseOfflineData(targetNode);
+                let offlineResults = parseOfflineData(targetCode, targetNode, offlineData[type]);
                 
-                // 🚨 修正：離線資料同樣採用 timeToMinutes 過濾與排序
                 offlineResults = offlineResults.filter(r => timeToMinutes(r.time) >= currentMins)
                                                .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
                 
@@ -171,16 +210,18 @@ function calculateOfflineTime(offlineData, start, end, type) {
     if (!offlineData || !offlineData[type]) return null;
     
     let targetNode = null;
+    let targetCode = null;
     for (let code in offlineData[type]) {
         if (offlineData[type][code].name === start) {
             targetNode = offlineData[type][code];
+            targetCode = code;
             break;
         }
     }
 
     if (!targetNode) return null;
     
-    const parsedResults = parseOfflineData(targetNode);
+    const parsedResults = parseOfflineData(targetCode, targetNode, offlineData[type]);
     let maxMins = -1; 
     let latestTimeStr = null;
 
