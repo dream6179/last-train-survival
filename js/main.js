@@ -65,6 +65,7 @@ function toggleAppMode() {
     }
 }
 
+// 🌟 全查詢引擎 (防禦網路管制版)
 async function executeFullSearch() {
     const searchType = document.getElementById('search-type').value; 
     const searchStationName = document.getElementById('search-station-input').value; 
@@ -78,11 +79,33 @@ async function executeFullSearch() {
     resultBox.style.justifyContent = 'center'; resultBox.innerHTML = `正在為您連線交通部與本地資料庫...`;
     
     try {
-        try { if (!cachedTdxToken && ['trtc', 'tra', 'thsr'].includes(searchType)) { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; } } catch(networkErr) { console.log("網路異常"); }
+        try { 
+            if (!cachedTdxToken && ['trtc', 'tra', 'thsr'].includes(searchType)) { 
+                const tokenRes = await fetchWithTimeout('/api/get-token', { timeout: 3500 });
+                if (tokenRes.ok) {
+                    const tokenData = await tokenRes.json(); 
+                    cachedTdxToken = tokenData.access_token; 
+                }
+            } 
+        } catch(networkErr) { console.log("網路異常或管制，跳過 Token 取得"); }
         
         let res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken, searchMode);
         
-        if (res.status === "TOKEN_EXPIRED") { try { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken, searchMode); } catch(networkErr) { } }
+        if (res.status === "TOKEN_EXPIRED") { 
+            try { 
+                const tokenRes = await fetchWithTimeout('/api/get-token', { timeout: 3500 }); 
+                if (tokenRes.ok) {
+                    const tokenData = await tokenRes.json(); 
+                    cachedTdxToken = tokenData.access_token; 
+                    res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken, searchMode); 
+                }
+            } catch(networkErr) { } 
+        }
+
+        // 如果 Token 依舊無效 (可能被防火牆阻擋)，強制啟動離線查詢
+        if (res.status === "TOKEN_EXPIRED") {
+            res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, null, searchMode);
+        }
         
         if (res.status === "not_found" || res.data.length === 0) { resultBox.innerHTML = `<span style="color:var(--warning)">⚠️ 找不到「${searchStationName}」的資料。</span>`; return; }
         
@@ -109,10 +132,11 @@ const display = document.getElementById('time-display'); const statusText = docu
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站' };
 
 window.onload = async () => {
-    try { const timeRes = await fetch('/data/offline-timetable.json'); if (timeRes.ok) offlineTimetableData = await timeRes.json(); } catch (e) {}
-    try { const transferRes = await fetch('/data/transfer-timetable.json'); if (transferRes.ok) transferTimetableData = await transferRes.json(); } catch (e) {}
+    // 加上載入超時防禦，確保不被內部網路卡死
+    try { const timeRes = await fetchWithTimeout('/data/offline-timetable.json', { timeout: 4000 }); if (timeRes.ok) offlineTimetableData = await timeRes.json(); } catch (e) {}
+    try { const transferRes = await fetchWithTimeout('/data/transfer-timetable.json', { timeout: 4000 }); if (transferRes.ok) transferTimetableData = await transferRes.json(); } catch (e) {}
     try { 
-        const stationRes = await fetch('/data/stations.json'); 
+        const stationRes = await fetchWithTimeout('/data/stations.json', { timeout: 4000 }); 
         if (stationRes.ok) { 
             globalStationData = await stationRes.json(); 
             initCustomAutocomplete(); 
@@ -273,6 +297,7 @@ function updateClock() {
 }
 updateClock(); timer = setInterval(updateClock, 1000);
 
+// 🌟 生存模式引擎 (防禦網路管制版)
 async function handleAction() {
     const startType = document.getElementById('start-type').value; 
     const endType = document.getElementById('end-type').value;
@@ -304,19 +329,29 @@ async function handleAction() {
             const transferStationObj = globalStationData[startType]?.transferStations?.find(s => s.name === railTransferName);
             if (!transferStationObj) { alert("⚠️ 無效的轉乘站"); actionBtn.disabled = false; actionBtn.innerHTML = "開始計算轉乘"; return; }
             
-            if (!cachedTdxToken) { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; }
+            try { 
+                if (!cachedTdxToken) { 
+                    const tokenRes = await fetchWithTimeout('/api/get-token', { timeout: 3500 }); 
+                    if (tokenRes.ok) { const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; }
+                } 
+            } catch(e) { console.log("網路異常或管制，跳過 Token 取得"); }
             
             let res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationName, offlineTimetableData, cachedTdxToken);
             
             if (res.time === "TOKEN_EXPIRED") { 
-                const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token;
-                res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationName, offlineTimetableData, cachedTdxToken);
+                try {
+                    const tokenRes = await fetchWithTimeout('/api/get-token', { timeout: 3500 }); 
+                    if (tokenRes.ok) {
+                        const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token;
+                        res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationName, offlineTimetableData, cachedTdxToken);
+                    }
+                } catch(e) {}
             }
 
-            if (res.time) {
+            if (res.time && res.time !== "TOKEN_EXPIRED") {
                 finalTime = res.time; status = res.status;
             } else {
-                alert(`⚠️ ${res.status}！今晚可能無法透過這條路線回家了。`);
+                alert(`⚠️ ${res.status || '轉乘計算失敗'}！今晚可能無法透過這條路線回家了。`);
                 throw new Error(res.status);
             }
 
@@ -343,16 +378,11 @@ function resetPlan() {
     statusText.innerHTML = "現在時間"; speedModeText.innerHTML = "待查驗..."; display.style.color = "#e0e0e0"; display.style.fontSize = "50px"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex"); updateClock(); timer = setInterval(updateClock, 1000);
 }
 
-function openWeb(appName) { const urls = {'Uber': 'https://m.uber.com/', 'GoShare': 'https://www.ridegoshare.com/', 'YouBike': 'https://www.youbike.com.tw/'}; window.open(urls[appName], '_blank'); }
-function toggleContact() { const l = document.getElementById('contact-links'); l.style.display = l.style.display === "flex" ? "none" : "flex"; }
-function openAdvancedSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
-function openSettingsSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
-function closeAllSheets() { document.getElementById('advanced-sheet').classList.remove('active'); document.getElementById('settings-sheet').classList.remove('active'); document.getElementById('error-sheet').classList.remove('active'); const overlay = document.getElementById('overlay'); overlay.classList.remove('active'); setTimeout(() => { overlay.style.zIndex = "90"; }, 300); }
+// 🌟 修正了 AbortError 的擾人報錯
 function shareApp() { 
     if (navigator.share) {
         navigator.share({ title: '末班車生存', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href })
         .catch(err => {
-            // 如果是使用者自己取消分享，就忽略不報錯
             if (err.name !== 'AbortError') console.error("分享失敗:", err);
         });
     } else { 
@@ -361,3 +391,7 @@ function shareApp() {
     } 
 }
 
+function toggleContact() { const l = document.getElementById('contact-links'); l.style.display = l.style.display === "flex" ? "none" : "flex"; }
+function openAdvancedSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
+function openSettingsSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
+function closeAllSheets() { document.getElementById('advanced-sheet').classList.remove('active'); document.getElementById('settings-sheet').classList.remove('active'); document.getElementById('error-sheet').classList.remove('active'); const overlay = document.getElementById('overlay'); overlay.classList.remove('active'); setTimeout(() => { overlay.style.zIndex = "90"; }, 300); }
