@@ -110,7 +110,7 @@
 <body>
 
 <audio id="bgm-audio" preload="auto">
-    <source src="/audio/platform_at_midnight.mp3" type="audio/mpeg">
+    <source src="/audio/Midnight_at_Platform_Four.mp3" type="audio/mpeg">
 </audio>
 
 <div class="container">
@@ -257,8 +257,10 @@
         </div>
         
         <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px;">
-            <h4 style="color: var(--warning); margin-top: 0; margin-bottom: 10px;">🏆 隱藏彩蛋收集冊</h4>
-            <div id="collection-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            <button class="plan-b-option" onclick="window.location.href='/collection.html'" style="background-color: #2a2a2a; border: 1px solid var(--warning); justify-content: center;">
+                <span class="option-name" style="color: var(--warning);">🏆 前往彩蛋與收集冊專區</span>
+            </button>
+            <p style="font-size: 11px; color: #888; margin-top: 8px; text-align: center;">你解鎖了哪些隱藏機台與成就？快來看看吧！</p>
         </div>
         
         <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px; text-align: center;">
@@ -268,7 +270,7 @@
         </div>
 
         <div onclick="if(typeof triggerEasterEgg3 === 'function') triggerEasterEgg3()" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px; cursor: pointer;">
-            當前版本：v2.9 (終極末班車雷達版)
+            當前版本：v2.10 (四號月台音樂版)
         </div>
     </div>
 </div>
@@ -312,6 +314,13 @@
 
     let currentMode = 'survival'; let bgmVolume = 0.5; let isBgmMuted = true; let bgmStarted = false; 
 
+    // 🎵 深夜月台專屬歌單 (DJ輪播系統)
+    let bgmPlaylist = [
+        "/audio/platform_at_midnight.mp3", 
+        "/audio/Midnight_at_Platform_Four.mp3"
+    ];
+    let currentBgmIndex = 0;
+
     function toggleMute() {
         isBgmMuted = !isBgmMuted; if (!isBgmMuted && bgmVolume === 0) bgmVolume = 0.5;
         const icon = isBgmMuted ? '🔇' : '🔊'; document.getElementById('mute-btn').innerText = icon; document.getElementById('header-mute-btn').innerText = icon; document.getElementById('volume-slider').value = isBgmMuted ? 0 : bgmVolume;
@@ -322,17 +331,11 @@
         const icon = isBgmMuted ? '🔇' : '🔊'; document.getElementById('mute-btn').innerText = icon; document.getElementById('header-mute-btn').innerText = icon;
         const bgm = document.getElementById('bgm-audio'); if (bgm) { bgm.volume = bgmVolume; if (bgmVolume > 0) { if (bgm.paused) bgm.play().catch(e=>console.log(e)); bgmStarted = true; } else bgm.pause(); }
     }
-    // 🎵 深夜月台專屬歌單
-    let bgmPlaylist = [
-        "/audio/platform_at_midnight.mp3", 
-        "/audio/Midnight_at_Platform_Four.mp3"
-    ];
-    let currentBgmIndex = 0;
-
+    
+    // DJ 播放與點擊啟動邏輯
     window.addEventListener('DOMContentLoaded', () => { 
         const bgm = document.getElementById('bgm-audio');
         if (bgm) {
-            // 當一首歌播完時，自動切換下一首
             bgm.addEventListener('ended', () => {
                 currentBgmIndex = (currentBgmIndex + 1) % bgmPlaylist.length;
                 bgm.src = bgmPlaylist[currentBgmIndex];
@@ -340,7 +343,6 @@
             });
         }
         
-        // 第一次點擊畫面時啟動音樂
         document.body.addEventListener('click', () => { 
             if (bgm && !bgmStarted && !isBgmMuted) { 
                 bgm.volume = bgmVolume; 
@@ -356,7 +358,6 @@
         else { modeSearch.style.display = 'none'; modeSurvival.style.display = 'block'; toggleBtn.innerHTML = '🔍'; toggleBtn.title = '切換至全查詢模式'; mainTitle.innerHTML = '末班車生存戰'; mainTitle.style.color = 'var(--danger)'; currentMode = 'survival'; }
     }
 
-    // 🌟 全查詢引擎：現在會讀取 Radio 選項 (now / last)
     async function executeFullSearch() {
         const searchType = document.getElementById('search-type').value; 
         const searchStationName = document.getElementById('search-station-input').value; 
@@ -372,7 +373,6 @@
         try {
             try { if (!cachedTdxToken && ['trtc', 'tra', 'thsr'].includes(searchType)) { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; } } catch(networkErr) { console.log("網路異常"); }
             
-            // 傳入 searchMode 給 routing.js 處理
             let res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken, searchMode);
             
             if (res.status === "TOKEN_EXPIRED") { try { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken, searchMode); } catch(networkErr) { } }
@@ -401,56 +401,7 @@
     const display = document.getElementById('time-display'); const statusText = document.getElementById('status-text'); const actionBtn = document.getElementById('action-btn'); const cancelBtn = document.getElementById('cancel-btn'); const speedModeText = document.getElementById('speed-mode'); const planBContainer = document.getElementById('plan-b-container'); 
     const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站' };
 
-    function updateCollectionUI() {
-        const list = document.getElementById('collection-list');
-        const unlock1 = localStorage.getItem('unlock_runner') === 'true';
-        const unlock2 = localStorage.getItem('unlock_diver') === 'true';
-        const unlock3 = localStorage.getItem('unlock_password') === 'true';
-        
-        const score1 = localStorage.getItem('lateCommuterHighScore') || 0;
-        const score2 = localStorage.getItem('deepStationHighScore') || 0;
-        const score3 = localStorage.getItem('passwordHighScore') || 999;
-
-        let html = '';
-        
-        if (unlock1) {
-            html += `<button class="plan-b-option" style="background-color: #2c2c2c; color: white; border: 1px solid var(--warning);" onclick="closeAllSheets(); setTimeout(() => triggerEasterEgg(true), 300);">
-                        <span class="option-name">🏃‍♂️ 社畜的最後衝刺 <span class="option-meta" style="color: var(--warning);">已解鎖</span></span>
-                        <span class="option-price" style="color: var(--warning); font-size: 13px;">最高: ${score1}s</span>
-                     </button>`;
-        } else {
-            html += `<div class="plan-b-option" style="background-color: #1a1a1a; color: #555; border: 1px dashed #333; cursor: default;">
-                        <span class="option-name">🔒 未知彩蛋 01</span>
-                     </div>`;
-        }
-        
-        if (unlock2) {
-            html += `<button class="plan-b-option" style="background-color: #2c2c2c; color: white; border: 1px solid var(--info);" onclick="closeAllSheets(); setTimeout(() => triggerEasterEgg2(true), 300);">
-                        <span class="option-name">🚇 直奔最深月台 <span class="option-meta" style="color: var(--info);">已解鎖</span></span>
-                        <span class="option-price" style="color: var(--info); font-size: 13px;">最高: B${score2}</span>
-                     </button>`;
-        } else {
-            html += `<div class="plan-b-option" style="background-color: #1a1a1a; color: #555; border: 1px dashed #333; cursor: default;">
-                        <span class="option-name">🔒 未知彩蛋 02</span>
-                     </div>`;
-        }
-        
-        if (unlock3) {
-            let showPScore = score3 == 999 ? '無' : `${score3}次`;
-            html += `<button class="plan-b-option" style="background-color: #2c2c2c; color: white; border: 1px solid var(--success);" onclick="closeAllSheets(); setTimeout(() => triggerEasterEgg3(true), 300);">
-                        <span class="option-name">🔢 終極密碼 <span class="option-meta" style="color: var(--success);">已解鎖</span></span>
-                        <span class="option-price" style="color: var(--success); font-size: 13px;">最佳: ${showPScore}</span>
-                     </button>`;
-        } else {
-            html += `<div class="plan-b-option" style="background-color: #1a1a1a; color: #555; border: 1px dashed #333; cursor: default;">
-                        <span class="option-name">🔒 未知彩蛋 03</span>
-                     </div>`;
-        }
-        if(list) list.innerHTML = html;
-    }
-
     window.onload = async () => {
-        updateCollectionUI();
         try { const timeRes = await fetch('/data/offline-timetable.json'); if (timeRes.ok) offlineTimetableData = await timeRes.json(); } catch (e) {}
         try { const transferRes = await fetch('/data/transfer-timetable.json'); if (transferRes.ok) transferTimetableData = await transferRes.json(); } catch (e) {}
         try { 
