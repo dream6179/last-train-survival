@@ -1,5 +1,5 @@
 // ==========================================
-// 末班車生存戰 核心路由與 API 引擎 (v2.1 防空洞強制觸發版)
+// 末班車生存戰 核心路由與 API 引擎 (v2.2 連環車禍修復版)
 // ==========================================
 
 /**
@@ -52,7 +52,8 @@ async function fetchSingleStationTime(stationName, type, offlineData, token) {
 
     // 依照運具組合對應的 TDX API
     if (type === 'trtc') {
-        url = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/TRTC?$filter=StationID eq '${stationId}'&$format=JSON`;
+        // 🚨 修正：北捷改用「中文站名」查詢，避免英文 ID 與官方代碼不符的問題
+        url = `https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/TRTC?$filter=StationName/Zh_tw eq '${stationName}'&$format=JSON`;
     } else if (type === 'tra') {
         url = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyStationTimetable/Today/Station/${stationId}?$format=JSON`;
     } else if (type === 'thsr') {
@@ -95,7 +96,7 @@ async function fetchSingleStationTime(stationName, type, offlineData, token) {
         // 過濾掉已經開走的車
         results = results.filter(r => r.time >= nowTime).sort((a, b) => a.time.localeCompare(b.time));
 
-        // 🚨 關鍵防禦：如果 TDX 回傳空陣列 (代表 ID 不對或沒抓到)，強制丟出錯誤，啟動離線防空洞！
+        // 🚨 關鍵防禦：如果 TDX 回傳空陣列，強制丟出錯誤，啟動離線防空洞
         if (results.length === 0) {
              throw new Error("TDX 查無資料，強制轉入離線備援");
         }
@@ -105,17 +106,21 @@ async function fetchSingleStationTime(stationName, type, offlineData, token) {
     } catch (err) {
         console.warn("API 異常或無資料，已進入離線防空洞:", err.message);
         
-        // 觸發斷網防空洞：從本地 offline-timetable.json 撈取
-        if (offlineData && offlineData[type] && offlineData[type][stationName]) {
-            let offlineResults = offlineData[type][stationName].map(item => ({
+        // 🚨 雙重保險：同時支援 中文站名("板新") 或 英文ID("Banxin") 作為離線字典的 Key
+        let offlineKey = null;
+        if (offlineData && offlineData[type]) {
+            if (offlineData[type][stationName]) offlineKey = stationName;
+            else if (offlineData[type][stationId]) offlineKey = stationId;
+        }
+
+        if (offlineKey) {
+            let offlineResults = offlineData[type][offlineKey].map(item => ({
                 destination: item.dest || item.destination || "末班車",
                 time: item.time,
                 source: "離線備援"
             }));
             
-            // 離線字典通常存的是深夜末班車，直接用時間數值排序並全數顯示
             offlineResults.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-            
             return { status: "success", data: offlineResults.slice(0, 10) };
         }
         return { status: "not_found", data: [] };
@@ -129,13 +134,12 @@ async function fetchRealLastTrainTime(globalData, token, startId, endId, type) {
     const today = getOperatingDateString();
     let url = "";
 
-    // 針對台鐵與高鐵，使用強大的 O-D (起迄站) API
     if (type === 'tra') {
         url = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyTrainTimetable/OD/${startId}/to/${endId}/${today}?$format=JSON`;
     } else if (type === 'thsr') {
         url = `https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/OD/${startId}/to/${endId}/${today}?$format=JSON`;
     } else if (type === 'trtc') {
-        // 北捷沒有直接的 OD API，拋回 Null 進入離線「最嚴格防禦」演算法
+        // 北捷沒有直接的 OD API，拋回 Null 進入離線防空洞
         return null; 
     }
 
@@ -166,7 +170,7 @@ async function fetchRealLastTrainTime(globalData, token, startId, endId, type) {
 }
 
 /**
- * 官方中繼轉乘死線 (針對特定跨線換乘的保底機制)
+ * 官方中繼轉乘死線
  */
 function getOfficialTransferTime(transferData, offlineData, start, end, type) {
     if (!transferData) return null;
@@ -179,12 +183,24 @@ function getOfficialTransferTime(transferData, offlineData, start, end, type) {
 
 /**
  * 斷網防空洞 (純離線演算法)
- * 針對沒有 O-D API (如北捷) 或斷網時，抓取離線字典的最晚發車時間
  */
 function calculateOfflineTime(offlineData, start, end, type) {
-    if (!offlineData || !offlineData[type] || !offlineData[type][start]) return null;
+    if (!offlineData || !offlineData[type]) return null;
     
-    const stationTimes = offlineData[type][start];
+    // 試著去抓全域變數裡的英文 ID (萬一字典是用英文當 Key)
+    let stationId = null;
+    if (typeof globalStationData !== 'undefined' && globalStationData[type]) {
+        let sObj = globalStationData[type].options.find(s => s.name === start);
+        if (sObj) stationId = sObj.id;
+    }
+
+    let offlineKey = null;
+    if (offlineData[type][start]) offlineKey = start;
+    else if (stationId && offlineData[type][stationId]) offlineKey = stationId;
+
+    if (!offlineKey) return null;
+    
+    const stationTimes = offlineData[type][offlineKey];
     let maxMins = -1;
     let latestTimeStr = null;
 
