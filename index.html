@@ -258,7 +258,7 @@
         </div>
 
         <div onclick="if(typeof triggerEasterEgg3 === 'function') triggerEasterEgg3()" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px; cursor: pointer;">
-            當前版本：v2.7 (雙鐵轉乘防呆版)
+            當前版本：v2.8 (雙鐵接駁終極版)
         </div>
     </div>
 </div>
@@ -419,7 +419,12 @@
 
         if (point === 'transfer') {
             const startType = document.getElementById('start-type').value;
-            options = globalStationData?.[startType]?.transferStations || [];
+            let rawOptions = globalStationData?.[startType]?.transferStations || [];
+            // 🌟 隱形翻譯蒟蒻：下拉選單裡的「萬華」自動披上「龍山寺」的皮
+            options = rawOptions.map(s => {
+                if (s.name === '萬華') return { ...s, name: '龍山寺' };
+                return s;
+            });
         } else {
             const selectedType = document.getElementById(point + '-type').value;
             options = globalStationData?.[selectedType]?.options || [];
@@ -493,7 +498,8 @@
             const isOriginTransferStation = transferStations.some(s => s.name === startInput);
 
             if (isOriginTransferStation) {
-                transferInput.value = startInput;
+                // 🌟 特例防呆：如果出發地是萬華，轉乘站鎖死在龍山寺
+                transferInput.value = startInput === '萬華' ? '龍山寺' : startInput;
                 transferInput.disabled = true;
                 transferInput.style.opacity = '0.5';
                 transferInput.style.pointerEvents = 'none'; 
@@ -502,8 +508,10 @@
                 transferInput.style.opacity = '1';
                 transferInput.style.pointerEvents = 'auto';
                 
-                if (!transferStations.some(s => s.name === transferInput.value)) {
-                    transferInput.value = transferStations[0]?.name || '南港';
+                // 🌟 允許龍山寺作為合法的轉乘輸入值
+                let validNames = transferStations.map(s => s.name === '萬華' ? '龍山寺' : s.name);
+                if (!validNames.includes(transferInput.value)) {
+                    transferInput.value = validNames[0] || '南港';
                 }
             }
 
@@ -555,7 +563,11 @@
         const endType = document.getElementById('end-type').value;
         const startStationName = document.getElementById('start-station-input').value; 
         const endStationName = document.getElementById('end-station-input').value;
-        const transferStationName = document.getElementById('transfer-station-input').value;
+        
+        // 🌟 隱形翻譯蒟蒻：把 UI 上的龍山寺翻譯回萬華給 TDX 聽
+        const uiTransferName = document.getElementById('transfer-station-input').value;
+        const railTransferName = uiTransferName === '龍山寺' ? '萬華' : uiTransferName;
+        const trtcTransferName = uiTransferName; // 北捷依然認龍山寺
 
         if (isCountingDown) { if ("Notification" in window) { if (Notification.permission === "granted") toggleNotificationState(); else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); }); else alert("⚠️ 您之前拒絕了通知權限，請手動開啟！"); } else alert("⚠️ 不支援推播通知！"); return; }
         
@@ -566,39 +578,36 @@
         localStorage.setItem('lastTrainStart', startStationName); localStorage.setItem('lastTrainEnd', endStationName);
         const startStation = startStationObj.id; const endStation = endStationObj.id;
 
-        // 直達且抵達 (北捷 -> 北捷 同站)
         if (startType === endType && startStation === endStation) { clearInterval(timer); isCountingDown = false; display.innerHTML = "恭喜到達🎉"; display.style.fontSize = "40px"; display.style.color = "#4caf50"; statusText.innerHTML = "早點回家洗洗睡！"; actionBtn.style.display = "none"; cancelBtn.style.display = "none"; planBContainer.style.display = "flex"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "none"); return; }
 
         actionBtn.innerHTML = "⏳ 演算法推演中..."; actionBtn.disabled = true;
 
        try {
             let finalTime = "23:59"; let status = "系統預設";
-            let transferPenalty = 0; // 雙段計算內部已處理 30 分鐘，只有北捷直達才需要在外層扣
+            let transferPenalty = 0; 
             
-            // 🌟 情境 A：雙段求生 (台鐵/高鐵 -> 北捷)
             if (startType === 'tra' || startType === 'thsr') {
-                const transferStationObj = globalStationData[startType]?.transferStations?.find(s => s.name === transferStationName);
+                const transferStationObj = globalStationData[startType]?.transferStations?.find(s => s.name === railTransferName);
                 if (!transferStationObj) { alert("⚠️ 無效的轉乘站"); actionBtn.disabled = false; actionBtn.innerHTML = "開始計算轉乘"; return; }
                 
                 if (!cachedTdxToken) { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; }
                 
-                // 這裡呼叫 routing.js 裡面新增的雙段求生演算法
-                let res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, transferStationName, endStationName, offlineTimetableData, cachedTdxToken);
+                // 呼叫雙段計算 (丟萬華 ID 給 TDX，丟龍山寺給北捷字典)
+                let res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationName, offlineTimetableData, cachedTdxToken);
                 
                 if (res.time === "TOKEN_EXPIRED") { 
                     const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token;
-                    res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, transferStationName, endStationName, offlineTimetableData, cachedTdxToken);
+                    res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationName, offlineTimetableData, cachedTdxToken);
                 }
 
                 if (res.time) {
                     finalTime = res.time; status = res.status;
                 } else {
                     alert(`⚠️ ${res.status}！今晚可能無法透過這條路線回家了。`);
-                    throw new Error(res.status); // 丟出錯誤停止倒數
+                    throw new Error(res.status);
                 }
 
             } 
-            // 🌟 情境 B：單段直達 (北捷 -> 北捷)
             else {
                 const offlineComputedTime = calculateOfflineTime(offlineTimetableData, startStationName, endStationName, startType);
                 if (offlineComputedTime) { finalTime = offlineComputedTime; status = "離線演算法"; } 
