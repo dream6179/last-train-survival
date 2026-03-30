@@ -58,19 +58,29 @@
         }
         window.onload = updateDevBtn;
 
-        function toggleDevMode() {
+        async function toggleDevMode() {
             if(localStorage.getItem('dev_mode_active') === 'true') {
                 localStorage.setItem('dev_mode_active', 'false');
                 alert("🔴 已關閉開發者模式，恢復現實時間。請重新整理主頁。");
                 updateDevBtn();
             } else {
                 const pwd = prompt("🔒 請輸入工程模式密碼：");
-                if(pwd === "31362094") {
-                    localStorage.setItem('dev_mode_active', 'true');
-                    alert("✅ 密碼正確！已啟用開發者模式 (時間已鎖定為 23:30)。請重新整理主頁。");
-                    updateDevBtn();
-                } else if(pwd !== null) {
-                    alert("❌ 密碼錯誤！");
+                if (pwd === null) return;
+
+                try {
+                    // 跑去 config.json 拿鑰匙
+                    const res = await fetch('/data/config.json?t=' + new Date().getTime());
+                    const data = await res.json();
+                    
+                    if(pwd === data.dev_key) {
+                        localStorage.setItem('dev_mode_active', 'true');
+                        alert("✅ 密碼正確！已啟用開發者模式 (時間已鎖定為 23:30)。請重新整理主頁。");
+                        updateDevBtn();
+                    } else {
+                        alert("❌ 密碼錯誤！");
+                    }
+                } catch (e) {
+                    alert("❌ 系統錯誤，無法驗證鑰匙。");
                 }
             }
         }
