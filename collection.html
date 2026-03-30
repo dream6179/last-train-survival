@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>彩蛋與收集冊 | 末班車生存戰</title>
+    
+    <style>
+        :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --success: #4caf50; --warning: #ffb300; --info: #2196F3; }
+        html, body { overflow-x: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main); -webkit-user-select: none; user-select: none; }
+        
+        .container { width: 90%; max-width: 400px; margin: 20px auto; padding-bottom: 30px; }
+        
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #333; }
+        .header-row h1 { font-size: 20px; color: var(--warning); margin: 0; }
+        .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; }
+        .back-btn:active { background: #555; transform: scale(0.95); }
+
+        .section-title { font-size: 16px; color: var(--text-sub); margin: 20px 0 10px 0; font-weight: bold; border-left: 4px solid var(--info); padding-left: 10px; }
+
+        .game-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+        .game-card { background: var(--card-bg); border: 1px solid #333; border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.1s; }
+        .game-card:active { transform: scale(0.98); filter: brightness(1.2); }
+        .game-card.locked { opacity: 0.5; cursor: not-allowed; border-style: dashed; }
+        .game-info { display: flex; flex-direction: column; text-align: left; }
+        .game-name { font-size: 16px; font-weight: bold; color: white; }
+        .game-score { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+        .play-icon { font-size: 24px; }
+
+        .collection-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .collection-item { background: var(--card-bg); border: 1px dashed #444; border-radius: 12px; padding: 20px 10px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100px; transition: 0.2s; }
+        .item-icon { font-size: 30px; margin-bottom: 8px; filter: grayscale(100%) opacity(0.3); }
+        .item-name { font-size: 13px; color: #666; font-weight: bold; }
+        
+        /* 隱藏面板的樣式 (讓遊戲順利跑) */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 90; }
+        .overlay.active { opacity: 1; pointer-events: all; }
+        .bottom-sheet { position: fixed; bottom: 0; left: 50%; width: 100%; max-width: 400px; height: auto; min-height: 50vh; background-color: var(--card-bg); border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); transform: translate(-50%, 100%); transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); z-index: 100; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        .bottom-sheet.active { transform: translate(-50%, 0); }
+        .sheet-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
+        .sheet-header h3 { margin: 0; font-size: 18px; color: var(--warning); }
+        .close-sheet-btn { background: var(--danger); color: white; border: none; padding: 5px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .main-action-btn { color: white; border: none; padding: 15px; font-size: 17px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.1s; width: auto; padding: 10px 30px; margin-top: 15px; background-color: var(--info); }
+        .main-action-btn:active { transform: scale(0.98); }
+    </style>
+    
+    <script src="/js/game.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-row">
+        <h1>🏆 彩蛋與收集冊</h1>
+        <a href="/" class="back-btn">⬅ 返回主頁</a>
+    </div>
+
+    <div class="section-title">🕹️ 隱藏遊戲機台</div>
+    <div class="game-grid" id="game-list">
+        </div>
+
+    <div class="section-title">📦 成就與收集</div>
+    <div class="collection-grid">
+        <div class="collection-item">
+            <div class="item-icon">🔒</div>
+            <div class="item-name">未知成就 01</div>
+        </div>
+        <div class="collection-item">
+            <div class="item-icon">🔒</div>
+            <div class="item-name">未知成就 02</div>
+        </div>
+        <div class="collection-item">
+            <div class="item-icon">🔒</div>
+            <div class="item-name">未知成就 03</div>
+        </div>
+        <div class="collection-item">
+            <div class="item-icon">🔒</div>
+            <div class="item-name">未知成就 04</div>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
+<div class="bottom-sheet" id="game-sheet">
+    <div class="sheet-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+        <h3 id="game-title">遊戲機台</h3>
+        <button class="close-sheet-btn" onclick="closeAllSheets()">結束</button>
+    </div>
+    <div class="sheet-content" style="text-align: center; padding-top: 10px; overflow: hidden; width: 100%;">
+        <div class="game-score-box" id="game-score" style="font-size: 20px; font-weight: bold; color: var(--warning); margin-bottom: 5px;"></div>
+        <div id="game-high-score" style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: bold;"></div>
+        <p id="game-hint" style="font-size: 11px; margin: 0; color: #888;"></p>
+        
+        <canvas id="game-canvas" width="350" height="250" style="background: #111; border-radius: 10px; border: 2px dashed #444; width: 100%; max-width: 350px; touch-action: none; margin-top: 10px;"></canvas>
+        <div id="password-ui" style="display: none; flex-direction: column; gap: 15px; margin: 20px auto; max-width: 250px; align-items: center;"></div>
+        <br>
+        <button id="start-game-btn" class="main-action-btn" onclick="if(typeof startActiveGame === 'function') startActiveGame()">開始</button>
+    </div>
+</div>
+
+<script>
+    function renderGames() {
+        const list = document.getElementById('game-list');
+        const u1 = localStorage.getItem('unlock_runner') === 'true';
+        const u2 = localStorage.getItem('unlock_diver') === 'true';
+        const u3 = localStorage.getItem('unlock_password') === 'true';
+        
+        const s1 = localStorage.getItem('lateCommuterHighScore') || 0;
+        const s2 = localStorage.getItem('deepStationHighScore') || 0;
+        const s3 = localStorage.getItem('passwordHighScore') || 999;
+
+        let html = '';
+        
+        // 遊戲 1
+        if (u1) {
+            html += `<div class="game-card" style="border-color: var(--warning);" onclick="triggerEasterEgg(true)">
+                        <div class="game-info">
+                            <span class="game-name" style="color: var(--warning);">🏃‍♂️ 社畜的最後衝刺</span>
+                            <span class="game-score">最高存活：${s1} 秒</span>
+                        </div>
+                        <div class="play-icon">▶️</div>
+                     </div>`;
+        } else {
+            html += `<div class="game-card locked"><div class="game-info"><span class="game-name">🔒 隱藏機台 01</span><span class="game-score">在主頁亂點標題試試...</span></div></div>`;
+        }
+        
+        // 遊戲 2
+        if (u2) {
+            html += `<div class="game-card" style="border-color: var(--info);" onclick="triggerEasterEgg2(true)">
+                        <div class="game-info">
+                            <span class="game-name" style="color: var(--info);">🚇 直奔最深月台</span>
+                            <span class="game-score">最深抵達：B${s2}</span>
+                        </div>
+                        <div class="play-icon">▶️</div>
+                     </div>`;
+        } else {
+            html += `<div class="game-card locked"><div class="game-info"><span class="game-name">🔒 隱藏機台 02</span><span class="game-score">點擊時鐘可能會有事發生...</span></div></div>`;
+        }
+        
+        // 遊戲 3
+        if (u3) {
+            let showS3 = s3 == 999 ? '尚未通關' : `${s3} 次`;
+            html += `<div class="game-card" style="border-color: var(--success);" onclick="triggerEasterEgg3(true)">
+                        <div class="game-info">
+                            <span class="game-name" style="color: var(--success);">🔢 終極密碼</span>
+                            <span class="game-score">最快破解：${showS3}</span>
+                        </div>
+                        <div class="play-icon">▶️</div>
+                     </div>`;
+        } else {
+            html += `<div class="game-card locked"><div class="game-info"><span class="game-name">🔒 隱藏機台 03</span><span class="game-score">主頁的版本號有點可疑...</span></div></div>`;
+        }
+        
+        list.innerHTML = html;
+    }
+
+    function closeAllSheets() {
+        document.getElementById('game-sheet').classList.remove('active');
+        document.getElementById('overlay').classList.remove('active');
+        if (typeof isGameRunning !== 'undefined') isGameRunning = false;
+        // 關閉時重新整理分數
+        setTimeout(renderGames, 300);
+    }
+
+    // 啟動時渲染
+    window.onload = renderGames;
+</script>
+
+</body>
+</html>
