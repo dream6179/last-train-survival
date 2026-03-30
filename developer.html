@@ -17,6 +17,9 @@
         .link-btn { display: block; background: #1a1a1a; color: white; border: 1px solid #555; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 15px; transition: 0.1s; cursor: pointer; }
         .link-btn:active { background: #333; transform: scale(0.98); }
         .version-text { text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-top: 20px; font-variant-numeric: tabular-nums; }
+        
+        /* 🌟 計數器專用樣式，確保圖片在 Container 內完美置中 */
+        .counter-box { text-align: center; margin-top: 15px; display: flex; justify-content: center; width: 100%; }
     </style>
 </head>
 <body>
@@ -41,9 +44,12 @@
         </div>
 
         <div class="version-text">目前版本: v2.21</div>
-    </div>
 
-    <script>
+        <div class="counter-box">
+            <img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Flast-train-survival.vercel.app&count_bg=%23FFB300&title_bg=%23333333&title=🚇+累積求生人次&edge_flat=true" alt="Hits"/>
+        </div>
+
+    </div> <script>
         function updateDevBtn() {
             const btn = document.getElementById('dev-mode-btn');
             if(localStorage.getItem('dev_mode_active') === 'true') {
@@ -87,6 +93,3 @@
     </script>
 </body>
 </html>
-<div style="text-align: center; margin-top: 15px;">
-    <img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Flast-train-survival.vercel.app&count_bg=%23FFB300&title_bg=%23333333&title=🚇+累積求生人次&edge_flat=true" alt="Hits"/>
-</div>
