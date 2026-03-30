@@ -16,7 +16,7 @@
         .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; }
         .back-btn:active { background: #555; transform: scale(0.95); }
 
-        .section-title { font-size: 16px; color: var(--text-sub); margin: 20px 0 10px 0; font-weight: bold; border-left: 4px solid var(--info); padding-left: 10px; }
+        .section-title { font-size: 16px; color: var(--text-sub); margin: 20px 0 10px 0; font-weight: bold; border-left: 4px solid var(--info); padding-left: 10px; display: flex; justify-content: space-between; align-items: center; }
 
         .game-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
         .game-card { background: var(--card-bg); border: 1px solid #333; border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.1s; }
@@ -32,7 +32,6 @@
         .item-icon { font-size: 30px; margin-bottom: 8px; filter: grayscale(100%) opacity(0.3); }
         .item-name { font-size: 13px; color: #666; font-weight: bold; }
         
-        /* 隱藏面板的樣式 (讓遊戲順利跑) */
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 90; }
         .overlay.active { opacity: 1; pointer-events: all; }
         .bottom-sheet { position: fixed; bottom: 0; left: 50%; width: 100%; max-width: 400px; height: auto; min-height: 50vh; background-color: var(--card-bg); border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); transform: translate(-50%, 100%); transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); z-index: 100; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
@@ -42,6 +41,10 @@
         .close-sheet-btn { background: var(--danger); color: white; border: none; padding: 5px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .main-action-btn { color: white; border: none; padding: 15px; font-size: 17px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.1s; width: auto; padding: 10px 30px; margin-top: 15px; background-color: var(--info); }
         .main-action-btn:active { transform: scale(0.98); }
+
+        /* 工程模式專用按鈕樣式 */
+        .dev-reset-btn { background-color: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: none; }
+        .dev-reset-btn:active { background-color: #330000; }
     </style>
     
     <script src="/js/game.js"></script>
@@ -54,28 +57,18 @@
         <a href="/" class="back-btn">⬅ 返回主頁</a>
     </div>
 
-    <div class="section-title">🕹️ 隱藏遊戲機台</div>
-    <div class="game-grid" id="game-list">
-        </div>
+    <div class="section-title">
+        🕹️ 隱藏遊戲機台
+        <button id="dev-reset-btn" class="dev-reset-btn" onclick="resetEasterEggs()">重新上鎖</button>
+    </div>
+    <div class="game-grid" id="game-list"></div>
 
     <div class="section-title">📦 成就與收集</div>
     <div class="collection-grid">
-        <div class="collection-item">
-            <div class="item-icon">🔒</div>
-            <div class="item-name">未知成就 01</div>
-        </div>
-        <div class="collection-item">
-            <div class="item-icon">🔒</div>
-            <div class="item-name">未知成就 02</div>
-        </div>
-        <div class="collection-item">
-            <div class="item-icon">🔒</div>
-            <div class="item-name">未知成就 03</div>
-        </div>
-        <div class="collection-item">
-            <div class="item-icon">🔒</div>
-            <div class="item-name">未知成就 04</div>
-        </div>
+        <div class="collection-item"><div class="item-icon">🔒</div><div class="item-name">未知成就 01</div></div>
+        <div class="collection-item"><div class="item-icon">🔒</div><div class="item-name">未知成就 02</div></div>
+        <div class="collection-item"><div class="item-icon">🔒</div><div class="item-name">未知成就 03</div></div>
+        <div class="collection-item"><div class="item-icon">🔒</div><div class="item-name">未知成就 04</div></div>
     </div>
 </div>
 
@@ -110,61 +103,59 @@
 
         let html = '';
         
-        // 遊戲 1
         if (u1) {
             html += `<div class="game-card" style="border-color: var(--warning);" onclick="triggerEasterEgg(true)">
-                        <div class="game-info">
-                            <span class="game-name" style="color: var(--warning);">🏃‍♂️ 社畜的最後衝刺</span>
-                            <span class="game-score">最高存活：${s1} 秒</span>
-                        </div>
-                        <div class="play-icon">▶️</div>
-                     </div>`;
+                        <div class="game-info"><span class="game-name" style="color: var(--warning);">🏃‍♂️ 社畜的最後衝刺</span><span class="game-score">最高存活：${s1} 秒</span></div>
+                        <div class="play-icon">▶️</div></div>`;
         } else {
-            // 🌟 變更提示文字
             html += `<div class="game-card locked"><div class="game-info"><span class="game-name">🔒 隱藏機台 01</span><span class="game-score">到處點擊試試...</span></div></div>`;
         }
         
-        // 遊戲 2
         if (u2) {
             html += `<div class="game-card" style="border-color: var(--info);" onclick="triggerEasterEgg2(true)">
-                        <div class="game-info">
-                            <span class="game-name" style="color: var(--info);">🚇 直奔最深月台</span>
-                            <span class="game-score">最深抵達：B${s2}</span>
-                        </div>
-                        <div class="play-icon">▶️</div>
-                     </div>`;
+                        <div class="game-info"><span class="game-name" style="color: var(--info);">🚇 直奔最深月台</span><span class="game-score">最深抵達：B${s2}</span></div>
+                        <div class="play-icon">▶️</div></div>`;
         } else {
-            // 🌟 變更提示文字
             html += `<div class="game-card locked"><div class="game-info"><span class="game-name">🔒 隱藏機台 02</span><span class="game-score">可能有事發生...</span></div></div>`;
         }
         
-        // 遊戲 3
         if (u3) {
             let showS3 = s3 == 999 ? '尚未通關' : `${s3} 次`;
             html += `<div class="game-card" style="border-color: var(--success);" onclick="triggerEasterEgg3(true)">
-                        <div class="game-info">
-                            <span class="game-name" style="color: var(--success);">🔢 終極密碼</span>
-                            <span class="game-score">最快破解：${showS3}</span>
-                        </div>
-                        <div class="play-icon">▶️</div>
-                     </div>`;
+                        <div class="game-info"><span class="game-name" style="color: var(--success);">🔢 終極密碼</span><span class="game-score">最快破解：${showS3}</span></div>
+                        <div class="play-icon">▶️</div></div>`;
         } else {
-            // 🌟 變更提示文字
             html += `<div class="game-card locked"><div class="game-info"><span class="game-name">🔒 隱藏機台 03</span><span class="game-score">好像有點可疑...</span></div></div>`;
         }
         
         list.innerHTML = html;
+
+        // 🌟 檢查是否為工程模式，若是則顯示重置按鈕
+        if(localStorage.getItem('dev_mode_active') === 'true') {
+            document.getElementById('dev-reset-btn').style.display = 'block';
+        } else {
+            document.getElementById('dev-reset-btn').style.display = 'none';
+        }
+    }
+
+    // 🌟 開發者專用：重置解鎖狀態
+    function resetEasterEggs() {
+        if(confirm("🛠️ [工程模式] 確定要將所有隱藏機台重新上鎖嗎？這將方便您重新測試解鎖流程。")) {
+            localStorage.removeItem('unlock_runner');
+            localStorage.removeItem('unlock_diver');
+            localStorage.removeItem('unlock_password');
+            renderGames();
+            alert("✅ 已重新上鎖！現在您可以回主畫面測試連點觸發了。");
+        }
     }
 
     function closeAllSheets() {
         document.getElementById('game-sheet').classList.remove('active');
         document.getElementById('overlay').classList.remove('active');
         if (typeof isGameRunning !== 'undefined') isGameRunning = false;
-        // 關閉時重新整理分數
         setTimeout(renderGames, 300);
     }
 
-    // 啟動時渲染
     window.onload = renderGames;
 </script>
 
