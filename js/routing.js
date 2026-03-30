@@ -232,3 +232,68 @@ function calculateOfflineTime(offlineData, start, end, type) {
 
     return latestTimeStr;
 }
+/**
+ * 將分鐘數轉回 HH:mm 字串格式
+ */
+function minutesToTime(mins) {
+    let h = Math.floor(mins / 60);
+    let m = mins % 60;
+    if (h >= 24) h -= 24;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/**
+ * 🌟 模式 3：雙段求生模式 (台鐵/高鐵 -> 轉乘站 -> 北捷)
+ */
+async function fetchTwoStageSurvivalTime(startType, startId, transferId, transferName, endName, offlineData, token) {
+    // 1. 取得北捷最後發車時間 (轉乘站 -> 目的地)
+    let trtcLastTime = calculateOfflineTime(offlineData, transferName, endName, 'trtc');
+    if (!trtcLastTime) return { time: null, status: "查無北捷轉乘班次" };
+
+    // 2. 扣除 30 分鐘轉乘死線
+    let targetArrivalMins = timeToMinutes(trtcLastTime) - 30;
+
+    // 3. 如果是同站轉乘 (例如人在北車搭高鐵，轉乘站也是北車)
+    if (startId === transferId) {
+        return { time: minutesToTime(targetArrivalMins), status: "同站跨系統 (-30分)" };
+    }
+
+    // 4. 需要搭車：去 TDX 撈能趕上 targetArrivalMins 的最後一班車
+    const today = getOperatingDateString();
+    let url = "";
+    if (startType === 'tra') url = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyTrainTimetable/OD/${startId}/to/${transferId}/${today}?$format=JSON`;
+    else if (startType === 'thsr') url = `https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/OD/${startId}/to/${transferId}/${today}?$format=JSON`;
+
+    try {
+        const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (response.status === 401) return { time: "TOKEN_EXPIRED" };
+        if (!response.ok) return { time: null, status: "TDX 連線失敗" };
+
+        const data = await response.json();
+        let validTrains = []; // 存放所有「來得及」的班次發車時間
+
+        if (startType === 'tra' && data.TrainTimetables) {
+            data.TrainTimetables.forEach(t => {
+                if (timeToMinutes(t.DestinationStopTime.ArrivalTime) <= targetArrivalMins) {
+                    validTrains.push(t.OriginStopTime.DepartureTime);
+                }
+            });
+        } else if (startType === 'thsr') {
+            data.forEach(t => {
+                if (timeToMinutes(t.DestinationStopTime.ArrivalTime) <= targetArrivalMins) {
+                    validTrains.push(t.OriginStopTime.DepartureTime);
+                }
+            });
+        }
+
+        if (validTrains.length === 0) return { time: null, status: "接不上北捷末班車" };
+
+        // 排序後抓最後一班
+        validTrains.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+        return { time: validTrains[validTrains.length - 1], status: "雙段精準計算" };
+
+    } catch (err) {
+        console.warn("雙段計算失敗:", err);
+        return { time: null, status: "轉乘計算失敗" };
+    }
+}
