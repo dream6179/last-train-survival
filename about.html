@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>設定與說明 | 末班車生存戰</title>
+    <style>
+        :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --info: #2196F3; --warning: #ffb300; }
+        html, body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; }
+        .container { width: 90%; max-width: 400px; margin: 20px auto; padding-bottom: 30px; }
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #333; }
+        .header-row h1 { font-size: 20px; margin: 0; color: var(--text-main); }
+        .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; }
+        .back-btn:active { background: #555; transform: scale(0.95); }
+        .section { background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid #333; }
+        .section h3 { margin-top: 0; border-bottom: 1px dashed #444; padding-bottom: 10px; color: var(--info); font-size: 16px; }
+        ul { padding-left: 20px; line-height: 1.8; font-size: 14px; color: var(--text-sub); margin-bottom: 0; }
+        .link-btn { display: block; background: #1a1a1a; color: white; border: 1px solid #555; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 10px; }
+        .link-btn:active { background: #333; }
+        .version-text { text-align: center; color: #666; font-size: 12px; margin-top: 20px; font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-row">
+            <h1>⚙️ 設定與說明</h1>
+            <a href="/" class="back-btn">⬅ 返回主頁</a>
+        </div>
+
+        <div class="section">
+            <h3>📖 快速使用說明</h3>
+            <ul>
+                <li>點擊標題右側的「🔍」可切換至全查詢模式。</li>
+                <li>點擊輸入框時，按一下旁邊的星星「☆」即可加入最愛並置頂。</li>
+                <li>系統會優先連線交通部 TDX，若遇斷網則自動啟動離線演算法。</li>
+                <li><span style="color: var(--warning); font-weight: bold;">【轉乘防禦機制】</span>只要偵測到需要跨線轉乘，系統為求安全，一律會自動篩選出「最嚴格（最早）」的發車死線。</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h3>👨‍💻 開發者資訊</h3>
+            <p style="font-size: 14px; color: var(--text-sub); margin-top: 0;">本服務由 <strong>綠茶地瓜</strong> 開發與維護。<br>查看最新版本資訊、碎碎念與 App 開發秘辛：</p>
+            <a href="https://home.gamer.com.tw/artwork.php?sn=6310367" target="_blank" class="link-btn">📝 綠茶地瓜的開發日誌 (巴哈姆特)</a>
+        </div>
+
+        <div class="version-text">
+            當前版本：v2.10 (四號月台音樂版)
+        </div>
+    </div>
+</body>
+</html>
