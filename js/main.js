@@ -52,8 +52,17 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function toggleAppMode() {
     const modeSurvival = document.getElementById('mode-survival'); const modeSearch = document.getElementById('mode-search'); const toggleBtn = document.getElementById('mode-toggle-btn'); const mainTitle = document.getElementById('main-title');
-    if (currentMode === 'survival') { modeSurvival.style.display = 'none'; modeSearch.style.display = 'block'; toggleBtn.innerHTML = '🏠'; toggleBtn.title = '返回求生模式'; mainTitle.innerHTML = '時刻表檢索'; mainTitle.style.color = 'var(--info)'; currentMode = 'search'; document.getElementById('search-station-input').value = savedStart; } 
-    else { modeSearch.style.display = 'none'; modeSurvival.style.display = 'block'; toggleBtn.innerHTML = '🔍'; toggleBtn.title = '切換至全查詢模式'; mainTitle.innerHTML = '末班車生存戰'; mainTitle.style.color = 'var(--danger)'; currentMode = 'survival'; }
+    if (currentMode === 'survival') { 
+        modeSurvival.style.display = 'none'; modeSearch.style.display = 'block'; 
+        toggleBtn.innerHTML = '🏠'; toggleBtn.title = '返回求生模式'; 
+        mainTitle.innerHTML = '時刻表檢索'; mainTitle.style.color = 'var(--info)'; 
+        currentMode = 'search'; document.getElementById('search-station-input').value = savedStart; 
+    } else { 
+        modeSearch.style.display = 'none'; modeSurvival.style.display = 'block'; 
+        toggleBtn.innerHTML = '🔍'; toggleBtn.title = '切換至全查詢模式'; 
+        mainTitle.innerHTML = '末班車生存'; mainTitle.style.color = 'var(--danger)'; 
+        currentMode = 'survival'; 
+    }
 }
 
 async function executeFullSearch() {
@@ -339,4 +348,4 @@ function toggleContact() { const l = document.getElementById('contact-links'); l
 function openAdvancedSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
 function openSettingsSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
 function closeAllSheets() { document.getElementById('advanced-sheet').classList.remove('active'); document.getElementById('settings-sheet').classList.remove('active'); document.getElementById('error-sheet').classList.remove('active'); const overlay = document.getElementById('overlay'); overlay.classList.remove('active'); setTimeout(() => { overlay.style.zIndex = "90"; }, 300); }
-function shareApp() { if (navigator.share) navigator.share({ title: '末班車生存戰', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href }); else { navigator.clipboard.writeText(window.location.href); alert("✅ 網址已複製！"); } }
+function shareApp() { if (navigator.share) navigator.share({ title: '末班車生存', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href }); else { navigator.clipboard.writeText(window.location.href); alert("✅ 網址已複製！"); } }
