@@ -151,8 +151,6 @@
             </div>
         </div>
 
-        <button class="advanced-toggle-btn" onclick="openAdvancedSheet()" style="display: none;">⛙ 加入中繼轉乘站 (進階模式)</button>
-
         <div class="location-block">
             <label>目的地</label>
             <div class="select-group">
@@ -185,7 +183,17 @@
     </div>
 
     <div id="mode-search" style="display: none;">
-        <p style="color: var(--text-sub); font-size: 13px; margin-top: 0; margin-bottom: 20px;">想查哪站？我們去 TDX 資料庫幫你找。</p>
+        <p style="color: var(--text-sub); font-size: 13px; margin-top: 0; margin-bottom: 15px;">想查哪站？我們去 TDX 資料庫幫你找。</p>
+        
+        <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; background: #222; padding: 10px; border-radius: 10px; border: 1px solid #333;">
+            <label style="color: white; font-size: 13px; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                <input type="radio" name="search-time-mode" value="now" checked style="accent-color: var(--info);"> ⏱️ 即時班次
+            </label>
+            <label style="color: white; font-size: 13px; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                <input type="radio" name="search-time-mode" value="last" style="accent-color: var(--danger);"> 🚨 終極末班車
+            </label>
+        </div>
+
         <div class="location-block">
             <label>查詢車站</label>
             <div class="select-group">
@@ -219,13 +227,6 @@
 
 <div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
 
-<div class="bottom-sheet" id="advanced-sheet">
-    <div class="sheet-header"><h3>進階轉乘路線設定</h3><button class="close-sheet-btn" onclick="closeAllSheets()">完成</button></div>
-    <div class="sheet-content">
-        <p>在這裡，您可以打造像「中山 ➡️ 北車 ➡️ 客運1815」這種多段極限轉乘任務。</p>
-    </div>
-</div>
-
 <div class="bottom-sheet" id="settings-sheet">
     <div class="sheet-header"><h3>⚙️ 設定與說明</h3><button class="close-sheet-btn" onclick="closeAllSheets()">關閉</button></div>
     <div class="sheet-content">
@@ -243,22 +244,17 @@
                 <button id="mute-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0;" onclick="toggleMute()">🔇</button>
                 <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0" style="flex-grow: 1;" oninput="updateVolume(this.value)">
             </div>
-            <p style="font-size: 11px; color: #888; margin-top: 5px; text-align: center;">深夜的月台，適合來點 Lo-Fi 放鬆一下</p>
         </div>
-        
         <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px;">
             <h4 style="color: var(--warning); margin-top: 0; margin-bottom: 10px;">🏆 隱藏彩蛋收集冊</h4>
             <div id="collection-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
         </div>
-        
         <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px; text-align: center;">
             <h4 style="color: white; margin-top: 0; margin-bottom: 15px;">👨‍💻 開發者資訊</h4>
             <a href="https://home.gamer.com.tw/artwork.php?sn=6310367" target="_blank" class="plan-b-option" style="background-color: #1a1a1a; color: white; border: 1px solid #555; justify-content: center; text-decoration: none;"><span class="option-name">📝 綠茶地瓜的開發日誌 (巴哈姆特)</span></a>
-            <p style="font-size: 11px; color: #888; margin-top: 8px;">查看最新版本資訊、碎碎念與 App 開發秘辛</p>
         </div>
-
         <div onclick="if(typeof triggerEasterEgg3 === 'function') triggerEasterEgg3()" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px; cursor: pointer;">
-            當前版本：v2.8 (雙鐵接駁終極版)
+            當前版本：v2.9 (終極末班車雷達版)
         </div>
     </div>
 </div>
@@ -288,7 +284,6 @@
 </div>
 
 <script>
-    // 全域錯誤攔截
     window.addEventListener('error', function(event) { showErrorSheet(`Error: ${event.message}\nFile: ${event.filename}\nLine: ${event.lineno}:${event.colno}`); });
     window.addEventListener('unhandledrejection', function(event) { showErrorSheet(`Unhandled Promise Rejection:\nReason: ${event.reason}`); });
 
@@ -320,19 +315,43 @@
         else { modeSearch.style.display = 'none'; modeSurvival.style.display = 'block'; toggleBtn.innerHTML = '🔍'; toggleBtn.title = '切換至全查詢模式'; mainTitle.innerHTML = '末班車生存戰'; mainTitle.style.color = 'var(--danger)'; currentMode = 'survival'; }
     }
 
+    // 🌟 全查詢引擎：現在會讀取 Radio 選項 (now / last)
     async function executeFullSearch() {
-        const searchType = document.getElementById('search-type').value; const searchStationName = document.getElementById('search-station-input').value; const resultBox = document.getElementById('search-result-box'); const searchBtn = document.getElementById('search-action-btn');
+        const searchType = document.getElementById('search-type').value; 
+        const searchStationName = document.getElementById('search-station-input').value; 
+        const resultBox = document.getElementById('search-result-box'); 
+        const searchBtn = document.getElementById('search-action-btn');
+        const searchMode = document.querySelector('input[name="search-time-mode"]:checked').value;
+
         if (!searchStationName) { alert("⚠️ 請先選擇或輸入要查詢的車站！"); return; }
-        searchBtn.disabled = true; searchBtn.innerHTML = "⏳ 連線檢索中..."; resultBox.style.justifyContent = 'center'; resultBox.innerHTML = `正在為您連線交通部與本地資料庫...`;
+        
+        searchBtn.disabled = true; searchBtn.innerHTML = "⏳ 連線檢索中..."; 
+        resultBox.style.justifyContent = 'center'; resultBox.innerHTML = `正在為您連線交通部與本地資料庫...`;
+        
         try {
             try { if (!cachedTdxToken && ['trtc', 'tra', 'thsr'].includes(searchType)) { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; } } catch(networkErr) { console.log("網路異常"); }
-            let res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken);
-            if (res.status === "TOKEN_EXPIRED") { try { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken); } catch(networkErr) { } }
+            
+            // 傳入 searchMode
+            let res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken, searchMode);
+            
+            if (res.status === "TOKEN_EXPIRED") { try { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken, searchMode); } catch(networkErr) { } }
+            
             if (res.status === "not_found" || res.data.length === 0) { resultBox.innerHTML = `<span style="color:var(--warning)">⚠️ 找不到「${searchStationName}」的資料。</span>`; return; }
-            let html = `<div style="width: 100%; text-align: left;"><h4 style="color: white; margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 8px;">🚉 ${searchStationName} 末班車時刻表</h4>`;
-            res.data.forEach(item => { let colorTag = item.source === "即時連線" ? "color: var(--success);" : "color: var(--warning);"; html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px dashed #333;"><span style="font-weight: bold; color: #ddd; font-size: 14px;">往 ${item.destination}</span><span style="font-size: 18px; font-weight: bold; font-variant-numeric: tabular-nums; color: white;">${item.time} <span style="font-size: 10px; font-weight: normal; ${colorTag}; display: block; text-align: right; margin-top: 2px;">(${item.source})</span></span></div>`; });
-            html += `</div>`; resultBox.style.justifyContent = 'flex-start'; resultBox.innerHTML = html;
-        } catch (e) { console.error(e); resultBox.innerHTML = `<span style="color:var(--danger)">⚠️ 系統讀取失敗。<br>這可能是網路不穩定或資料庫無回應。</span>`; throw e; } finally { searchBtn.disabled = false; searchBtn.innerHTML = "🔍 重新查詢"; }
+            
+            let titleText = searchMode === 'last' ? '🚨 終極末班車時刻表' : '🚉 接下來發車時刻表';
+            let html = `<div style="width: 100%; text-align: left;"><h4 style="color: white; margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 8px;">${titleText}<br><span style="font-size:12px; color:#aaa; font-weight:normal;">車站：${searchStationName}</span></h4>`;
+            
+            res.data.forEach(item => { 
+                let colorTag = item.source === "即時連線" ? "color: var(--success);" : "color: var(--warning);"; 
+                html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px dashed #333;"><span style="font-weight: bold; color: #ddd; font-size: 14px;">往 ${item.destination}</span><span style="font-size: 18px; font-weight: bold; font-variant-numeric: tabular-nums; color: white;">${item.time} <span style="font-size: 10px; font-weight: normal; ${colorTag}; display: block; text-align: right; margin-top: 2px;">(${item.source})</span></span></div>`; 
+            });
+            html += `</div>`; 
+            resultBox.style.justifyContent = 'flex-start'; resultBox.innerHTML = html;
+        } catch (e) { 
+            console.error(e); resultBox.innerHTML = `<span style="color:var(--danger)">⚠️ 系統讀取失敗。<br>這可能是網路不穩定或資料庫無回應。</span>`; throw e; 
+        } finally { 
+            searchBtn.disabled = false; searchBtn.innerHTML = "🔍 重新查詢"; 
+        }
     }
 
     let isCountingDown = false; let timeLeft = 0; let timer; let cachedTdxToken = ""; let offlineTimetableData = null; let globalStationData = null; let transferTimetableData = null; let isNotificationEnabled = false; let notificationTriggered = false;
@@ -420,7 +439,6 @@
         if (point === 'transfer') {
             const startType = document.getElementById('start-type').value;
             let rawOptions = globalStationData?.[startType]?.transferStations || [];
-            // 🌟 隱形翻譯蒟蒻：下拉選單裡的「萬華」自動披上「龍山寺」的皮
             options = rawOptions.map(s => {
                 if (s.name === '萬華') return { ...s, name: '龍山寺' };
                 return s;
@@ -498,7 +516,6 @@
             const isOriginTransferStation = transferStations.some(s => s.name === startInput);
 
             if (isOriginTransferStation) {
-                // 🌟 特例防呆：如果出發地是萬華，轉乘站鎖死在龍山寺
                 transferInput.value = startInput === '萬華' ? '龍山寺' : startInput;
                 transferInput.disabled = true;
                 transferInput.style.opacity = '0.5';
@@ -508,7 +525,6 @@
                 transferInput.style.opacity = '1';
                 transferInput.style.pointerEvents = 'auto';
                 
-                // 🌟 允許龍山寺作為合法的轉乘輸入值
                 let validNames = transferStations.map(s => s.name === '萬華' ? '龍山寺' : s.name);
                 if (!validNames.includes(transferInput.value)) {
                     transferInput.value = validNames[0] || '南港';
@@ -564,10 +580,9 @@
         const startStationName = document.getElementById('start-station-input').value; 
         const endStationName = document.getElementById('end-station-input').value;
         
-        // 🌟 隱形翻譯蒟蒻：把 UI 上的龍山寺翻譯回萬華給 TDX 聽
         const uiTransferName = document.getElementById('transfer-station-input').value;
         const railTransferName = uiTransferName === '龍山寺' ? '萬華' : uiTransferName;
-        const trtcTransferName = uiTransferName; // 北捷依然認龍山寺
+        const trtcTransferName = uiTransferName; 
 
         if (isCountingDown) { if ("Notification" in window) { if (Notification.permission === "granted") toggleNotificationState(); else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); }); else alert("⚠️ 您之前拒絕了通知權限，請手動開啟！"); } else alert("⚠️ 不支援推播通知！"); return; }
         
@@ -592,7 +607,6 @@
                 
                 if (!cachedTdxToken) { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; }
                 
-                // 呼叫雙段計算 (丟萬華 ID 給 TDX，丟龍山寺給北捷字典)
                 let res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationName, offlineTimetableData, cachedTdxToken);
                 
                 if (res.time === "TOKEN_EXPIRED") { 
