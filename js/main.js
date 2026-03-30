@@ -348,4 +348,16 @@ function toggleContact() { const l = document.getElementById('contact-links'); l
 function openAdvancedSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
 function openSettingsSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
 function closeAllSheets() { document.getElementById('advanced-sheet').classList.remove('active'); document.getElementById('settings-sheet').classList.remove('active'); document.getElementById('error-sheet').classList.remove('active'); const overlay = document.getElementById('overlay'); overlay.classList.remove('active'); setTimeout(() => { overlay.style.zIndex = "90"; }, 300); }
-function shareApp() { if (navigator.share) navigator.share({ title: '末班車生存', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href }); else { navigator.clipboard.writeText(window.location.href); alert("✅ 網址已複製！"); } }
+function shareApp() { 
+    if (navigator.share) {
+        navigator.share({ title: '末班車生存', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href })
+        .catch(err => {
+            // 如果是使用者自己取消分享，就忽略不報錯
+            if (err.name !== 'AbortError') console.error("分享失敗:", err);
+        });
+    } else { 
+        navigator.clipboard.writeText(window.location.href); 
+        alert("✅ 網址已複製！"); 
+    } 
+}
+
