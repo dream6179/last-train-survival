@@ -151,6 +151,8 @@
             </div>
         </div>
 
+        <button class="advanced-toggle-btn" onclick="openAdvancedSheet()" style="display: none;">⛙ 加入中繼轉乘站 (進階模式)</button>
+
         <div class="location-block">
             <label>目的地</label>
             <div class="select-group">
@@ -227,6 +229,13 @@
 
 <div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
 
+<div class="bottom-sheet" id="advanced-sheet">
+    <div class="sheet-header"><h3>進階轉乘路線設定</h3><button class="close-sheet-btn" onclick="closeAllSheets()">完成</button></div>
+    <div class="sheet-content">
+        <p>在這裡，您可以打造像「中山 ➡️ 北車 ➡️ 客運1815」這種多段極限轉乘任務。</p>
+    </div>
+</div>
+
 <div class="bottom-sheet" id="settings-sheet">
     <div class="sheet-header"><h3>⚙️ 設定與說明</h3><button class="close-sheet-btn" onclick="closeAllSheets()">關閉</button></div>
     <div class="sheet-content">
@@ -244,15 +253,20 @@
                 <button id="mute-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0;" onclick="toggleMute()">🔇</button>
                 <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0" style="flex-grow: 1;" oninput="updateVolume(this.value)">
             </div>
+            <p style="font-size: 11px; color: #888; margin-top: 5px; text-align: center;">深夜的月台，適合來點 Lo-Fi 放鬆一下</p>
         </div>
+        
         <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px;">
             <h4 style="color: var(--warning); margin-top: 0; margin-bottom: 10px;">🏆 隱藏彩蛋收集冊</h4>
             <div id="collection-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
         </div>
+        
         <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px; text-align: center;">
             <h4 style="color: white; margin-top: 0; margin-bottom: 15px;">👨‍💻 開發者資訊</h4>
             <a href="https://home.gamer.com.tw/artwork.php?sn=6310367" target="_blank" class="plan-b-option" style="background-color: #1a1a1a; color: white; border: 1px solid #555; justify-content: center; text-decoration: none;"><span class="option-name">📝 綠茶地瓜的開發日誌 (巴哈姆特)</span></a>
+            <p style="font-size: 11px; color: #888; margin-top: 8px;">查看最新版本資訊、碎碎念與 App 開發秘辛</p>
         </div>
+
         <div onclick="if(typeof triggerEasterEgg3 === 'function') triggerEasterEgg3()" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 11px; cursor: pointer;">
             當前版本：v2.9 (終極末班車雷達版)
         </div>
@@ -284,6 +298,7 @@
 </div>
 
 <script>
+    // 全域錯誤攔截
     window.addEventListener('error', function(event) { showErrorSheet(`Error: ${event.message}\nFile: ${event.filename}\nLine: ${event.lineno}:${event.colno}`); });
     window.addEventListener('unhandledrejection', function(event) { showErrorSheet(`Unhandled Promise Rejection:\nReason: ${event.reason}`); });
 
@@ -331,7 +346,7 @@
         try {
             try { if (!cachedTdxToken && ['trtc', 'tra', 'thsr'].includes(searchType)) { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; } } catch(networkErr) { console.log("網路異常"); }
             
-            // 傳入 searchMode
+            // 傳入 searchMode 給 routing.js 處理
             let res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken, searchMode);
             
             if (res.status === "TOKEN_EXPIRED") { try { const tokenRes = await fetch('/api/get-token'); const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken, searchMode); } catch(networkErr) { } }
