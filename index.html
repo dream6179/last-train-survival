@@ -19,7 +19,6 @@
         body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--text-main); display: flex; justify-content: center; align-items: center; user-select: none; -webkit-user-select: none; }
         .container { text-align: center; width: 90%; max-width: 400px; height: 92vh; max-height: 680px; background-color: var(--card-bg); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; justify-content: center; padding: 0 20px; box-sizing: border-box; gap: 6px; position: relative; }
         
-        /* 隱藏彈出視窗的醜醜捲軸，但保留滾動功能 */
         .sheet-content, .search-result-box, .autocomplete-list { -ms-overflow-style: none; scrollbar-width: none; }
         .sheet-content::-webkit-scrollbar, .search-result-box::-webkit-scrollbar, .autocomplete-list::-webkit-scrollbar { display: none; }
 
@@ -348,6 +347,8 @@
                 document.getElementById('start-station-input').value = savedStart; 
                 document.getElementById('end-station-input').value = savedEnd; 
                 document.getElementById('search-station-input').value = savedStart; 
+                // 初始化完成後，檢查一次是否需要防呆鎖定
+                checkTransferLock();
             } 
         } catch (e) {}
     };
@@ -358,13 +359,11 @@
         renderCustomDropdown('start'); renderCustomDropdown('end'); renderCustomDropdown('search'); renderCustomDropdown('transfer');
     }
 
-    // 🌟 核心：渲染選單 (支援轉乘站)
     function renderCustomDropdown(point) {
         const inputField = document.getElementById(point + '-station-input');
         const listContainer = document.getElementById(point + '-autocomplete-list');
         let options = [];
 
-        // 如果是轉乘站，抓取該運具的 transferStations 陣列
         if (point === 'transfer') {
             const startType = document.getElementById('start-type').value;
             options = globalStationData?.[startType]?.transferStations || [];
@@ -390,7 +389,12 @@
             starSpan.textContent = isFav ? '★' : '☆'; starSpan.style.color = isFav ? '#ffca28' : '#666'; 
             starSpan.addEventListener('mousedown', function(e) { e.preventDefault(); e.stopPropagation(); toggleFavorite(station.name); });
             item.addEventListener('mousedown', function(e) { e.preventDefault(); });
-            item.addEventListener('click', function() { inputField.value = station.name; listContainer.style.display = 'none'; });
+            item.addEventListener('click', function() { 
+                inputField.value = station.name; 
+                listContainer.style.display = 'none'; 
+                // 選擇車站後觸發防呆檢查
+                if (point === 'start') checkTransferLock();
+            });
             item.appendChild(nameSpan); item.appendChild(starSpan); return item;
         };
 
@@ -405,7 +409,14 @@
         ['start', 'end', 'search', 'transfer'].forEach(point => {
             const inputField = document.getElementById(point + '-station-input');
             inputField.addEventListener('input', () => renderCustomDropdown(point));
-            inputField.addEventListener('focus', () => { inputField.value = ''; renderCustomDropdown(point); });
+            inputField.addEventListener('focus', () => { 
+                if(inputField.disabled) return; // 鎖定狀態下不顯示選單
+                inputField.value = ''; 
+                renderCustomDropdown(point); 
+            });
+            inputField.addEventListener('blur', () => {
+                if (point === 'start') setTimeout(checkTransferLock, 100); // 延遲讓 click 事件先跑
+            });
         });
     }
 
@@ -416,7 +427,55 @@
         });
     });
 
-    // 🌟 核心：切換運具時動態隱藏/顯示轉乘欄位
+    // 🌟 核心：智慧防呆轉乘引擎
+    function checkTransferLock() {
+        const startType = document.getElementById('start-type').value;
+        const startInput = document.getElementById('start-station-input').value;
+        const transferBlock = document.getElementById('transfer-block');
+        const transferInput = document.getElementById('transfer-station-input');
+        const endTypeSelect = document.getElementById('end-type');
+
+        if (startType === 'tra' || startType === 'thsr') {
+            transferBlock.style.display = 'flex';
+            
+            // 1. 檢查出發地是否本身就是「轉乘大站」
+            const transferStations = globalStationData?.[startType]?.transferStations || [];
+            const isOriginTransferStation = transferStations.some(s => s.name === startInput);
+
+            if (isOriginTransferStation) {
+                // 是的話，直接幫他填好並鎖定防呆
+                transferInput.value = startInput;
+                transferInput.disabled = true;
+                transferInput.style.opacity = '0.5';
+                transferInput.style.pointerEvents = 'none'; // 徹底阻絕點擊
+            } else {
+                // 不是的話，解鎖讓他自己選
+                transferInput.disabled = false;
+                transferInput.style.opacity = '1';
+                transferInput.style.pointerEvents = 'auto';
+                
+                // 如果目前轉乘站是空的或是前一次鎖定的無效值，塞一個預設給他
+                if (!transferStations.some(s => s.name === transferInput.value)) {
+                    transferInput.value = transferStations[0]?.name || '南港';
+                }
+            }
+
+            // 2. 如果轉乘系統出現，目的地強制只能是北捷
+            if (endTypeSelect.options.length > 1) {
+                endTypeSelect.innerHTML = '<option value="trtc" selected>北捷</option>';
+                document.getElementById('end-station-input').value = defaultStations['trtc'];
+                renderCustomDropdown('end');
+            }
+
+        } else {
+            // 北捷模式：隱藏轉乘區塊，並把目的地的高鐵選項加回來
+            transferBlock.style.display = 'none';
+            if (endTypeSelect.options.length === 1) {
+                endTypeSelect.innerHTML = '<option value="trtc" selected>北捷</option><option value="thsr">高鐵</option>';
+            }
+        }
+    }
+
     function updateStationOptions(point) {
         if (point !== 'transfer') {
             const typeSelect = document.getElementById(point + '-type');
@@ -424,18 +483,9 @@
             renderCustomDropdown(point);
         }
 
+        // 只要換了出發地運具，就呼叫一次智慧防呆
         if (point === 'start') {
-            const startType = document.getElementById('start-type').value;
-            const transferBlock = document.getElementById('transfer-block');
-            
-            if (startType === 'tra' || startType === 'thsr') {
-                transferBlock.style.display = 'flex';
-                // 預設填入該運具的第一個轉乘站 (通常是南港)
-                const defaultTransfer = globalStationData?.[startType]?.transferStations?.[0]?.name || '南港';
-                document.getElementById('transfer-station-input').value = defaultTransfer;
-            } else {
-                transferBlock.style.display = 'none';
-            }
+            checkTransferLock();
         }
     }
 
@@ -458,7 +508,6 @@
     updateClock(); timer = setInterval(updateClock, 1000);
 
     async function handleAction() {
-        // (省略原先邏輯，等待後續 routing.js 升級雙段計算)
         const startType = document.getElementById('start-type').value; const endType = document.getElementById('end-type').value;
         const startStationName = document.getElementById('start-station-input').value; const endStationName = document.getElementById('end-station-input').value;
         if (isCountingDown) { if ("Notification" in window) { if (Notification.permission === "granted") toggleNotificationState(); else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); }); else alert("⚠️ 您之前拒絕了通知權限，請手動開啟！"); } else alert("⚠️ 不支援推播通知！"); return; }
@@ -482,7 +531,6 @@
 
        try {
             let finalTime = "23:59"; let status = "系統預設";
-            // 由於接下來要升級雙段運算，這邊先暫時讓流程跑過去，不影響你測試 UI
             alert(`⚠️ 目前為 UI 測試階段。\n你選了從 ${startStationName} 到 ${endStationName}。\n如果你選了台鐵/高鐵，轉乘站是：${document.getElementById('transfer-station-input').value}`);
             
             isCountingDown = true; statusText.innerHTML = "距離末班車發車還剩"; display.style.color = "#4caf50"; speedModeText.innerHTML = `${finalTime} <span style="font-size:10px; color:#aaa;">(${status})</span>`; actionBtn.innerHTML = "🔔 開啟發車通知"; actionBtn.classList.replace('btn-success', 'btn-danger'); cancelBtn.style.display = "flex";
