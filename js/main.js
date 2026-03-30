@@ -12,7 +12,6 @@ function copyErrorLog() { const logOutput = document.getElementById('error-log-o
 
 let currentMode = 'survival'; let bgmVolume = 0.5; let isBgmMuted = true; let bgmStarted = false; 
 
-// 🎵 深夜月台專屬歌單 (DJ輪播系統)
 let bgmPlaylist = [
     "/audio/platform_at_midnight.mp3", 
     "/audio/Midnight_at_Platform_Four.mp3"
@@ -30,7 +29,6 @@ function updateVolume(val) {
     const bgm = document.getElementById('bgm-audio'); if (bgm) { bgm.volume = bgmVolume; if (bgmVolume > 0) { if (bgm.paused) bgm.play().catch(e=>console.log(e)); bgmStarted = true; } else bgm.pause(); }
 }
 
-// DJ 播放與點擊啟動邏輯
 window.addEventListener('DOMContentLoaded', () => { 
     const bgm = document.getElementById('bgm-audio');
     if (bgm) {
@@ -60,12 +58,19 @@ function toggleAppMode() {
     } else { 
         modeSearch.style.display = 'none'; modeSurvival.style.display = 'block'; 
         toggleBtn.innerHTML = '🔍'; toggleBtn.title = '切換至全查詢模式'; 
-        mainTitle.innerHTML = '末班車生存'; mainTitle.style.color = 'var(--danger)'; 
+        
+        // 🌟 判斷是否為工程模式
+        if(localStorage.getItem('dev_mode_active') === 'true') {
+            mainTitle.innerText = "末班車生存 (工程)"; 
+            mainTitle.style.color = "var(--warning)";
+        } else {
+            mainTitle.innerText = "末班車生存"; 
+            mainTitle.style.color = "var(--danger)"; 
+        }
         currentMode = 'survival'; 
     }
 }
 
-// 🌟 全查詢引擎 (防禦網路管制版)
 async function executeFullSearch() {
     const searchType = document.getElementById('search-type').value; 
     const searchStationName = document.getElementById('search-station-input').value; 
@@ -102,7 +107,6 @@ async function executeFullSearch() {
             } catch(networkErr) { } 
         }
 
-        // 如果 Token 依舊無效 (可能被防火牆阻擋)，強制啟動離線查詢
         if (res.status === "TOKEN_EXPIRED") {
             res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, null, searchMode);
         }
@@ -132,7 +136,15 @@ const display = document.getElementById('time-display'); const statusText = docu
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站' };
 
 window.onload = async () => {
-    // 加上載入超時防禦，確保不被內部網路卡死
+    // 🌟 啟動時檢查是否為工程模式，變更標題
+    if(localStorage.getItem('dev_mode_active') === 'true') {
+        const mt = document.getElementById('main-title');
+        if(mt) {
+            mt.innerText = "末班車生存 (工程)";
+            mt.style.color = "var(--warning)";
+        }
+    }
+
     try { const timeRes = await fetchWithTimeout('/data/offline-timetable.json', { timeout: 4000 }); if (timeRes.ok) offlineTimetableData = await timeRes.json(); } catch (e) {}
     try { const transferRes = await fetchWithTimeout('/data/transfer-timetable.json', { timeout: 4000 }); if (transferRes.ok) transferTimetableData = await transferRes.json(); } catch (e) {}
     try { 
@@ -286,8 +298,12 @@ function toggleNotificationState() {
 }
 
 function updateClock() {
-    if (!isCountingDown) { const now = new Date(); display.innerHTML = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`; } 
-    else {
+    // 🌟 套用時光機
+    const now = getSystemTime();
+    
+    if (!isCountingDown) { 
+        display.innerHTML = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`; 
+    } else {
         if (timeLeft <= 0) { clearInterval(timer); display.innerHTML = "來不及了💸"; display.style.fontSize = "50px"; display.style.color = "#ff5252"; actionBtn.style.display = "none"; cancelBtn.style.display = "none"; planBContainer.style.display = "flex"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex"); statusText.innerHTML = "人生不是只有末班車..."; return; }
         timeLeft--;
         if (isNotificationEnabled && !notificationTriggered && timeLeft === 600) { new Notification("🏃‍♂️ 末班車警報！", { body: "距離發車只剩最後 10 分鐘！" }); notificationTriggered = true; }
@@ -297,7 +313,6 @@ function updateClock() {
 }
 updateClock(); timer = setInterval(updateClock, 1000);
 
-// 🌟 生存模式引擎 (防禦網路管制版)
 async function handleAction() {
     const startType = document.getElementById('start-type').value; 
     const endType = document.getElementById('end-type').value;
@@ -363,7 +378,12 @@ async function handleAction() {
         }
         
         isCountingDown = true; statusText.innerHTML = "距離末班車發車還剩"; display.style.color = "#4caf50"; speedModeText.innerHTML = `${finalTime} <span style="font-size:10px; color:#aaa;">(${status})</span>`; actionBtn.innerHTML = "🔔 開啟發車通知"; actionBtn.classList.replace('btn-success', 'btn-danger'); cancelBtn.style.display = "flex";
-        const now = new Date(); let target = new Date(); const [hh, mm] = finalTime.split(':').map(Number); target.setHours(hh, mm, 0, 0); 
+        
+        // 🌟 套用時光機計算倒數差距
+        const now = getSystemTime(); 
+        let target = getSystemTime(); 
+        
+        const [hh, mm] = finalTime.split(':').map(Number); target.setHours(hh, mm, 0, 0); 
         if (now.getHours() >= 4 && hh < 4) target.setDate(target.getDate() + 1); else if (now.getHours() < 4 && hh >= 4) target.setDate(target.getDate() - 1); 
         timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenalty; if (timeLeft < 0) timeLeft = 0; updateClock(); 
         
@@ -378,7 +398,6 @@ function resetPlan() {
     statusText.innerHTML = "現在時間"; speedModeText.innerHTML = "待查驗..."; display.style.color = "#e0e0e0"; display.style.fontSize = "50px"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex"); updateClock(); timer = setInterval(updateClock, 1000);
 }
 
-// 🌟 修正了 AbortError 的擾人報錯
 function shareApp() { 
     if (navigator.share) {
         navigator.share({ title: '末班車生存', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href })
