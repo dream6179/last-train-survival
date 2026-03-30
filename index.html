@@ -109,7 +109,7 @@
 </head>
 <body>
 
-<audio id="bgm-audio" loop preload="auto">
+<audio id="bgm-audio" preload="auto">
     <source src="/audio/platform_at_midnight.mp3" type="audio/mpeg">
 </audio>
 
@@ -322,7 +322,33 @@
         const icon = isBgmMuted ? '🔇' : '🔊'; document.getElementById('mute-btn').innerText = icon; document.getElementById('header-mute-btn').innerText = icon;
         const bgm = document.getElementById('bgm-audio'); if (bgm) { bgm.volume = bgmVolume; if (bgmVolume > 0) { if (bgm.paused) bgm.play().catch(e=>console.log(e)); bgmStarted = true; } else bgm.pause(); }
     }
-    window.addEventListener('DOMContentLoaded', () => { document.body.addEventListener('click', () => { const bgm = document.getElementById('bgm-audio'); if (bgm && !bgmStarted && !isBgmMuted) { bgm.volume = bgmVolume; bgm.play().catch(e=>console.log(e)); bgmStarted = true; } }, { once: true }); });
+    // 🎵 深夜月台專屬歌單
+    let bgmPlaylist = [
+        "/audio/platform_at_midnight.mp3", 
+        "/audio/Midnight_at_Platform_Four.mp3"
+    ];
+    let currentBgmIndex = 0;
+
+    window.addEventListener('DOMContentLoaded', () => { 
+        const bgm = document.getElementById('bgm-audio');
+        if (bgm) {
+            // 當一首歌播完時，自動切換下一首
+            bgm.addEventListener('ended', () => {
+                currentBgmIndex = (currentBgmIndex + 1) % bgmPlaylist.length;
+                bgm.src = bgmPlaylist[currentBgmIndex];
+                bgm.play().catch(e => console.log("切歌失敗:", e));
+            });
+        }
+        
+        // 第一次點擊畫面時啟動音樂
+        document.body.addEventListener('click', () => { 
+            if (bgm && !bgmStarted && !isBgmMuted) { 
+                bgm.volume = bgmVolume; 
+                bgm.play().catch(e => console.log("音樂啟動失敗:", e)); 
+                bgmStarted = true; 
+            } 
+        }, { once: true }); 
+    });
 
     function toggleAppMode() {
         const modeSurvival = document.getElementById('mode-survival'); const modeSearch = document.getElementById('mode-search'); const toggleBtn = document.getElementById('mode-toggle-btn'); const mainTitle = document.getElementById('main-title');
