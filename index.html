@@ -123,14 +123,25 @@
 </div>
 
 <script>
-    function checkDevPassword() {
+    async function checkDevPassword() {
         const pwd = prompt("🔒 請輸入工程模式密碼：");
-        if (pwd === "31362094") {
-            sessionStorage.setItem('dev_mode_bypass', 'true');
-            document.getElementById('maintenance-overlay').style.display = 'none';
-            alert("✅ 密碼正確，已為您暫時解除維護鎖定。");
-        } else if (pwd !== null) {
-            alert("❌ 存取拒絕：密碼錯誤");
+        if (pwd === null) return; // 使用者按取消
+
+        try {
+            // 跑去 config.json 拿鑰匙
+            const res = await fetch('/data/config.json?t=' + new Date().getTime());
+            const data = await res.json();
+            
+            // 拿輸入的密碼跟設定檔裡的 dev_key 比對
+            if (pwd === data.dev_key) {
+                sessionStorage.setItem('dev_mode_bypass', 'true');
+                document.getElementById('maintenance-overlay').style.display = 'none';
+                alert("✅ 密碼正確，已為您暫時解除維護鎖定。");
+            } else {
+                alert("❌ 存取拒絕：密碼錯誤");
+            }
+        } catch (e) {
+            alert("❌ 系統錯誤，無法驗證鑰匙。");
         }
     }
 
