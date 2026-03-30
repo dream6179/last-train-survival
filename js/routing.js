@@ -1,6 +1,19 @@
 // ==========================================
-// 末班車生存戰 核心路由與 API 引擎 (v2.9 終極末班車雙模式版)
+// 末班車生存戰 核心路由與 API 引擎 (防禦網路管制版)
 // ==========================================
+
+/**
+ * 🌟 核心防禦：自帶定時炸彈的 Fetch
+ * 如果網路管制導致封包遺失 (裝死不回應)，3.5 秒後強制切斷並拋出錯誤，觸發離線備援！
+ */
+async function fetchWithTimeout(resource, options = {}) {
+    const { timeout = 3500 } = options; 
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    const response = await fetch(resource, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+}
 
 function getOperatingDateString() {
     const now = new Date();
@@ -63,7 +76,7 @@ function parseOfflineData(stationCode, stationNode, lineData) {
 }
 
 /**
- * 🌟 模式 1：全查詢模式 (新增 searchMode 參數：'now' 或 'last')
+ * 🌟 模式 1：全查詢模式
  */
 async function fetchSingleStationTime(stationName, type, offlineData, token, searchMode = 'now') {
     if (!globalStationData || !globalStationData[type]) return { status: "not_found", data: [] };
@@ -78,34 +91,43 @@ async function fetchSingleStationTime(stationName, type, offlineData, token, sea
     let results = [];
 
     try {
+        if (!token) throw new Error("API Token 缺失，強制啟動離線防空洞");
+
         if (type === 'trtc') {
-            let resTrtc = await fetch(`https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/TRTC?$filter=StationName/Zh_tw eq '${stationName}'&$format=JSON`, { headers: { 'Authorization': `Bearer ${token}` } });
+            let resTrtc = await fetchWithTimeout(`https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/TRTC?$filter=StationName/Zh_tw eq '${stationName}'&$format=JSON`, { headers: { 'Authorization': `Bearer ${token}` } });
             if (resTrtc.status === 401) return { status: "TOKEN_EXPIRED", data: [] };
-            let data = [];
-            if (resTrtc.ok) data = await resTrtc.json();
+            if (!resTrtc.ok) throw new Error("TDX 拒絕連線");
+            
+            let data = await resTrtc.json();
 
             if (data.length === 0) {
-                let resNtmc = await fetch(`https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/NTMC?$filter=StationName/Zh_tw eq '${stationName}'&$format=JSON`, { headers: { 'Authorization': `Bearer ${token}` } });
+                let resNtmc = await fetchWithTimeout(`https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/NTMC?$filter=StationName/Zh_tw eq '${stationName}'&$format=JSON`, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (resNtmc.status === 401) return { status: "TOKEN_EXPIRED", data: [] };
                 if (resNtmc.ok) data = await resNtmc.json();
             }
-
             data.forEach(route => { route.Timetables.forEach(t => { results.push({ destination: t.DestinationStationName.Zh_tw, time: t.DepartureTime, source: "即時連線" }); }); });
-        } else if (type === 'tra') {
-            let resTra = await fetch(`https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyStationTimetable/Today/Station/${stationId}?$format=JSON`, { headers: { 'Authorization': `Bearer ${token}` } });
+        } 
+        else if (type === 'tra') {
+            let resTra = await fetchWithTimeout(`https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyStationTimetable/Today/Station/${stationId}?$format=JSON`, { headers: { 'Authorization': `Bearer ${token}` } });
             if (resTra.status === 401) return { status: "TOKEN_EXPIRED", data: [] };
-            if (resTra.ok) { let data = await resTra.json(); if (data.StationTimetables) { data.StationTimetables.forEach(dir => dir.TimeTables.forEach(t => results.push({ destination: t.DestinationStationName.Zh_tw, time: t.DepartureTime, source: "即時連線" }))); } }
-        } else if (type === 'thsr') {
-            let resThsr = await fetch(`https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/Station/${stationId}/${today}?$format=JSON`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (!resTra.ok) throw new Error("TDX 拒絕連線");
+            
+            let data = await resTra.json(); 
+            if (data.StationTimetables) { data.StationTimetables.forEach(dir => dir.TimeTables.forEach(t => results.push({ destination: t.DestinationStationName.Zh_tw, time: t.DepartureTime, source: "即時連線" }))); }
+        } 
+        else if (type === 'thsr') {
+            let resThsr = await fetchWithTimeout(`https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/Station/${stationId}/${today}?$format=JSON`, { headers: { 'Authorization': `Bearer ${token}` } });
             if (resThsr.status === 401) return { status: "TOKEN_EXPIRED", data: [] };
-            if (resThsr.ok) { let data = await resThsr.json(); data.forEach(t => results.push({ destination: t.Direction === 0 ? "左營(南下)" : "南港(北上)", time: t.DepartureTime, source: "即時連線" })); }
+            if (!resThsr.ok) throw new Error("TDX 拒絕連線");
+
+            let data = await resThsr.json(); 
+            data.forEach(t => results.push({ destination: t.Direction === 0 ? "左營(南下)" : "南港(北上)", time: t.DepartureTime, source: "即時連線" }));
         }
 
         if (results.length === 0) throw new Error("TDX 查無接下來的班次，強制轉入離線備援");
 
-        // 🌟 核心過濾器：依照模式切換
+        // 過濾與排序
         if (searchMode === 'last') {
-            // 找出每個目的地的最晚一班車
             let lastTrainsMap = {};
             results.forEach(r => {
                 if (!lastTrainsMap[r.destination] || timeToMinutes(r.time) > timeToMinutes(lastTrainsMap[r.destination].time)) {
@@ -115,14 +137,13 @@ async function fetchSingleStationTime(stationName, type, offlineData, token, sea
             results = Object.values(lastTrainsMap).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
             return { status: "success", data: results };
         } else {
-            // 即時班次 (原本的邏輯)
             results = results.filter(r => timeToMinutes(r.time) >= currentMins).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
             if (results.length === 0) throw new Error("今日已無班次，轉入離線驗證");
             return { status: "success", data: results.slice(0, 10) };
         }
 
     } catch (err) {
-        console.warn("API 異常或無資料，已進入離線防空洞:", err.message);
+        console.warn("網路異常或無資料，啟動離線防空洞:", err.message);
         
         if (offlineData && offlineData[type]) {
             let targetNode = null; let targetCode = null;
@@ -132,13 +153,10 @@ async function fetchSingleStationTime(stationName, type, offlineData, token, sea
 
             if (targetNode) {
                 let offlineResults = parseOfflineData(targetCode, targetNode, offlineData[type]);
-                
                 if (searchMode === 'last') {
-                    // 離線字典本身就是末班車，直接全部吐出來
                     offlineResults.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
                     return { status: "success", data: offlineResults };
                 } else {
-                    // 即時查詢，過濾掉已開走的
                     offlineResults = offlineResults.filter(r => timeToMinutes(r.time) >= currentMins).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
                     if(offlineResults.length === 0) return { status: "success", data: [{ destination: "本日已無班次", time: "--:--", source: "系統判定" }] };
                     return { status: "success", data: offlineResults.slice(0, 10) };
@@ -147,36 +165,6 @@ async function fetchSingleStationTime(stationName, type, offlineData, token, sea
         }
         return { status: "not_found", data: [] };
     }
-}
-
-/**
- * 🌟 模式 2：求生模式
- */
-async function fetchRealLastTrainTime(globalData, token, startId, endId, type) {
-    const today = getOperatingDateString();
-    let url = "";
-
-    if (type === 'tra') url = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyTrainTimetable/OD/${startId}/to/${endId}/${today}?$format=JSON`;
-    else if (type === 'thsr') url = `https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/OD/${startId}/to/${endId}/${today}?$format=JSON`;
-    else if (type === 'trtc') return null; 
-
-    try {
-        const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (response.status === 401) return "TOKEN_EXPIRED";
-        if (!response.ok) return null;
-        const data = await response.json(); let timetables = [];
-        if (type === 'tra' && data.TrainTimetables) timetables = data.TrainTimetables.map(t => t.OriginStopTime.DepartureTime);
-        else if (type === 'thsr') timetables = data.map(t => t.OriginStopTime.DepartureTime);
-        if (timetables.length === 0) return null;
-        timetables.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
-        return timetables[timetables.length - 1]; 
-    } catch (err) { return null; }
-}
-
-function getOfficialTransferTime(transferData, offlineData, start, end, type) {
-    if (!transferData) return null;
-    const key = `${start}-${end}`;
-    return (transferData[type] && transferData[type][key]) ? transferData[type][key] : null;
 }
 
 function calculateOfflineTime(offlineData, start, end, type) {
@@ -194,7 +182,7 @@ function calculateOfflineTime(offlineData, start, end, type) {
 }
 
 /**
- * 🌟 模式 3：雙段求生模式 (台鐵/高鐵 -> 轉乘站 -> 北捷)
+ * 🌟 模式 3：雙段求生模式 (防禦網路管制版)
  */
 async function fetchTwoStageSurvivalTime(startType, startId, transferId, transferName, endName, offlineData, token) {
     let trtcLastTime = calculateOfflineTime(offlineData, transferName, endName, 'trtc');
@@ -208,9 +196,10 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
     else if (startType === 'thsr') url = `https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/OD/${startId}/to/${transferId}/${today}?$format=JSON`;
 
     try {
-        const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!token) throw new Error("API Token 缺失");
+        const response = await fetchWithTimeout(url, { headers: { 'Authorization': `Bearer ${token}` }, timeout: 4000 });
         if (response.status === 401) return { time: "TOKEN_EXPIRED" };
-        if (!response.ok) return { time: null, status: "TDX 連線失敗" };
+        if (!response.ok) return { time: null, status: "網路管制，TDX連線遭擋" };
 
         const data = await response.json(); let validTrains = [];
         if (startType === 'tra' && data.TrainTimetables) {
@@ -222,5 +211,5 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
         if (validTrains.length === 0) return { time: null, status: "接不上北捷末班車" };
         validTrains.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
         return { time: validTrains[validTrains.length - 1], status: "雙段精準計算" };
-    } catch (err) { return { time: null, status: "轉乘計算失敗" }; }
+    } catch (err) { return { time: null, status: "轉乘計算失敗 (網路無回應)" }; }
 }
