@@ -1,5 +1,5 @@
 // ==========================================
-// 末班車生存戰 核心路由與 API 引擎 (v2.4 高級防空洞解析版)
+// 末班車生存戰 核心路由與 API 引擎 (v2.5 時間過濾修正版)
 // ==========================================
 
 function getOperatingDateString() {
@@ -16,19 +16,12 @@ function getNowTimeString() {
 function timeToMinutes(timeStr) {
     if (!timeStr || !timeStr.includes(':')) return 0;
     let [h, m] = timeStr.split(':').map(Number);
-    if (h < 4) h += 24; 
+    if (h < 4) h += 24; // 將凌晨 0~3 點轉換為 24~27 點
     return h * 60 + m;
 }
 
-/**
- * 解析高級 offline-timetable.json 結構
- * 將 { "name": "北投", "up": { "R28": "01:00", "R22A": "00:10" }, "down": "00:16" } 
- * 轉換成我們需要的陣列格式
- */
 function parseOfflineData(stationNode) {
     let results = [];
-    
-    // 處理 up (上行)
     if (typeof stationNode.up === 'string') {
         results.push({ destination: "上行方向", time: stationNode.up, source: "離線備援" });
     } else if (typeof stationNode.up === 'object') {
@@ -36,8 +29,6 @@ function parseOfflineData(stationNode) {
             results.push({ destination: `往 ${destCode} 方向`, time: stationNode.up[destCode], source: "離線備援" });
         }
     }
-
-    // 處理 down (下行)
     if (typeof stationNode.down === 'string') {
         results.push({ destination: "下行方向", time: stationNode.down, source: "離線備援" });
     } else if (typeof stationNode.down === 'object') {
@@ -45,12 +36,11 @@ function parseOfflineData(stationNode) {
             results.push({ destination: `往 ${destCode} 方向`, time: stationNode.down[destCode], source: "離線備援" });
         }
     }
-
     return results;
 }
 
 /**
- * 🌟 模式 1：全查詢模式 - 查詢單一車站的所有接下來班次
+ * 🌟 模式 1：全查詢模式
  */
 async function fetchSingleStationTime(stationName, type, offlineData, token) {
     if (!globalStationData || !globalStationData[type]) return { status: "not_found", data: [] };
@@ -61,18 +51,17 @@ async function fetchSingleStationTime(stationName, type, offlineData, token) {
     const stationId = stationObj.id;
     const today = getOperatingDateString();
     const nowTime = getNowTimeString();
+    const currentMins = timeToMinutes(nowTime); // 取得現在的分鐘數
     
     let results = [];
 
     try {
         if (type === 'trtc') {
-            // 雙引擎啟動：先查台北捷運 (TRTC)
             let resTrtc = await fetch(`https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/TRTC?$filter=StationName/Zh_tw eq '${stationName}'&$format=JSON`, { headers: { 'Authorization': `Bearer ${token}` } });
             if (resTrtc.status === 401) return { status: "TOKEN_EXPIRED", data: [] };
             let data = [];
             if (resTrtc.ok) data = await resTrtc.json();
 
-            // 如果沒抓到資料，去撈新北捷運 (NTMC)
             if (data.length === 0) {
                 let resNtmc = await fetch(`https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/StationTimeTable/NTMC?$filter=StationName/Zh_tw eq '${stationName}'&$format=JSON`, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (resNtmc.status === 401) return { status: "TOKEN_EXPIRED", data: [] };
@@ -103,20 +92,18 @@ async function fetchSingleStationTime(stationName, type, offlineData, token) {
             }
         }
 
-        // 過濾已開走班次並排序
-        results = results.filter(r => r.time >= nowTime).sort((a, b) => a.time.localeCompare(b.time));
+        // 🚨 修正：全面改用 timeToMinutes 過濾與排序，終結字串比大小的 Bug
+        results = results.filter(r => timeToMinutes(r.time) >= currentMins)
+                         .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
 
-        if (results.length === 0) throw new Error("TDX 查無資料，強制轉入離線備援");
+        if (results.length === 0) throw new Error("TDX 查無接下來的班次，強制轉入離線備援");
         return { status: "success", data: results.slice(0, 10) };
 
     } catch (err) {
         console.warn("API 異常或無資料，已進入離線防空洞:", err.message);
         
-        // 🚨 重新設計的防空洞搜尋器
         if (offlineData && offlineData[type]) {
             let targetNode = null;
-
-            // 遍歷所有 Key (R11, Y15, BL05...) 來尋找符合的 stationName
             for (let code in offlineData[type]) {
                 if (offlineData[type][code].name === stationName) {
                     targetNode = offlineData[type][code];
@@ -126,14 +113,14 @@ async function fetchSingleStationTime(stationName, type, offlineData, token) {
 
             if (targetNode) {
                 let offlineResults = parseOfflineData(targetNode);
-                // 離線備援也需要過濾掉已開走的車
-                offlineResults = offlineResults.filter(r => r.time >= nowTime).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
                 
-                // 如果過濾完還是空的，代表今天真的沒車了
+                // 🚨 修正：離線資料同樣採用 timeToMinutes 過濾與排序
+                offlineResults = offlineResults.filter(r => timeToMinutes(r.time) >= currentMins)
+                                               .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+                
                 if(offlineResults.length === 0) {
                      return { status: "success", data: [{ destination: "本日已無班次", time: "--:--", source: "系統判定" }] };
                 }
-
                 return { status: "success", data: offlineResults.slice(0, 10) };
             }
         }
@@ -142,7 +129,7 @@ async function fetchSingleStationTime(stationName, type, offlineData, token) {
 }
 
 /**
- * 🌟 模式 2：求生模式 - 獲取「A站到B站」的最後一班車發車時間
+ * 🌟 模式 2：求生模式
  */
 async function fetchRealLastTrainTime(globalData, token, startId, endId, type) {
     const today = getOperatingDateString();
@@ -150,7 +137,7 @@ async function fetchRealLastTrainTime(globalData, token, startId, endId, type) {
 
     if (type === 'tra') url = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyTrainTimetable/OD/${startId}/to/${endId}/${today}?$format=JSON`;
     else if (type === 'thsr') url = `https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/OD/${startId}/to/${endId}/${today}?$format=JSON`;
-    else if (type === 'trtc') return null; // 北捷交給離線防空洞
+    else if (type === 'trtc') return null; 
 
     try {
         const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -180,9 +167,6 @@ function getOfficialTransferTime(transferData, offlineData, start, end, type) {
     return (transferData[type] && transferData[type][key]) ? transferData[type][key] : null;
 }
 
-/**
- * 斷網防空洞求生模式演算法 (支援高級字典)
- */
 function calculateOfflineTime(offlineData, start, end, type) {
     if (!offlineData || !offlineData[type]) return null;
     
