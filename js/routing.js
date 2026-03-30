@@ -182,11 +182,13 @@ function calculateOfflineTime(offlineData, start, end, type) {
 }
 
 /**
- * 🌟 模式 3：雙段求生模式 (防禦網路管制版)
+ * 🌟 模式 3：雙段求生模式 (防禦網路管制與深夜報錯版)
  */
 async function fetchTwoStageSurvivalTime(startType, startId, transferId, transferName, endName, offlineData, token) {
     let trtcLastTime = calculateOfflineTime(offlineData, transferName, endName, 'trtc');
     if (!trtcLastTime) return { time: null, status: "查無北捷轉乘班次" };
+    
+    // 扣除 30 分鐘作為高鐵最晚抵達死線
     let targetArrivalMins = timeToMinutes(trtcLastTime) - 30;
 
     if (startId === transferId) return { time: minutesToTime(targetArrivalMins), status: "同站跨系統 (-30分)" };
@@ -198,8 +200,13 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
     try {
         if (!token) throw new Error("API Token 缺失");
         const response = await fetchWithTimeout(url, { headers: { 'Authorization': `Bearer ${token}` }, timeout: 4000 });
+        
         if (response.status === 401) return { time: "TOKEN_EXPIRED" };
-        if (!response.ok) return { time: null, status: "網路管制，TDX連線遭擋" };
+        
+        // 🌟 修正點：TDX 回傳錯誤 (404/400) 通常代表深夜已無班次資料
+        if (!response.ok) {
+            return { time: null, status: "已無高鐵班次 (TDX拒絕)" };
+        }
 
         const data = await response.json(); let validTrains = [];
         if (startType === 'tra' && data.TrainTimetables) {
@@ -208,8 +215,13 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
             data.forEach(t => { if (timeToMinutes(t.DestinationStopTime.ArrivalTime) <= targetArrivalMins) validTrains.push(t.OriginStopTime.DepartureTime); });
         }
 
-        if (validTrains.length === 0) return { time: null, status: "接不上北捷末班車" };
+        // 🌟 修正點：找不到能趕上捷運的高鐵，明確標示錯過末班車
+        if (validTrains.length === 0) return { time: null, status: "錯過轉乘末班車" };
+        
         validTrains.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
         return { time: validTrains[validTrains.length - 1], status: "雙段精準計算" };
-    } catch (err) { return { time: null, status: "轉乘計算失敗 (網路無回應)" }; }
+    } catch (err) { 
+        // 真正的網路被擋或超時會走到這裡
+        return { time: null, status: "轉乘計算失敗 (網路無回應)" }; 
+    }
 }
