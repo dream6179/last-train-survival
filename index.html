@@ -123,7 +123,6 @@
 </div>
 
 <script>
-    // 驗證密碼邏輯
     function checkDevPassword() {
         const pwd = prompt("🔒 請輸入工程模式密碼：");
         if (pwd === "31362094") {
@@ -135,12 +134,10 @@
         }
     }
 
-    // 檢查維護狀態
     fetch('/data/config.json?t=' + new Date().getTime())
         .then(res => res.json())
         .then(data => {
             const isBypassed = sessionStorage.getItem('dev_mode_bypass') === 'true';
-            
             if (data.maintenance === 1 && !isBypassed) {
                 document.getElementById('maintenance-overlay').style.display = 'flex';
                 if (data.message) document.getElementById('maintenance-msg').innerHTML = data.message;
@@ -157,7 +154,7 @@
 
 <div class="container">
     <div class="header-row">
-        <h1 id="main-title" onclick="this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_runner', 'true'); alert('🎉 發現彩蛋！隱藏機台【社畜的最後衝刺】已永久解鎖！'); window.location.href='/collection.html'; }">末班車生存</h1>
+        <h1 id="main-title" onclick="if(localStorage.getItem('unlock_runner') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_runner', 'true'); alert('🎉 發現彩蛋！隱藏機台【社畜的最後衝刺】已永久解鎖！'); window.location.href='/collection.html'; }">末班車生存</h1>
         <div style="display: flex; gap: 8px;">
             <button class="mode-toggle-btn" id="header-mute-btn" onclick="toggleMute()" title="開關背景音樂">🔇</button>
             <button class="mode-toggle-btn" id="mode-toggle-btn" onclick="toggleAppMode()" title="切換至全查詢模式">🔍</button>
@@ -211,7 +208,7 @@
         
         <div class="time-area">
             <div class="status" id="status-text">現在時間</div>
-            <div class="time-display" id="time-display" onclick="this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_diver', 'true'); alert('🎉 發現彩蛋！隱藏機台【直奔最深月台】已永久解鎖！'); window.location.href='/collection.html'; }">00:00:00</div>
+            <div class="time-display" id="time-display" onclick="if(localStorage.getItem('unlock_diver') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_diver', 'true'); alert('🎉 發現彩蛋！隱藏機台【直奔最深月台】已永久解鎖！'); window.location.href='/collection.html'; }">00:00:00</div>
             <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00; opacity:0.8;">待查驗...</span></div>
         </div>
         
@@ -309,7 +306,7 @@
             </button>
         </div>
 
-        <div onclick="this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_password', 'true'); alert('🎉 發現彩蛋！隱藏機台【終極密碼】已永久解鎖！'); window.location.href='/collection.html'; }" style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 13px; font-weight: bold; cursor: pointer; font-variant-numeric: tabular-nums;">
+        <div onclick="if(localStorage.getItem('unlock_password') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_password', 'true'); alert('🎉 發現彩蛋！隱藏機台【終極密碼】已永久解鎖！'); window.location.href='/collection.html'; }" style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 13px; font-weight: bold; cursor: pointer; font-variant-numeric: tabular-nums;">
             目前版本: v2.21
         </div>
 
