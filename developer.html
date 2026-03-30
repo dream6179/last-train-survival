@@ -14,7 +14,7 @@
         .back-btn:active { background: #555; transform: scale(0.95); }
         .section { background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid #333; }
         .section h3 { margin-top: 0; border-bottom: 1px dashed #444; padding-bottom: 10px; color: #4caf50; font-size: 16px; }
-        .link-btn { display: block; background: #1a1a1a; color: white; border: 1px solid #555; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 15px; transition: 0.1s; }
+        .link-btn { display: block; background: #1a1a1a; color: white; border: 1px solid #555; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 15px; transition: 0.1s; cursor: pointer; }
         .link-btn:active { background: #333; transform: scale(0.98); }
         .version-text { text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-top: 20px; font-variant-numeric: tabular-nums; }
     </style>
@@ -32,7 +32,48 @@
             <a href="https://home.gamer.com.tw/artwork.php?sn=6310367" target="_blank" class="link-btn">📝 綠茶地瓜的開發日誌 (巴哈姆特)</a>
         </div>
 
+        <div class="section">
+            <h3 style="color: var(--warning);">🛠️ 實驗性功能</h3>
+            <button id="dev-mode-btn" onclick="toggleDevMode()" class="link-btn" style="border-color: var(--warning); color: var(--warning);">
+                🔧 開啟開發者模式
+            </button>
+            <p style="font-size: 11px; color: #888; margin-top: 10px; text-align: center;">鎖定全域時間為 23:30，方便深夜測試末班車邏輯</p>
+        </div>
+
         <div class="version-text">目前版本: v2.21</div>
     </div>
+
+    <script>
+        function updateDevBtn() {
+            const btn = document.getElementById('dev-mode-btn');
+            if(localStorage.getItem('dev_mode_active') === 'true') {
+                btn.innerHTML = "🔴 關閉開發者模式";
+                btn.style.color = "var(--danger)";
+                btn.style.borderColor = "var(--danger)";
+            } else {
+                btn.innerHTML = "🔧 開啟開發者模式";
+                btn.style.color = "var(--warning)";
+                btn.style.borderColor = "var(--warning)";
+            }
+        }
+        window.onload = updateDevBtn;
+
+        function toggleDevMode() {
+            if(localStorage.getItem('dev_mode_active') === 'true') {
+                localStorage.setItem('dev_mode_active', 'false');
+                alert("🔴 已關閉開發者模式，恢復現實時間。請重新整理主頁。");
+                updateDevBtn();
+            } else {
+                const pwd = prompt("🔒 請輸入工程模式密碼：");
+                if(pwd === "31362094") {
+                    localStorage.setItem('dev_mode_active', 'true');
+                    alert("✅ 密碼正確！已啟用開發者模式 (時間已鎖定為 23:30)。請重新整理主頁。");
+                    updateDevBtn();
+                } else if(pwd !== null) {
+                    alert("❌ 密碼錯誤！");
+                }
+            }
+        }
+    </script>
 </body>
 </html>
