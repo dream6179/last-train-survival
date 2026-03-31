@@ -11,12 +11,12 @@ function closeErrorSheet() { document.getElementById('error-sheet').classList.re
 function copyErrorLog() { const logOutput = document.getElementById('error-log-output'); logOutput.select(); document.execCommand('copy'); alert("✅ 錯誤代碼已複製！"); }
 
 // ==========================================
-// 🌟 音樂播放器核心 (究極抗 iOS 傲嬌版)
+// 🌟 音樂播放器核心 (業界標準：預設靜音、30%啟動、互動喚醒)
 // ==========================================
 let savedVol = localStorage.getItem('bgmVolume');
-let bgmVolume = savedVol !== null ? parseFloat(savedVol) : 0.5; 
+let bgmVolume = savedVol !== null ? parseFloat(savedVol) : 0.3; // 🌟 預設 30% 音量
 let savedMuted = localStorage.getItem('isBgmMuted');
-let isBgmMuted = savedMuted !== null ? savedMuted === 'true' : true;
+let isBgmMuted = savedMuted !== null ? savedMuted === 'true' : true; // 🌟 預設絕對靜音
 
 let bgmPlaylist = [
     "/audio/platform_at_midnight.mp3", 
@@ -28,17 +28,16 @@ let bgmPlaylist = [
 let currentBgmIndex = Math.floor(Math.random() * bgmPlaylist.length);
 let audioInitialized = false;
 
-function playBgm() {
+// 封裝最純淨的播放啟動器
+function initAndPlayAudio() {
     const bgm = document.getElementById('bgm-audio');
     if (!bgm) return;
     
-    // 🌟 核心防護：只在手指真的點擊時，才塞入網址，iOS 保安就不會擋
     if (!audioInitialized) {
-        bgm.removeAttribute('loop'); // 拔掉 HTML 可能殘留的單曲循環，確保能隨機切歌
+        bgm.removeAttribute('loop'); 
         bgm.src = bgmPlaylist[currentBgmIndex];
         bgm.load();
 
-        // 綁定切歌機制
         bgm.addEventListener('ended', () => {
             let nextIndex;
             do {
@@ -51,20 +50,19 @@ function playBgm() {
             let p = bgm.play();
             if(p !== undefined) p.catch(e => console.log("切歌失敗:", e));
         });
-
         audioInitialized = true;
     }
 
     bgm.volume = bgmVolume;
     let p = bgm.play();
     if (p !== undefined) {
-        p.catch(e => console.log("iOS 終極防護依然啟動:", e));
+        p.catch(e => console.log("等待使用者互動才能播放:", e));
     }
 }
 
 function toggleMute() {
     isBgmMuted = !isBgmMuted; 
-    if (!isBgmMuted && bgmVolume === 0) bgmVolume = 0.5;
+    if (!isBgmMuted && bgmVolume === 0) bgmVolume = 0.3; // 若解除靜音時音量是0，拉回 30%
     
     localStorage.setItem('isBgmMuted', isBgmMuted);
     localStorage.setItem('bgmVolume', bgmVolume);
@@ -83,8 +81,7 @@ function toggleMute() {
         if (isBgmMuted) {
             bgm.pause(); 
         } else { 
-            // 直接在點擊事件內呼叫播放
-            playBgm(); 
+            initAndPlayAudio(); 
         } 
     }
 }
@@ -107,7 +104,7 @@ function updateVolume(val) {
         if (isBgmMuted) {
             bgm.pause(); 
         } else {
-            playBgm();
+            initAndPlayAudio();
         }
     }
 }
@@ -121,26 +118,18 @@ window.addEventListener('DOMContentLoaded', () => {
     if (headerMuteBtn) headerMuteBtn.innerText = icon; 
     if (volumeSlider) volumeSlider.value = isBgmMuted ? 0 : bgmVolume;
 
-    // 全域解鎖器：只要你在畫面上隨便點一下，就默默取得 iOS 播放授權
-    const globalUnlock = () => {
-        if (!isBgmMuted && !audioInitialized) {
-            playBgm();
-        } else if (isBgmMuted && !audioInitialized) {
-            // 就算靜音，我也先初始化一個空彈匣騙 iOS 授權
-            const bgm = document.getElementById('bgm-audio');
-            if (bgm) {
-                bgm.removeAttribute('loop');
-                bgm.src = bgmPlaylist[currentBgmIndex];
-                bgm.load();
-                audioInitialized = true;
-            }
+    // 🌟 全域喚醒器：當重新整理、或從如月車站回來時，只要摸到螢幕，就根據之前的狀態恢復播放
+    const globalWakeUp = () => {
+        if (!isBgmMuted) {
+            initAndPlayAudio();
         }
-        document.body.removeEventListener('touchstart', globalUnlock);
-        document.body.removeEventListener('click', globalUnlock);
+        // 喚醒後解除監聽，避免浪費效能
+        document.body.removeEventListener('touchstart', globalWakeUp);
+        document.body.removeEventListener('click', globalWakeUp);
     };
     
-    document.body.addEventListener('touchstart', globalUnlock, { once: true });
-    document.body.addEventListener('click', globalUnlock, { once: true });
+    document.body.addEventListener('touchstart', globalWakeUp, { once: true });
+    document.body.addEventListener('click', globalWakeUp, { once: true });
 });
 
 // ==========================================
@@ -175,7 +164,10 @@ function toggleAppMode() {
 
 function triggerKisaragiEvent() {
     clearInterval(timer); isCountingDown = false;
-    const bgm = document.getElementById('bgm-audio'); if (bgm) bgm.pause();
+    
+    // 🌟 如月車站強制靜音：單純暫停，不動 LocalStorage，這樣逃脫後才能自動恢復
+    const bgm = document.getElementById('bgm-audio'); 
+    if (bgm) bgm.pause();
     
     const overlay = document.createElement('div');
     overlay.id = 'kisaragi-overlay';
@@ -209,6 +201,7 @@ window.escapeKisaragi = function() {
         localStorage.setItem('unlock_kisaragi', 'true');
         alert('🏃‍♂️ 你死命地沿著隧道狂奔，身後的太鼓聲漸漸遠去，終於回到了現實世界...\n\n🎉 恭喜解鎖隱藏成就【從不存在的車站歸來】！');
     }
+    // 逃脫後前往收集冊，重新載入頁面，等使用者一摸螢幕就會觸發 globalWakeUp 恢復音樂
     window.location.href = '/collection.html';
 };
 
