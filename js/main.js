@@ -627,16 +627,15 @@ window.closeDynamicSheet = function() {
     
     setTimeout(() => {
         const frame = document.getElementById('spa-frame');
-        if(frame) frame.src = ''; 
+        if(frame) frame.src = 'about:blank'; // 🌟 關鍵修復：強制斷電，阻止無限輪迴
         
         const overlay = document.getElementById('overlay');
         if(overlay) {
-            overlay.style.zIndex = "90"; // 🌟 關鍵修復：把遮罩降回原本的層級，讓設定選單重見天日
+            overlay.style.zIndex = "90"; 
             
-            // 檢查是否還有其他的 Bottom Sheet (例如設定選單) 是打開的
             const hasOtherActive = document.querySelector('.bottom-sheet.active:not(#dynamic-sheet)');
             if(!hasOtherActive) {
-                overlay.classList.remove('active'); // 如果沒有其他選單，才徹底關閉遮罩
+                overlay.classList.remove('active'); 
             }
         }
     }, 300);
@@ -653,6 +652,6 @@ function closeAllSheets() {
     setTimeout(() => { 
         if(overlay) overlay.style.zIndex = "90"; 
         const frame = document.getElementById('spa-frame');
-        if(frame) frame.src = '';
+        if(frame) frame.src = 'about:blank'; // 🌟 關鍵修復：強制斷電
     }, 300); 
 }
