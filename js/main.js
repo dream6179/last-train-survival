@@ -605,3 +605,54 @@ function shareApp() {
 function toggleContact() { const l = document.getElementById('contact-links'); l.style.display = l.style.display === "flex" ? "none" : "flex"; }
 function openAdvancedSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
 function openSettingsSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
+// ==========================================
+// 🌟 SPA 動態面板控制 (已修復遮罩卡死問題)
+// ==========================================
+window.openPage = function(url) {
+    const frame = document.getElementById('spa-frame');
+    const sheet = document.getElementById('dynamic-sheet');
+    const overlay = document.getElementById('overlay');
+    
+    if(!frame || !sheet || !overlay) { window.location.href = url; return; }
+
+    frame.src = url;
+    overlay.style.zIndex = "99990"; // 提高遮罩層級
+    overlay.classList.add('active');
+    sheet.classList.add('active');
+};
+
+window.closeDynamicSheet = function() {
+    const sheet = document.getElementById('dynamic-sheet');
+    if(sheet) sheet.classList.remove('active');
+    
+    setTimeout(() => {
+        const frame = document.getElementById('spa-frame');
+        if(frame) frame.src = ''; 
+        
+        const overlay = document.getElementById('overlay');
+        if(overlay) {
+            overlay.style.zIndex = "90"; // 🌟 關鍵修復：把遮罩降回原本的層級，讓設定選單重見天日
+            
+            // 檢查是否還有其他的 Bottom Sheet (例如設定選單) 是打開的
+            const hasOtherActive = document.querySelector('.bottom-sheet.active:not(#dynamic-sheet)');
+            if(!hasOtherActive) {
+                overlay.classList.remove('active'); // 如果沒有其他選單，才徹底關閉遮罩
+            }
+        }
+    }, 300);
+};
+
+// 覆寫 closeAllSheets
+function closeAllSheets() { 
+    ['advanced-sheet', 'settings-sheet', 'error-sheet', 'dynamic-sheet'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.remove('active');
+    });
+    const overlay = document.getElementById('overlay'); 
+    if(overlay) overlay.classList.remove('active'); 
+    setTimeout(() => { 
+        if(overlay) overlay.style.zIndex = "90"; 
+        const frame = document.getElementById('spa-frame');
+        if(frame) frame.src = '';
+    }, 300); 
+}
