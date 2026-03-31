@@ -162,13 +162,9 @@
         }).catch(e => console.log('正常啟動模式'));
 </script>
 
-<audio id="bgm-audio" preload="auto">
-    <source src="/audio/Midnight_at_Platform_Four.mp3" type="audio/mpeg">
-</audio>
-
 <div class="container">
     <div class="header-row">
-        <h1 id="main-title" onclick="if(localStorage.getItem('unlock_runner') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_runner', 'true'); alert('🎉 發現彩蛋！隱藏機台【社畜的最後衝刺】已永久解鎖！'); window.location.href='/collection.html'; }">末班車生存</h1>
+        <h1 id="main-title" onclick="if(localStorage.getItem('unlock_runner') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_runner', 'true'); alert('🎉 發現彩蛋！隱藏機台【社畜的最後衝刺】已永久解鎖！'); openPage('/collection.html'); }">末班車生存</h1>
         <div style="display: flex; gap: 8px;">
             <button class="mode-toggle-btn" id="header-mute-btn" onclick="toggleMute()" title="開關背景音樂">🔇</button>
             <button class="mode-toggle-btn" id="mode-toggle-btn" onclick="toggleAppMode()" title="切換至全查詢模式">🔍</button>
@@ -222,7 +218,7 @@
         
         <div class="time-area">
             <div class="status" id="status-text">現在時間</div>
-            <div class="time-display" id="time-display" onclick="if(localStorage.getItem('unlock_diver') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_diver', 'true'); alert('🎉 發現彩蛋！隱藏機台【直奔最深月台】已永久解鎖！'); window.location.href='/collection.html'; }">00:00:00</div>
+            <div class="time-display" id="time-display" onclick="if(localStorage.getItem('unlock_diver') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_diver', 'true'); alert('🎉 發現彩蛋！隱藏機台【直奔最深月台】已永久解鎖！'); openPage('/collection.html'); }">00:00:00</div>
             <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00; opacity:0.8;">待查驗...</span></div>
         </div>
         
@@ -297,11 +293,11 @@
             <span class="option-name">🔗 分享這個求生工具給朋友</span>
         </button>
         
-        <button class="plan-b-option" onclick="window.location.href="javascript:void(0)" onclick="openPage('/about.html')" style="background-color: #1a1a1a; color: white; border: 1px solid #555; width: 100%; justify-content: center; margin-bottom: 10px;">
+        <button class="plan-b-option" onclick="openPage('/about.html')" style="background-color: #1a1a1a; color: white; border: 1px solid #555; width: 100%; justify-content: center; margin-bottom: 10px;">
             <span class="option-name">📖 快速使用說明</span>
         </button>
 
-        <button class="plan-b-option" onclick="window.location.href="javascript:void(0)" onclick="openPage('/developer.html')" style="background-color: #1a1a1a; color: white; border: 1px solid #555; width: 100%; justify-content: center; margin-bottom: 20px;">
+        <button class="plan-b-option" onclick="openPage('/developer.html')" style="background-color: #1a1a1a; color: white; border: 1px solid #555; width: 100%; justify-content: center; margin-bottom: 20px;">
             <span class="option-name">👨‍💻 開發者資訊</span>
         </button>
         
@@ -315,12 +311,12 @@
         </div>
         
         <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px;">
-            <button class="plan-b-option" onclick="window.location.href="javascript:void(0)" onclick="openPage('/collection.html')" style="background-color: #2a2a2a; border: 1px solid var(--warning); justify-content: center; width: 100%;">
+            <button class="plan-b-option" onclick="openPage('/collection.html')" style="background-color: #2a2a2a; border: 1px solid var(--warning); justify-content: center; width: 100%;">
                 <span class="option-name" style="color: var(--warning);">🏆 前往彩蛋與收集冊專區</span>
             </button>
         </div>
 
-        <div onclick="if(localStorage.getItem('unlock_password') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_password', 'true'); alert('🎉 發現彩蛋！隱藏機台【終極密碼】已永久解鎖！'); window.location.href='/collection.html'; }" style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 13px; font-weight: bold; cursor: pointer; font-variant-numeric: tabular-nums;">
+        <div onclick="if(localStorage.getItem('unlock_password') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_password', 'true'); alert('🎉 發現彩蛋！隱藏機台【終極密碼】已永久解鎖！'); openPage('/collection.html'); }" style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #333; text-align: center; color: #666; font-size: 13px; font-weight: bold; cursor: pointer; font-variant-numeric: tabular-nums;">
             目前版本: v2.21
         </div>
 
@@ -335,10 +331,15 @@
         <button class="main-action-btn" style="background-color: #333; border: 1px solid #555;" onclick="copyErrorLog()">📋 複製錯誤代碼</button>
     </div>
 </div>
+
 <img src="https://visitor-badge.laobi.icu/badge?page_id=last-train-survival.vercel.app&left_color=333333&right_color=FFB300&left_text=SURVIVORS" style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;" alt="" />
+
+<audio id="bgm-audio"></audio>
 <script src="/js/main.js"></script>
+
 <div class="bottom-sheet" id="dynamic-sheet" style="height: 92vh; max-height: 92vh; padding: 0; overflow: hidden; z-index: 99991; background-color: var(--bg-color); border-radius: 20px 20px 0 0;">
     <iframe id="spa-frame" style="width: 100%; height: 100%; border: none; border-radius: 20px 20px 0 0; background: transparent;"></iframe>
 </div>
+
 </body>
 </html>
