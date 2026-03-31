@@ -7,27 +7,11 @@
     <style>
         :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --info: #2196F3; --warning: #ffb300; }
         
-        /* 🌟 終極安全排版，絕對置中、絕對可捲動、絕對不黑頻 */
-        body { 
-            margin: 0; 
-            padding: 0; 
-            background-color: var(--bg-color); 
-            font-family: 'Segoe UI', Roboto, sans-serif; 
-            color: var(--text-main); 
-            -webkit-user-select: none; 
-            user-select: none;
-            display: flex; 
-            justify-content: center; 
-            align-items: flex-start; /* 🌟 對齊頂部，避免畫面被吃掉 */
-            min-height: 100vh;
-            overflow-y: auto;
-            overflow-x: hidden;
-        }
-        
+        html, body { overflow-x: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main); -webkit-user-select: none; user-select: none; }
         ::-webkit-scrollbar { display: none; }
-        html, body { -ms-overflow-style: none; scrollbar-width: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
 
-        .container { width: 90%; max-width: 400px; padding: 20px 0 50px 0; }
+        .container { width: 90%; max-width: 400px; padding: 20px 0 50px 0; margin: 0 auto; }
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #333; }
         .header-row h1 { font-size: 20px; margin: 0; color: var(--text-main); }
         .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; }
@@ -36,16 +20,13 @@
         .section h3 { margin-top: 0; border-bottom: 1px dashed #444; padding-bottom: 10px; color: #4caf50; font-size: 16px; }
         .link-btn { display: block; background: #1a1a1a; color: white; border: 1px solid #555; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 15px; transition: 0.1s; cursor: pointer; }
         .link-btn:active { background: #333; transform: scale(0.98); }
-        .version-text { text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-top: 20px; font-variant-numeric: tabular-nums; }
-        
-        .counter-box { text-align: center; margin-top: 15px; display: flex; justify-content: center; width: 100%; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header-row">
             <h1>👨‍💻 開發者資訊</h1>
-            <a href="javascript:history.back()" class="back-btn">⬅ 返回設定</a>
+            <a href="javascript:history.back()" class="back-btn">⬅ 返回</a>
         </div>
 
         <div class="section">
@@ -60,12 +41,6 @@
                 🔧 開啟開發者模式
             </button>
             <p style="font-size: 11px; color: #888; margin-top: 10px; text-align: center;">鎖定全域時間為 23:30，方便深夜測試末班車邏輯</p>
-        </div>
-
-        <div class="version-text">目前版本: v2.21</div>
-
-        <div class="counter-box">
-            <img src="https://visitor-badge.laobi.icu/badge?page_id=last-train-survival.vercel.app&left_color=333333&right_color=FFB300&left_text=SURVIVORS" alt="累積求生人次"/>
         </div>
     </div> 
     
@@ -86,7 +61,7 @@
             } catch (e) { console.log(e); }
         }
         
-        window.addEventListener('load', updateDevBtn);
+        window.addEventListener('DOMContentLoaded', updateDevBtn);
 
         async function toggleDevMode() {
             try {
