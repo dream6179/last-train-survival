@@ -10,21 +10,27 @@ function showErrorSheet(errorMsg) {
 function closeErrorSheet() { document.getElementById('error-sheet').classList.remove('active'); if (!document.querySelector('.bottom-sheet.active:not(#error-sheet)')) { document.getElementById('overlay').classList.remove('active'); setTimeout(() => { document.getElementById('overlay').style.zIndex = "90"; }, 300); } }
 function copyErrorLog() { const logOutput = document.getElementById('error-log-output'); logOutput.select(); document.execCommand('copy'); alert("✅ 錯誤代碼已複製！"); }
 
-// 🌟 BGM 升級：加入 LocalStorage 記憶功能
-let bgmVolume = parseFloat(localStorage.getItem('bgmVolume')) || 0.5; 
-let isBgmMuted = localStorage.getItem('isBgmMuted') === 'false' ? false : true; 
+// ==========================================
+// 🌟 音樂播放器核心 (已修復音量 Bug ＆ 升級隨機播放)
+// ==========================================
+let savedVol = localStorage.getItem('bgmVolume');
+let bgmVolume = savedVol !== null ? parseFloat(savedVol) : 0.5; // 精準讀取，不怕被 0 誤導
+let savedMuted = localStorage.getItem('isBgmMuted');
+let isBgmMuted = savedMuted !== null ? savedMuted === 'true' : true;
 let bgmStarted = false; 
 
 let bgmPlaylist = [
     "/audio/platform_at_midnight.mp3", 
     "/audio/Midnight_at_Platform_Four.mp3"
 ];
-let currentBgmIndex = 0;
+
+// 隨機決定第一首歌
+let currentBgmIndex = Math.floor(Math.random() * bgmPlaylist.length);
 
 function toggleMute() {
-    isBgmMuted = !isBgmMuted; if (!isBgmMuted && bgmVolume === 0) bgmVolume = 0.5;
+    isBgmMuted = !isBgmMuted; 
+    if (!isBgmMuted && bgmVolume === 0) bgmVolume = 0.5;
     
-    // 記憶設定
     localStorage.setItem('isBgmMuted', isBgmMuted);
     localStorage.setItem('bgmVolume', bgmVolume);
 
@@ -50,9 +56,9 @@ function toggleMute() {
 }
 
 function updateVolume(val) {
-    bgmVolume = parseFloat(val); isBgmMuted = (bgmVolume === 0);
+    bgmVolume = parseFloat(val); 
+    isBgmMuted = (bgmVolume === 0);
     
-    // 記憶設定
     localStorage.setItem('isBgmMuted', isBgmMuted);
     localStorage.setItem('bgmVolume', bgmVolume);
 
@@ -75,7 +81,6 @@ function updateVolume(val) {
 }
 
 window.addEventListener('DOMContentLoaded', () => { 
-    // 載入時同步 UI 狀態
     const icon = isBgmMuted ? '🔇' : '🔊'; 
     const muteBtn = document.getElementById('mute-btn');
     const headerMuteBtn = document.getElementById('header-mute-btn');
@@ -86,8 +91,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const bgm = document.getElementById('bgm-audio');
     if (bgm) {
+        bgm.src = bgmPlaylist[currentBgmIndex]; // 載入隨機抽到的第一首歌
+        
         bgm.addEventListener('ended', () => {
-            currentBgmIndex = (currentBgmIndex + 1) % bgmPlaylist.length;
+            // 隨機抽下一首，且保證不重複
+            let nextIndex;
+            do {
+                nextIndex = Math.floor(Math.random() * bgmPlaylist.length);
+            } while (nextIndex === currentBgmIndex && bgmPlaylist.length > 1);
+            
+            currentBgmIndex = nextIndex;
             bgm.src = bgmPlaylist[currentBgmIndex];
             bgm.play().catch(e => console.log("切歌失敗:", e));
         });
@@ -102,6 +115,16 @@ window.addEventListener('DOMContentLoaded', () => {
     }, { once: true }); 
 });
 
+// ==========================================
+// 核心路由與其餘功能
+// ==========================================
+function getSystemTime() {
+    if (localStorage.getItem('dev_mode_active') === 'true') {
+        let d = new Date(); d.setHours(23, 30, 0, 0); return d;
+    }
+    return new Date();
+}
+
 function toggleAppMode() {
     const modeSurvival = document.getElementById('mode-survival'); const modeSearch = document.getElementById('mode-search'); const toggleBtn = document.getElementById('mode-toggle-btn'); const mainTitle = document.getElementById('main-title');
     if (currentMode === 'survival') { 
@@ -114,20 +137,17 @@ function toggleAppMode() {
         toggleBtn.innerHTML = '🔍'; toggleBtn.title = '切換至全查詢模式'; 
         
         if(localStorage.getItem('dev_mode_active') === 'true') {
-            mainTitle.innerText = "末班車生存 (工程)"; 
-            mainTitle.style.color = "var(--warning)";
+            mainTitle.innerText = "末班車生存 (工程)"; mainTitle.style.color = "var(--warning)";
         } else {
-            mainTitle.innerText = "末班車生存"; 
-            mainTitle.style.color = "var(--danger)"; 
+            mainTitle.innerText = "末班車生存"; mainTitle.style.color = "var(--danger)"; 
         }
         currentMode = 'survival'; 
     }
 }
 
-// 🌟 沉浸式如月車站事件觸發器
 function triggerKisaragiEvent() {
     clearInterval(timer); isCountingDown = false;
-    const bgm = document.getElementById('bgm-audio'); if (bgm) bgm.pause(); // 👈 就是這裡掐斷了你的音樂！
+    const bgm = document.getElementById('bgm-audio'); if (bgm) bgm.pause();
     
     const overlay = document.createElement('div');
     overlay.id = 'kisaragi-overlay';
@@ -161,7 +181,6 @@ window.escapeKisaragi = function() {
         localStorage.setItem('unlock_kisaragi', 'true');
         alert('🏃‍♂️ 你死命地沿著隧道狂奔，身後的太鼓聲漸漸遠去，終於回到了現實世界...\n\n🎉 恭喜解鎖隱藏成就【從不存在的車站歸來】！');
     }
-    
     window.location.href = '/collection.html';
 };
 
@@ -175,8 +194,7 @@ async function executeFullSearch() {
     if (!searchStationName) { alert("⚠️ 請先選擇或輸入要查詢的車站！"); return; }
     
     if (searchStationName === '如月車站' || searchStationName.toUpperCase() === 'KISARAGI') {
-        triggerKisaragiEvent();
-        return;
+        triggerKisaragiEvent(); return;
     }
     
     searchBtn.disabled = true; searchBtn.innerHTML = "⏳ 連線檢索中..."; 
@@ -187,8 +205,7 @@ async function executeFullSearch() {
             if (!cachedTdxToken && ['trtc', 'tra', 'thsr'].includes(searchType)) { 
                 const tokenRes = await fetchWithTimeout('/api/get-token', { timeout: 3500 });
                 if (tokenRes.ok) {
-                    const tokenData = await tokenRes.json(); 
-                    cachedTdxToken = tokenData.access_token; 
+                    const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; 
                 }
             } 
         } catch(networkErr) { console.log("網路異常或管制，跳過 Token 取得"); }
@@ -199,8 +216,7 @@ async function executeFullSearch() {
             try { 
                 const tokenRes = await fetchWithTimeout('/api/get-token', { timeout: 3500 }); 
                 if (tokenRes.ok) {
-                    const tokenData = await tokenRes.json(); 
-                    cachedTdxToken = tokenData.access_token; 
+                    const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; 
                     res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken, searchMode); 
                 }
             } catch(networkErr) { } 
@@ -254,14 +270,10 @@ window.onload = async () => {
             if (now.getMonth() === 3 && now.getDate() === 1) {
                 const endTypeSelect = document.getElementById('end-type');
                 const jpOption = document.createElement('option');
-                jpOption.value = 'jp';
-                jpOption.textContent = '日鐵';
-                jpOption.style.color = '#ff5252';
-                jpOption.style.fontWeight = 'bold';
+                jpOption.value = 'jp'; jpOption.textContent = '日鐵'; jpOption.style.color = '#ff5252'; jpOption.style.fontWeight = 'bold';
                 endTypeSelect.appendChild(jpOption);
                 
-                endTypeSelect.value = 'jp';
-                savedEnd = '如月車站';
+                endTypeSelect.value = 'jp'; savedEnd = '如月車站';
             }
 
             initCustomAutocomplete(); 
@@ -287,10 +299,7 @@ function renderCustomDropdown(point) {
     if (point === 'transfer') {
         const startType = document.getElementById('start-type').value;
         let rawOptions = globalStationData?.[startType]?.transferStations || [];
-        options = rawOptions.map(s => {
-            if (s.name === '萬華') return { ...s, name: '龍山寺' };
-            return s;
-        });
+        options = rawOptions.map(s => { if (s.name === '萬華') return { ...s, name: '龍山寺' }; return s; });
     } else {
         const selectedType = document.getElementById(point + '-type').value;
         options = globalStationData?.[selectedType]?.options || [];
@@ -311,8 +320,7 @@ function renderCustomDropdown(point) {
         const nameSpan = document.createElement('span'); nameSpan.textContent = station.name;
         
         if (station.name === '如月車站') {
-            nameSpan.style.color = '#ff5252';
-            nameSpan.style.letterSpacing = '2px';
+            nameSpan.style.color = '#ff5252'; nameSpan.style.letterSpacing = '2px';
             item.appendChild(nameSpan);
         } else {
             const starSpan = document.createElement('span'); starSpan.className = 'star-icon';
@@ -323,8 +331,7 @@ function renderCustomDropdown(point) {
 
         item.addEventListener('mousedown', function(e) { e.preventDefault(); });
         item.addEventListener('click', function() { 
-            inputField.value = station.name; 
-            listContainer.style.display = 'none'; 
+            inputField.value = station.name; listContainer.style.display = 'none'; 
             if (point === 'start') checkTransferLock();
         });
         return item;
@@ -341,14 +348,8 @@ function initCustomAutocomplete() {
     ['start', 'end', 'search', 'transfer'].forEach(point => {
         const inputField = document.getElementById(point + '-station-input');
         inputField.addEventListener('input', () => renderCustomDropdown(point));
-        inputField.addEventListener('focus', () => { 
-            if(inputField.disabled) return; 
-            inputField.value = ''; 
-            renderCustomDropdown(point); 
-        });
-        inputField.addEventListener('blur', () => {
-            if (point === 'start') setTimeout(checkTransferLock, 100); 
-        });
+        inputField.addEventListener('focus', () => { if(inputField.disabled) return; inputField.value = ''; renderCustomDropdown(point); });
+        inputField.addEventListener('blur', () => { if (point === 'start') setTimeout(checkTransferLock, 100); });
     });
 }
 
@@ -368,32 +369,22 @@ function checkTransferLock() {
 
     if (startType === 'tra' || startType === 'thsr') {
         transferBlock.style.display = 'flex';
-        
         const transferStations = globalStationData?.[startType]?.transferStations || [];
         const isOriginTransferStation = transferStations.some(s => s.name === startInput);
 
         if (isOriginTransferStation) {
             transferInput.value = startInput === '萬華' ? '龍山寺' : startInput;
-            transferInput.disabled = true;
-            transferInput.style.opacity = '0.5';
-            transferInput.style.pointerEvents = 'none'; 
+            transferInput.disabled = true; transferInput.style.opacity = '0.5'; transferInput.style.pointerEvents = 'none'; 
         } else {
-            transferInput.disabled = false;
-            transferInput.style.opacity = '1';
-            transferInput.style.pointerEvents = 'auto';
-            
+            transferInput.disabled = false; transferInput.style.opacity = '1'; transferInput.style.pointerEvents = 'auto';
             let validNames = transferStations.map(s => s.name === '萬華' ? '龍山寺' : s.name);
-            if (!validNames.includes(transferInput.value)) {
-                transferInput.value = validNames[0] || '南港';
-            }
+            if (!validNames.includes(transferInput.value)) { transferInput.value = validNames[0] || '南港'; }
         }
 
         const hasJpOption = Array.from(endTypeSelect.options).some(opt => opt.value === 'jp');
         if (hasJpOption) {
             endTypeSelect.querySelector('option[value="jp"]').remove();
-            if(document.getElementById('end-station-input').value === '如月車站') {
-                document.getElementById('end-station-input').value = '台北車站';
-            }
+            if(document.getElementById('end-station-input').value === '如月車站') { document.getElementById('end-station-input').value = '台北車站'; }
         }
 
         if (endTypeSelect.options.length > 1) {
@@ -404,13 +395,10 @@ function checkTransferLock() {
 
     } else {
         transferBlock.style.display = 'none';
-        
         const now = getSystemTime();
         const isAprilFools = (now.getMonth() === 3 && now.getDate() === 1);
         let optionsHtml = '<option value="trtc" selected>北捷</option><option value="thsr">高鐵</option>';
-        if (isAprilFools) {
-            optionsHtml += '<option value="jp" style="color:#ff5252; font-weight:bold;">日鐵</option>';
-        }
+        if (isAprilFools) { optionsHtml += '<option value="jp" style="color:#ff5252; font-weight:bold;">日鐵</option>'; }
         endTypeSelect.innerHTML = optionsHtml;
     }
 }
@@ -421,9 +409,7 @@ function updateStationOptions(point) {
         document.getElementById(point + '-station-input').value = defaultStations[typeSelect.value] || '';
         renderCustomDropdown(point);
     }
-    if (point === 'start') {
-        checkTransferLock();
-    }
+    if (point === 'start') checkTransferLock();
 }
 
 function toggleNotificationState() {
@@ -458,8 +444,7 @@ async function handleAction() {
     const trtcTransferName = uiTransferName; 
 
     if (endStationName === '如月車站' || endStationName.toUpperCase() === 'KISARAGI') {
-        triggerKisaragiEvent();
-        return;
+        triggerKisaragiEvent(); return;
     }
 
     if (isCountingDown) { if ("Notification" in window) { if (Notification.permission === "granted") toggleNotificationState(); else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); }); else alert("⚠️ 您之前拒絕了通知權限，請手動開啟！"); } else alert("⚠️ 不支援推播通知！"); return; }
@@ -476,8 +461,7 @@ async function handleAction() {
     actionBtn.innerHTML = "⏳ 演算法推演中..."; actionBtn.disabled = true;
 
    try {
-        let finalTime = "23:59"; let status = "系統預設";
-        let transferPenalty = 0; 
+        let finalTime = "23:59"; let status = "系統預設"; let transferPenalty = 0; 
         
         if (startType === 'tra' || startType === 'thsr') {
             const transferStationObj = globalStationData[startType]?.transferStations?.find(s => s.name === railTransferName);
@@ -518,16 +502,13 @@ async function handleAction() {
         
         isCountingDown = true; statusText.innerHTML = "距離末班車發車還剩"; display.style.color = "#4caf50"; speedModeText.innerHTML = `${finalTime} <span style="font-size:10px; color:#aaa;">(${status})</span>`; actionBtn.innerHTML = "🔔 開啟發車通知"; actionBtn.classList.replace('btn-success', 'btn-danger'); cancelBtn.style.display = "flex";
         
-        const now = getSystemTime(); 
-        let target = getSystemTime(); 
-        
+        const now = getSystemTime(); let target = getSystemTime(); 
         const [hh, mm] = finalTime.split(':').map(Number); target.setHours(hh, mm, 0, 0); 
         if (now.getHours() >= 4 && hh < 4) target.setDate(target.getDate() + 1); else if (now.getHours() < 4 && hh >= 4) target.setDate(target.getDate() - 1); 
         timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenalty; if (timeLeft < 0) timeLeft = 0; updateClock(); 
         
     } catch (error) { 
-        isCountingDown = false; 
-        actionBtn.innerHTML = "開始計算轉乘"; actionBtn.disabled = false;
+        isCountingDown = false; actionBtn.innerHTML = "開始計算轉乘"; actionBtn.disabled = false;
     } 
 }
 
@@ -538,13 +519,9 @@ function resetPlan() {
 
 function shareApp() { 
     if (navigator.share) {
-        navigator.share({ title: '末班車生存', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href })
-        .catch(err => {
-            if (err.name !== 'AbortError') console.error("分享失敗:", err);
-        });
+        navigator.share({ title: '末班車生存', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href }).catch(err => { if (err.name !== 'AbortError') console.error("分享失敗:", err); });
     } else { 
-        navigator.clipboard.writeText(window.location.href); 
-        alert("✅ 網址已複製！"); 
+        navigator.clipboard.writeText(window.location.href); alert("✅ 網址已複製！"); 
     } 
 }
 
