@@ -26,11 +26,6 @@
         .game-name { font-size: 16px; font-weight: bold; color: white; }
         .game-score { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
         .play-icon { font-size: 24px; }
-
-        .collection-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        .collection-item { background: var(--card-bg); border: 1px dashed #444; border-radius: 12px; padding: 20px 10px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100px; transition: 0.2s; }
-        .item-icon { font-size: 30px; margin-bottom: 8px; filter: grayscale(100%) opacity(0.3); }
-        .item-name { font-size: 13px; color: #666; font-weight: bold; }
         
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 90; }
         .overlay.active { opacity: 1; pointer-events: all; }
@@ -63,13 +58,9 @@
     </div>
     <div class="game-grid" id="game-list"></div>
 
-    <div class="section-title">📦 成就與收集</div>
-    <div class="collection-grid">
-        <div class="collection-item"><div class="item-icon">🔒</div><div class="item-name">未知成就 01</div></div>
-        <div class="collection-item"><div class="item-icon">🔒</div><div class="item-name">未知成就 02</div></div>
-        <div class="collection-item"><div class="item-icon">🔒</div><div class="item-name">未知成就 03</div></div>
-        <div class="collection-item"><div class="item-icon">🔒</div><div class="item-name">未知成就 04</div></div>
-    </div>
+    <div class="section-title" style="border-left-color: var(--danger);">📦 特殊成就</div>
+    <div class="game-grid" id="achievement-list">
+        </div>
 </div>
 
 <div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
@@ -93,16 +84,19 @@
 <script>
     function renderGames() {
         const list = document.getElementById('game-list');
+        const achList = document.getElementById('achievement-list');
+        
         const u1 = localStorage.getItem('unlock_runner') === 'true';
         const u2 = localStorage.getItem('unlock_diver') === 'true';
         const u3 = localStorage.getItem('unlock_password') === 'true';
+        const uk = localStorage.getItem('unlock_kisaragi') === 'true'; // 如月車站成就
         
         const s1 = localStorage.getItem('lateCommuterHighScore') || 0;
         const s2 = localStorage.getItem('deepStationHighScore') || 0;
         const s3 = localStorage.getItem('passwordHighScore') || 999;
 
+        // 渲染機台
         let html = '';
-        
         if (u1) {
             html += `<div class="game-card" style="border-color: var(--warning);" onclick="triggerEasterEgg(true)">
                         <div class="game-info"><span class="game-name" style="color: var(--warning);">🏃‍♂️ 社畜的最後衝刺</span><span class="game-score">最高存活：${s1} 秒</span></div>
@@ -127,10 +121,29 @@
         } else {
             html += `<div class="game-card locked"><div class="game-info"><span class="game-name">🔒 隱藏機台 03</span><span class="game-score">好像有點可疑...</span></div></div>`;
         }
-        
         list.innerHTML = html;
 
-        // 🌟 檢查是否為工程模式，若是則顯示重置按鈕
+        // 🌟 渲染如月車站成就
+        let achHtml = '';
+        if (uk) {
+            achHtml = `<div class="game-card" style="border-color: var(--danger); cursor: default;">
+                        <div class="game-info">
+                            <span class="game-name" style="color: var(--danger); letter-spacing: 2px; text-shadow: 0 0 8px rgba(255,0,0,0.4);">🩸 從不存在的車站歸來</span>
+                            <span class="game-score">你聽見太鼓聲了嗎...？</span>
+                        </div>
+                        <div class="play-icon">🎫</div>
+                      </div>`;
+        } else {
+            achHtml = `<div class="game-card locked" style="cursor: default;">
+                        <div class="game-info">
+                            <span class="game-name">🔒 隱藏成就</span>
+                            <span class="game-score">這班列車，本不該存在。</span>
+                        </div>
+                      </div>`;
+        }
+        achList.innerHTML = achHtml;
+
+        // 檢查是否為工程模式，若是則顯示重置按鈕
         if(localStorage.getItem('dev_mode_active') === 'true') {
             document.getElementById('dev-reset-btn').style.display = 'block';
         } else {
@@ -138,14 +151,15 @@
         }
     }
 
-    // 🌟 開發者專用：重置解鎖狀態
+    // 開發者專用：重置解鎖狀態 (包含如月車站)
     function resetEasterEggs() {
-        if(confirm("🛠️ [工程模式] 確定要將所有隱藏機台重新上鎖嗎？這將方便您重新測試解鎖流程。")) {
+        if(confirm("🛠️ [工程模式] 確定要將所有隱藏機台與成就重新上鎖嗎？")) {
             localStorage.removeItem('unlock_runner');
             localStorage.removeItem('unlock_diver');
             localStorage.removeItem('unlock_password');
+            localStorage.removeItem('unlock_kisaragi');
             renderGames();
-            alert("✅ 已重新上鎖！現在您可以回主畫面測試連點觸發了。");
+            alert("✅ 已重新上鎖！現在您可以回主畫面測試了。");
         }
     }
 
