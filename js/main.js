@@ -102,16 +102,14 @@ function updateVolume(val) {
     if (bgm) { if (isBgmMuted) bgm.pause(); else initAndPlayAudio(); }
 }
 
-window.addEventListener('DOMContentLoaded', () => { 
+// 🌟 關鍵修復：這裡也改成 addEventListener，不殺別人的 code
+window.addEventListener('load', () => { 
     setupAudioUI();
 
-    // 🌟 判斷是否處於 SPA 電視機內部
     if (window.parent !== window) {
-        // 我在裡面！拔掉我的音效卡不跟外面搶
         const bgm = document.getElementById('bgm-audio');
         if (bgm) { bgm.pause(); bgm.remove(); }
         
-        // 攔截我的返回按鈕，改成請外面的爸爸關掉電視
         const backBtns = document.querySelectorAll('.back-btn');
         backBtns.forEach(btn => {
             btn.removeAttribute('href');
@@ -121,12 +119,11 @@ window.addEventListener('DOMContentLoaded', () => {
                     window.parent.closeDynamicSheet();
                 }
             };
-            btn.innerHTML = '⬅ 返回'; // 🌟 改成純粹的「返回」，不會讓人誤會跳回主頁
+            btn.innerHTML = '⬅ 返回'; 
         });
         return;
     }
 
-    // 我在外面！架設喚醒雷達
     const globalWakeUp = () => {
         if (!isBgmMuted) initAndPlayAudio();
         ['touchstart', 'click', 'scroll'].forEach(evt => window.removeEventListener(evt, globalWakeUp, true));
@@ -135,6 +132,56 @@ window.addEventListener('DOMContentLoaded', () => {
         ['touchstart', 'click', 'scroll'].forEach(evt => window.addEventListener(evt, globalWakeUp, true));
     }
 });
+
+// ==========================================
+// 🌟 SPA 動態面板控制 (已修復遮罩卡死問題)
+// ==========================================
+window.openPage = function(url) {
+    const frame = document.getElementById('spa-frame');
+    const sheet = document.getElementById('dynamic-sheet');
+    const overlay = document.getElementById('overlay');
+    
+    if(!frame || !sheet || !overlay) { window.location.href = url; return; }
+
+    frame.src = url;
+    overlay.style.zIndex = "99990"; 
+    overlay.classList.add('active');
+    sheet.classList.add('active');
+};
+
+window.closeDynamicSheet = function() {
+    const sheet = document.getElementById('dynamic-sheet');
+    if(sheet) sheet.classList.remove('active');
+    
+    setTimeout(() => {
+        const frame = document.getElementById('spa-frame');
+        if(frame) frame.src = ''; 
+        
+        const overlay = document.getElementById('overlay');
+        if(overlay) {
+            overlay.style.zIndex = "90"; 
+            
+            const hasOtherActive = document.querySelector('.bottom-sheet.active:not(#dynamic-sheet)');
+            if(!hasOtherActive) {
+                overlay.classList.remove('active'); 
+            }
+        }
+    }, 300);
+};
+
+function closeAllSheets() { 
+    ['advanced-sheet', 'settings-sheet', 'error-sheet', 'dynamic-sheet'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.remove('active');
+    });
+    const overlay = document.getElementById('overlay'); 
+    if(overlay) overlay.classList.remove('active'); 
+    setTimeout(() => { 
+        if(overlay) overlay.style.zIndex = "90"; 
+        const frame = document.getElementById('spa-frame');
+        if(frame) frame.src = '';
+    }, 300); 
+}
 
 // ==========================================
 // 核心路由與其餘功能
@@ -273,7 +320,7 @@ let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; 
 const display = document.getElementById('time-display'); const statusText = document.getElementById('status-text'); const actionBtn = document.getElementById('action-btn'); const cancelBtn = document.getElementById('cancel-btn'); const speedModeText = document.getElementById('speed-mode'); const planBContainer = document.getElementById('plan-b-container'); 
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站' };
 
-// 🌟 關鍵修復：使用 addEventListener 防止蓋掉子網頁的 onload 事件
+// 🌟 關鍵修復：這裡也改成 addEventListener
 window.addEventListener('load', async () => {
     if(localStorage.getItem('dev_mode_active') === 'true') {
         const mt = document.getElementById('main-title');
