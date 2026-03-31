@@ -9,6 +9,10 @@
         :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --success: #4caf50; --warning: #ffb300; --info: #2196F3; }
         html, body { overflow-x: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main); -webkit-user-select: none; user-select: none; }
         
+        /* 🌟 究極去白條魔法：把所有捲軸藏起來 */
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+
         .container { width: 90%; max-width: 400px; margin: 20px auto; padding-bottom: 30px; }
         
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #333; }
@@ -53,13 +57,12 @@
 
     <div class="section-title">
         🕹️ 隱藏遊戲機台
-        <button id="dev-reset-btn" class="dev-reset-btn" onclick="resetEasterEggs()">重新上鎖與清零紀錄</button>
+        <button id="dev-reset-btn" class="dev-reset-btn" onclick="resetEasterEggs()">重新上鎖與清零</button>
     </div>
     <div class="game-grid" id="game-list"></div>
 
     <div class="section-title" style="border-left-color: var(--danger);">📦 特殊成就</div>
-    <div class="game-grid" id="achievement-list">
-        </div>
+    <div class="game-grid" id="achievement-list"></div>
 </div>
 
 <div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
@@ -90,7 +93,6 @@
         const u3 = localStorage.getItem('unlock_password') === 'true';
         const uk = localStorage.getItem('unlock_kisaragi') === 'true';
         
-        // 將字串轉為數字，方便後續判斷大小
         const s1 = parseInt(localStorage.getItem('lateCommuterHighScore')) || 0;
         const s2 = parseInt(localStorage.getItem('deepStationHighScore')) || 0;
         const s3 = parseInt(localStorage.getItem('passwordHighScore')) || 999;
@@ -123,10 +125,9 @@
         }
         list.innerHTML = html;
 
-        // 🌟 渲染成就列表
+        // 渲染成就列表
         let achHtml = '';
         
-        // 成就 1：如月車站
         if (uk) {
             achHtml += `<div class="game-card" style="border-color: var(--danger); cursor: default;">
                         <div class="game-info">
@@ -141,7 +142,6 @@
                       </div>`;
         }
 
-        // 成就 2：衝刺 120 秒
         if (s1 >= 120) {
             achHtml += `<div class="game-card" style="border-color: var(--warning); cursor: default;">
                         <div class="game-info"><span class="game-name" style="color: var(--warning);">🏃‍♂️ 壓秒死線達人</span><span class="game-score">在月台狂奔存活超過 120 秒</span></div>
@@ -152,7 +152,6 @@
                       </div>`;
         }
 
-        // 成就 3：下樓梯 120 層
         if (s2 >= 120) {
             achHtml += `<div class="game-card" style="border-color: var(--info); cursor: default;">
                         <div class="game-info"><span class="game-name" style="color: var(--info);">🚇 地心探險家</span><span class="game-score">成功抵達地下 120 層月台</span></div>
@@ -163,7 +162,6 @@
                       </div>`;
         }
 
-        // 成就 4：密碼 <= 2 次
         if (s3 <= 2) {
             achHtml += `<div class="game-card" style="border-color: var(--success); cursor: default;">
                         <div class="game-info"><span class="game-name" style="color: var(--success);">🧠 駭客通靈大師</span><span class="game-score">2 次嘗試以內破解終極密碼</span></div>
@@ -183,7 +181,6 @@
         }
     }
 
-    // 開發者專用：重置解鎖狀態 (包含機台、彩蛋、分數)
     function resetEasterEggs() {
         if(confirm("🛠️ [工程模式] 確定要將所有機台重新上鎖，並清空最高分紀錄嗎？")) {
             localStorage.removeItem('unlock_runner');
@@ -191,7 +188,6 @@
             localStorage.removeItem('unlock_password');
             localStorage.removeItem('unlock_kisaragi');
             
-            // 同時把最高分清零，才能重新測試成就解鎖
             localStorage.removeItem('lateCommuterHighScore');
             localStorage.removeItem('deepStationHighScore');
             localStorage.removeItem('passwordHighScore');
@@ -210,7 +206,9 @@
 
     window.onload = renderGames;
 </script>
+
 <audio id="bgm-audio"></audio>
 <script src="/js/main.js"></script>
+
 </body>
 </html>
