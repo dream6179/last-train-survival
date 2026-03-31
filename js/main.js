@@ -11,12 +11,12 @@ function closeErrorSheet() { document.getElementById('error-sheet').classList.re
 function copyErrorLog() { const logOutput = document.getElementById('error-log-output'); logOutput.select(); document.execCommand('copy'); alert("✅ 錯誤代碼已複製！"); }
 
 // ==========================================
-// 🌟 音樂播放器核心 (業界標準：預設靜音、30%啟動、互動喚醒)
+// 🌟 音樂播放器核心 (跨頁面記憶無縫接軌版)
 // ==========================================
 let savedVol = localStorage.getItem('bgmVolume');
-let bgmVolume = savedVol !== null ? parseFloat(savedVol) : 0.3; // 🌟 預設 30% 音量
+let bgmVolume = savedVol !== null ? parseFloat(savedVol) : 0.3; 
 let savedMuted = localStorage.getItem('isBgmMuted');
-let isBgmMuted = savedMuted !== null ? savedMuted === 'true' : true; // 🌟 預設絕對靜音
+let isBgmMuted = savedMuted !== null ? savedMuted === 'true' : true; 
 
 let bgmPlaylist = [
     "/audio/platform_at_midnight.mp3", 
@@ -25,10 +25,20 @@ let bgmPlaylist = [
     "/audio/The_Three_AM_Wait.mp3"
 ];
 
-let currentBgmIndex = Math.floor(Math.random() * bgmPlaylist.length);
+// 讀取上次聽到的歌
+let savedIndex = localStorage.getItem('bgmIndex');
+let currentBgmIndex = savedIndex !== null ? parseInt(savedIndex) : Math.floor(Math.random() * bgmPlaylist.length);
 let audioInitialized = false;
 
-// 封裝最純淨的播放啟動器
+// 🌟 記憶吐司：每半秒存檔一次進度
+setInterval(() => {
+    const bgm = document.getElementById('bgm-audio');
+    if (bgm && !bgm.paused && bgm.currentTime > 0) {
+        localStorage.setItem('bgmTime', bgm.currentTime);
+        localStorage.setItem('bgmIndex', currentBgmIndex);
+    }
+}, 500);
+
 function initAndPlayAudio() {
     const bgm = document.getElementById('bgm-audio');
     if (!bgm) return;
@@ -36,6 +46,15 @@ function initAndPlayAudio() {
     if (!audioInitialized) {
         bgm.removeAttribute('loop'); 
         bgm.src = bgmPlaylist[currentBgmIndex];
+
+        // 🌟 載入歌曲資訊後，精準跳轉到上次斷掉的秒數
+        bgm.addEventListener('loadedmetadata', () => {
+            let savedTime = localStorage.getItem('bgmTime');
+            if (savedTime && parseFloat(savedTime) > 0 && parseFloat(savedTime) < bgm.duration) {
+                bgm.currentTime = parseFloat(savedTime);
+            }
+        }, { once: true });
+
         bgm.load();
 
         bgm.addEventListener('ended', () => {
@@ -46,6 +65,10 @@ function initAndPlayAudio() {
             
             currentBgmIndex = nextIndex;
             bgm.src = bgmPlaylist[currentBgmIndex];
+            
+            // 換歌時清除進度，避免下一首歌從一半開始播
+            localStorage.setItem('bgmTime', 0);
+            
             bgm.load();
             let p = bgm.play();
             if(p !== undefined) p.catch(e => console.log("切歌失敗:", e));
@@ -62,7 +85,7 @@ function initAndPlayAudio() {
 
 function toggleMute() {
     isBgmMuted = !isBgmMuted; 
-    if (!isBgmMuted && bgmVolume === 0) bgmVolume = 0.3; // 若解除靜音時音量是0，拉回 30%
+    if (!isBgmMuted && bgmVolume === 0) bgmVolume = 0.3; 
     
     localStorage.setItem('isBgmMuted', isBgmMuted);
     localStorage.setItem('bgmVolume', bgmVolume);
@@ -118,12 +141,10 @@ window.addEventListener('DOMContentLoaded', () => {
     if (headerMuteBtn) headerMuteBtn.innerText = icon; 
     if (volumeSlider) volumeSlider.value = isBgmMuted ? 0 : bgmVolume;
 
-    // 🌟 全域喚醒器：當重新整理、或從如月車站回來時，只要摸到螢幕，就根據之前的狀態恢復播放
     const globalWakeUp = () => {
         if (!isBgmMuted) {
             initAndPlayAudio();
         }
-        // 喚醒後解除監聽，避免浪費效能
         document.body.removeEventListener('touchstart', globalWakeUp);
         document.body.removeEventListener('click', globalWakeUp);
     };
@@ -164,10 +185,7 @@ function toggleAppMode() {
 
 function triggerKisaragiEvent() {
     clearInterval(timer); isCountingDown = false;
-    
-    // 🌟 如月車站強制靜音：單純暫停，不動 LocalStorage，這樣逃脫後才能自動恢復
-    const bgm = document.getElementById('bgm-audio'); 
-    if (bgm) bgm.pause();
+    const bgm = document.getElementById('bgm-audio'); if (bgm) bgm.pause();
     
     const overlay = document.createElement('div');
     overlay.id = 'kisaragi-overlay';
@@ -201,7 +219,6 @@ window.escapeKisaragi = function() {
         localStorage.setItem('unlock_kisaragi', 'true');
         alert('🏃‍♂️ 你死命地沿著隧道狂奔，身後的太鼓聲漸漸遠去，終於回到了現實世界...\n\n🎉 恭喜解鎖隱藏成就【從不存在的車站歸來】！');
     }
-    // 逃脫後前往收集冊，重新載入頁面，等使用者一摸螢幕就會觸發 globalWakeUp 恢復音樂
     window.location.href = '/collection.html';
 };
 
@@ -276,6 +293,9 @@ window.onload = async () => {
         const mt = document.getElementById('main-title');
         if(mt) { mt.innerText = "末班車生存 (工程)"; mt.style.color = "var(--warning)"; }
     }
+
+    // 🌟 跨頁面防呆：如果在開發者資訊或收集冊，就不執行主頁的資料讀取
+    if (!document.getElementById('start-station-input')) return;
 
     try { const timeRes = await fetchWithTimeout('/data/offline-timetable.json', { timeout: 4000 }); if (timeRes.ok) offlineTimetableData = await timeRes.json(); } catch (e) {}
     try { const transferRes = await fetchWithTimeout('/data/transfer-timetable.json', { timeout: 4000 }); if (transferRes.ok) transferTimetableData = await transferRes.json(); } catch (e) {}
@@ -377,7 +397,10 @@ function initCustomAutocomplete() {
 document.addEventListener('click', function (e) {
     ['start', 'end', 'search', 'transfer'].forEach(point => {
         const wrapper = document.getElementById(point + '-station-input').parentElement;
-        if (!wrapper.contains(e.target)) document.getElementById(point + '-autocomplete-list').style.display = 'none';
+        if (wrapper && !wrapper.contains(e.target)) {
+            const list = document.getElementById(point + '-autocomplete-list');
+            if(list) list.style.display = 'none';
+        }
     });
 });
 
@@ -440,6 +463,7 @@ function toggleNotificationState() {
 }
 
 function updateClock() {
+    if (!display) return; // 🌟 跨頁面防呆
     const now = getSystemTime();
     
     if (!isCountingDown) { 
@@ -452,7 +476,7 @@ function updateClock() {
         display.innerHTML = h > 0 ? `${h}:${m<10?'0':''}${m}:${s<10?'0':''}${s}` : `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
     }
 }
-updateClock(); timer = setInterval(updateClock, 1000);
+if(display) { updateClock(); timer = setInterval(updateClock, 1000); }
 
 async function handleAction() {
     const startType = document.getElementById('start-type').value; 
