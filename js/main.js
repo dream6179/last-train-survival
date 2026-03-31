@@ -70,7 +70,7 @@ function toggleAppMode() {
     }
 }
 
-// 🌟 沉浸式如月車站事件觸發器
+// 🌟 沉浸式如月車站事件觸發器 (修正版)
 function triggerKisaragiEvent() {
     clearInterval(timer); isCountingDown = false;
     const bgm = document.getElementById('bgm-audio'); if (bgm) bgm.pause();
@@ -79,7 +79,6 @@ function triggerKisaragiEvent() {
     overlay.id = 'kisaragi-overlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background-color:#050505;z-index:9999999;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;text-align:center;font-family:"Courier New", monospace; pointer-events:all; animation: glitch 0.2s infinite;';
     
-    // 注入雜訊動畫 CSS
     const style = document.createElement('style');
     style.innerHTML = `@keyframes glitch { 0% { opacity: 1; filter: contrast(1); } 50% { opacity: 0.9; filter: contrast(1.5) invert(0.1); } 100% { opacity: 1; filter: contrast(1); } }`;
     document.head.appendChild(style);
@@ -96,13 +95,22 @@ function triggerKisaragiEvent() {
         <button onclick="escapeKisaragi()" style="background:transparent; border:1px solid #ff0000; color:#ff0000; padding:15px 30px; border-radius:8px; font-size:16px; cursor:pointer; box-shadow: 0 0 15px rgba(255,0,0,0.4); font-weight:bold;">沿著伊佐貫隧道狂奔</button>
     `;
     document.body.appendChild(overlay);
-    localStorage.setItem('unlock_kisaragi', 'true');
 }
 
+// 🌟 逃脫邏輯防呆判定
 window.escapeKisaragi = function() {
     const overlay = document.getElementById('kisaragi-overlay');
     if(overlay) overlay.remove();
-    alert('🏃‍♂️ 你死命地沿著隧道狂奔，身後的太鼓聲漸漸遠去，終於回到了現實世界...\n\n🎉 恭喜解鎖隱藏成就【從不存在的車站歸來】！');
+    
+    if (localStorage.getItem('unlock_kisaragi') === 'true') {
+        // 已經解鎖過了，不再顯示恭喜，改為恐怖餘韻
+        alert('🏃‍♂️ 你死命地沿著隧道狂奔，身後的太鼓聲漸漸遠去，終於回到了現實世界...\n\n（你已經逃出過這裡了，但那股寒意依舊揮之不去...）');
+    } else {
+        // 第一次成功逃脫，正式發放成就
+        localStorage.setItem('unlock_kisaragi', 'true');
+        alert('🏃‍♂️ 你死命地沿著隧道狂奔，身後的太鼓聲漸漸遠去，終於回到了現實世界...\n\n🎉 恭喜解鎖隱藏成就【從不存在的車站歸來】！');
+    }
+    
     window.location.href = '/collection.html';
 };
 
@@ -115,7 +123,6 @@ async function executeFullSearch() {
 
     if (!searchStationName) { alert("⚠️ 請先選擇或輸入要查詢的車站！"); return; }
     
-    // 🌟 攔截如月車站查詢
     if (searchStationName === '如月車站' || searchStationName.toUpperCase() === 'KISARAGI') {
         triggerKisaragiEvent();
         return;
@@ -189,13 +196,11 @@ window.onload = async () => {
         if (stationRes.ok) { 
             globalStationData = await stationRes.json(); 
             
-            // 🌟 將如月車站加入字典，確保系統認得它
             globalStationData['jp'] = { options: [{id: 'kisaragi', name: '如月車站'}] };
             defaultStations['jp'] = '如月車站';
 
-            // 🌟 愚人節限定：如果是 4/1，強制新增日鐵並設為預設
             const now = getSystemTime();
-            if (now.getMonth() === 3 && now.getDate() === 1) { // JavaScript 月份從 0 開始，3 代表 4 月
+            if (now.getMonth() === 3 && now.getDate() === 1) {
                 const endTypeSelect = document.getElementById('end-type');
                 const jpOption = document.createElement('option');
                 jpOption.value = 'jp';
@@ -204,7 +209,6 @@ window.onload = async () => {
                 jpOption.style.fontWeight = 'bold';
                 endTypeSelect.appendChild(jpOption);
                 
-                // 強制覆蓋預設目的地
                 endTypeSelect.value = 'jp';
                 savedEnd = '如月車站';
             }
@@ -255,7 +259,6 @@ function renderCustomDropdown(point) {
         const item = document.createElement('div'); item.className = 'dropdown-item';
         const nameSpan = document.createElement('span'); nameSpan.textContent = station.name;
         
-        // 如果是如月車站，隱藏收藏星星，增加詭異感
         if (station.name === '如月車站') {
             nameSpan.style.color = '#ff5252';
             nameSpan.style.letterSpacing = '2px';
@@ -334,7 +337,6 @@ function checkTransferLock() {
             }
         }
 
-        // 避免在雙鐵轉乘時目的地出現奇怪的東西
         const hasJpOption = Array.from(endTypeSelect.options).some(opt => opt.value === 'jp');
         if (hasJpOption) {
             endTypeSelect.querySelector('option[value="jp"]').remove();
@@ -352,7 +354,6 @@ function checkTransferLock() {
     } else {
         transferBlock.style.display = 'none';
         
-        // 恢復北捷與高鐵選項，如果今天是 4/1 且還沒加日鐵，補回去
         const now = getSystemTime();
         const isAprilFools = (now.getMonth() === 3 && now.getDate() === 1);
         let optionsHtml = '<option value="trtc" selected>北捷</option><option value="thsr">高鐵</option>';
@@ -405,13 +406,12 @@ async function handleAction() {
     const railTransferName = uiTransferName === '龍山寺' ? '萬華' : uiTransferName;
     const trtcTransferName = uiTransferName; 
 
-    // 🌟 攔截求生模式前往如月車站
     if (endStationName === '如月車站' || endStationName.toUpperCase() === 'KISARAGI') {
         triggerKisaragiEvent();
         return;
     }
 
-    if (isCountingDown) { if ("Notification" in window) { if (Notification.permission === "granted") toggleNotificationState(); else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); }); else alert("⚠️ 您之前拒絕了通知權限，請手動開啟！"); } else alert("⚠️ 不支援推播通知！"); return; }
+    if (isCountingDown) { if ("Notification" in window) { if (Notification.permission === "granted") toggleNotificationState(); else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); }); else alert("⚠️ 您之前拒絕了通知權限，請手手動開啟！"); } else alert("⚠️ 不支援推播通知！"); return; }
     
     const startStationObj = globalStationData[startType]?.options.find(s => s.name === startStationName);
     const endStationObj = globalStationData[endType]?.options.find(s => s.name === endStationName);
