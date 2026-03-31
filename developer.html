@@ -6,7 +6,12 @@
     <title>開發者資訊 | 末班車生存</title>
     <style>
         :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --info: #2196F3; --warning: #ffb300; }
-        html, body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; }
+        
+        /* 🌟 修復排版卡死問題，並加上去白條魔法 */
+        html, body { overflow-x: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main); -webkit-user-select: none; user-select: none; }
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+
         .container { width: 90%; max-width: 400px; margin: 20px auto; padding-bottom: 30px; }
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #333; }
         .header-row h1 { font-size: 20px; margin: 0; color: var(--text-main); }
@@ -18,7 +23,6 @@
         .link-btn:active { background: #333; transform: scale(0.98); }
         .version-text { text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-top: 20px; font-variant-numeric: tabular-nums; }
         
-        /* 🌟 計數器專用樣式，確保圖片在 Container 內完美置中 */
         .counter-box { text-align: center; margin-top: 15px; display: flex; justify-content: center; width: 100%; }
     </style>
 </head>
@@ -49,9 +53,12 @@
             <img src="https://visitor-badge.laobi.icu/badge?page_id=last-train-survival.vercel.app&left_color=333333&right_color=FFB300&left_text=SURVIVORS" alt="累積求生人次"/>
         </div>
 
-    </div> <script>
+    </div> 
+    
+    <script>
         function updateDevBtn() {
             const btn = document.getElementById('dev-mode-btn');
+            if(!btn) return;
             if(localStorage.getItem('dev_mode_active') === 'true') {
                 btn.innerHTML = "🔴 關閉開發者模式";
                 btn.style.color = "var(--danger)";
@@ -62,7 +69,9 @@
                 btn.style.borderColor = "var(--warning)";
             }
         }
-        window.onload = updateDevBtn;
+        
+        // 🌟 關鍵修復：不使用 window.onload，避免互相傷害
+        window.addEventListener('DOMContentLoaded', updateDevBtn);
 
         async function toggleDevMode() {
             if(localStorage.getItem('dev_mode_active') === 'true') {
@@ -74,7 +83,6 @@
                 if (pwd === null) return;
 
                 try {
-                    // 跑去 config.json 拿鑰匙
                     const res = await fetch('/data/config.json?t=' + new Date().getTime());
                     const data = await res.json();
                     
@@ -91,7 +99,8 @@
             }
         }
     </script>
+    
     <audio id="bgm-audio"></audio>
-<script src="/js/main.js"></script>
+    <script src="/js/main.js"></script>
 </body>
 </html>
