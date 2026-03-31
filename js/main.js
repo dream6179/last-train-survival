@@ -7,6 +7,7 @@ function showErrorSheet(errorMsg) {
     if(logOutput) logOutput.value = `[${new Date().toLocaleTimeString()}]\n${errorMsg}\n\n-------------------\n\n` + logOutput.value;
     if(overlay && errorSheet) { overlay.style.zIndex = "9998"; errorSheet.style.zIndex = "9999"; overlay.classList.add('active'); errorSheet.classList.add('active'); }
 }
+function closeErrorSheet() { document.getElementById('error-sheet').classList.remove('active'); if (!document.querySelector('.bottom-sheet.active:not(#error-sheet)')) { document.getElementById('overlay').classList.remove('active'); setTimeout(() => { document.getElementById('overlay').style.zIndex = "90"; }, 300); } }
 function copyErrorLog() { const logOutput = document.getElementById('error-log-output'); logOutput.select(); document.execCommand('copy'); alert("✅ 錯誤代碼已複製！"); }
 
 // ==========================================
@@ -106,11 +107,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // 🌟 判斷是否處於 SPA 電視機內部
     if (window.parent !== window) {
-        // 我在裡面！1. 拔掉我的音效卡不跟外面搶
+        // 我在裡面！拔掉我的音效卡不跟外面搶
         const bgm = document.getElementById('bgm-audio');
         if (bgm) { bgm.pause(); bgm.remove(); }
         
-        // 2. 攔截我的返回按鈕，改成請外面的爸爸關掉電視
+        // 攔截我的返回按鈕，改成請外面的爸爸關掉電視
         const backBtns = document.querySelectorAll('.back-btn');
         backBtns.forEach(btn => {
             btn.removeAttribute('href');
@@ -120,9 +121,9 @@ window.addEventListener('DOMContentLoaded', () => {
                     window.parent.closeDynamicSheet();
                 }
             };
-            btn.innerHTML = '⬅ 返回主頁';
+            btn.innerHTML = '⬅ 返回'; // 🌟 改成純粹的「返回」，不會讓人誤會跳回主頁
         });
-        return; // 在裡面不需要裝喚醒雷達，結束。
+        return;
     }
 
     // 我在外面！架設喚醒雷達
@@ -134,56 +135,6 @@ window.addEventListener('DOMContentLoaded', () => {
         ['touchstart', 'click', 'scroll'].forEach(evt => window.addEventListener(evt, globalWakeUp, true));
     }
 });
-
-// ==========================================
-// 🌟 SPA 動態面板控制
-// ==========================================
-window.openPage = function(url) {
-    const frame = document.getElementById('spa-frame');
-    const sheet = document.getElementById('dynamic-sheet');
-    const overlay = document.getElementById('overlay');
-    
-    // 如果忘記貼 HTML，當作防呆直接跳頁
-    if(!frame || !sheet || !overlay) { window.location.href = url; return; }
-
-    frame.src = url;
-    overlay.style.zIndex = "99990";
-    overlay.classList.add('active');
-    sheet.classList.add('active');
-};
-
-window.closeDynamicSheet = function() {
-    const sheet = document.getElementById('dynamic-sheet');
-    if(sheet) sheet.classList.remove('active');
-    
-    setTimeout(() => {
-        const frame = document.getElementById('spa-frame');
-        if(frame) frame.src = ''; // 清空記憶體
-        
-        if(!document.querySelector('.bottom-sheet.active:not(#dynamic-sheet)')) {
-            const overlay = document.getElementById('overlay');
-            if(overlay) {
-                overlay.classList.remove('active');
-                overlay.style.zIndex = "90";
-            }
-        }
-    }, 300);
-};
-
-// 覆寫 closeAllSheets 把新抽屜也加進去
-function closeAllSheets() { 
-    ['advanced-sheet', 'settings-sheet', 'error-sheet', 'dynamic-sheet'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.classList.remove('active');
-    });
-    const overlay = document.getElementById('overlay'); 
-    if(overlay) overlay.classList.remove('active'); 
-    setTimeout(() => { 
-        if(overlay) overlay.style.zIndex = "90"; 
-        const frame = document.getElementById('spa-frame');
-        if(frame) frame.src = '';
-    }, 300); 
-}
 
 // ==========================================
 // 核心路由與其餘功能
@@ -252,7 +203,6 @@ window.escapeKisaragi = function() {
         alert('🏃‍♂️ 你死命地沿著隧道狂奔，身後的太鼓聲漸漸遠去，終於回到了現實世界...\n\n🎉 恭喜解鎖隱藏成就【從不存在的車站歸來】！');
     }
     
-    // 逃脫後也使用 SPA 無縫跳轉
     if(typeof openPage === 'function') openPage('/collection.html');
     else window.location.href = '/collection.html';
 };
@@ -323,7 +273,8 @@ let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; 
 const display = document.getElementById('time-display'); const statusText = document.getElementById('status-text'); const actionBtn = document.getElementById('action-btn'); const cancelBtn = document.getElementById('cancel-btn'); const speedModeText = document.getElementById('speed-mode'); const planBContainer = document.getElementById('plan-b-container'); 
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站' };
 
-window.onload = async () => {
+// 🌟 關鍵修復：使用 addEventListener 防止蓋掉子網頁的 onload 事件
+window.addEventListener('load', async () => {
     if(localStorage.getItem('dev_mode_active') === 'true') {
         const mt = document.getElementById('main-title');
         if(mt) { mt.innerText = "末班車生存 (工程)"; mt.style.color = "var(--warning)"; }
@@ -358,7 +309,7 @@ window.onload = async () => {
             checkTransferLock();
         } 
     } catch (e) {}
-};
+});
 
 function toggleFavorite(stationName) {
     if (favoriteStations.includes(stationName)) favoriteStations = favoriteStations.filter(name => name !== stationName); else favoriteStations.push(stationName);
@@ -607,5 +558,3 @@ function shareApp() {
 function toggleContact() { const l = document.getElementById('contact-links'); l.style.display = l.style.display === "flex" ? "none" : "flex"; }
 function openAdvancedSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
 function openSettingsSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
-// 關掉全域的所有電視機
-function closeAllSheets() { document.getElementById('advanced-sheet').classList.remove('active'); document.getElementById('settings-sheet').classList.remove('active'); document.getElementById('error-sheet').classList.remove('active'); const ds = document.getElementById('dynamic-sheet'); if(ds) ds.classList.remove('active'); const overlay = document.getElementById('overlay'); overlay.classList.remove('active'); setTimeout(() => { overlay.style.zIndex = "90"; const frame = document.getElementById('spa-frame'); if(frame) frame.src = ''; }, 300); }
