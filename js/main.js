@@ -11,7 +11,7 @@ function closeErrorSheet() { document.getElementById('error-sheet').classList.re
 function copyErrorLog() { const logOutput = document.getElementById('error-log-output'); logOutput.select(); document.execCommand('copy'); alert("✅ 錯誤代碼已複製！"); }
 
 // ==========================================
-// 🌟 音樂播放器核心 (已修復手機傲嬌封鎖 ＆ 加入新歌)
+// 🌟 音樂播放器核心 (專治 iOS 傲嬌病版)
 // ==========================================
 let savedVol = localStorage.getItem('bgmVolume');
 let bgmVolume = savedVol !== null ? parseFloat(savedVol) : 0.5; 
@@ -19,7 +19,6 @@ let savedMuted = localStorage.getItem('isBgmMuted');
 let isBgmMuted = savedMuted !== null ? savedMuted === 'true' : true;
 let bgmStarted = false; 
 
-// 🌟 你的深夜電台擴充為 4 首歌
 let bgmPlaylist = [
     "/audio/platform_at_midnight.mp3", 
     "/audio/Midnight_at_Platform_Four.mp3",
@@ -29,22 +28,18 @@ let bgmPlaylist = [
 
 let currentBgmIndex = Math.floor(Math.random() * bgmPlaylist.length);
 
-// 將播放邏輯獨立出來，綁定在使用者的點擊動作上，避免被瀏覽器保安封鎖
 function playBgm() {
     const bgm = document.getElementById('bgm-audio');
     if (!bgm) return;
     
-    // 如果是第一次播放，才把隨機抽到的歌塞進去
-    if (!bgm.getAttribute('data-initialized')) {
-        bgm.src = bgmPlaylist[currentBgmIndex];
-        bgm.load(); // 強制讀取
-        bgm.setAttribute('data-initialized', 'true');
-    }
-    
     bgm.volume = bgmVolume;
-    bgm.play().then(() => {
-        bgmStarted = true;
-    }).catch(e => console.log("音樂啟動失敗(可能仍需使用者手動點擊):", e));
+    // 🌟 對付 iOS 的關鍵：只下達最純粹的 play 指令，絕對不能在這裡改 src 或 load
+    let playPromise = bgm.play();
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            bgmStarted = true;
+        }).catch(e => console.log("iOS 依然傲嬌阻擋:", e));
+    }
 }
 
 function toggleMute() {
@@ -68,7 +63,7 @@ function toggleMute() {
         if (isBgmMuted) {
             bgm.pause(); 
         } else { 
-            playBgm(); // 安全啟動
+            playBgm(); 
         } 
     }
 }
@@ -91,13 +86,12 @@ function updateVolume(val) {
         if (isBgmMuted) {
             bgm.pause(); 
         } else {
-            playBgm(); // 安全啟動並調整音量
+            playBgm();
         }
     }
 }
 
 window.addEventListener('DOMContentLoaded', () => { 
-    // UI 初始化
     const icon = isBgmMuted ? '🔇' : '🔊'; 
     const muteBtn = document.getElementById('mute-btn');
     const headerMuteBtn = document.getElementById('header-mute-btn');
@@ -106,11 +100,13 @@ window.addEventListener('DOMContentLoaded', () => {
     if (headerMuteBtn) headerMuteBtn.innerText = icon; 
     if (volumeSlider) volumeSlider.value = isBgmMuted ? 0 : bgmVolume;
 
-    // 換歌監聽器
     const bgm = document.getElementById('bgm-audio');
     if (bgm) {
+        // 🌟 對付 iOS 的關鍵 2：網頁一打開，趁 iOS 還沒注意，先偷偷把歌塞好載入
+        bgm.src = bgmPlaylist[currentBgmIndex];
+        bgm.load();
+
         bgm.addEventListener('ended', () => {
-            // 隨機抽下一首，且保證不會連續兩首一樣
             let nextIndex;
             do {
                 nextIndex = Math.floor(Math.random() * bgmPlaylist.length);
@@ -123,12 +119,26 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // 隱形監聽器：當使用者在畫面任何地方點第一下，如果沒靜音，就啟動音樂
-    document.body.addEventListener('click', () => { 
-        if (!bgmStarted && !isBgmMuted) { 
-            playBgm();
-        } 
-    }); 
+    // 🌟 iOS 終極解鎖魔法：在螢幕被「觸碰(touchstart)」的瞬間，騙到 iOS 的播放授權
+    const unlockAudioForIOS = () => {
+        if (bgm && !bgmStarted) {
+            let p = bgm.play();
+            if (p !== undefined) {
+                p.then(() => {
+                    if (isBgmMuted) {
+                        bgm.pause(); // 拿到授權了，發現是靜音就趕快按暫停
+                    } else {
+                        bgmStarted = true; // 沒靜音就讓他繼續播
+                    }
+                }).catch(e => {});
+            }
+            document.body.removeEventListener('touchstart', unlockAudioForIOS);
+            document.body.removeEventListener('click', unlockAudioForIOS);
+        }
+    };
+    
+    document.body.addEventListener('touchstart', unlockAudioForIOS, { once: true });
+    document.body.addEventListener('click', unlockAudioForIOS, { once: true });
 });
 
 // ==========================================
