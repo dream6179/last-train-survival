@@ -7,11 +7,10 @@ function showErrorSheet(errorMsg) {
     if(logOutput) logOutput.value = `[${new Date().toLocaleTimeString()}]\n${errorMsg}\n\n-------------------\n\n` + logOutput.value;
     if(overlay && errorSheet) { overlay.style.zIndex = "9998"; errorSheet.style.zIndex = "9999"; overlay.classList.add('active'); errorSheet.classList.add('active'); }
 }
-function closeErrorSheet() { document.getElementById('error-sheet').classList.remove('active'); if (!document.querySelector('.bottom-sheet.active:not(#error-sheet)')) { document.getElementById('overlay').classList.remove('active'); setTimeout(() => { document.getElementById('overlay').style.zIndex = "90"; }, 300); } }
 function copyErrorLog() { const logOutput = document.getElementById('error-log-output'); logOutput.select(); document.execCommand('copy'); alert("✅ 錯誤代碼已複製！"); }
 
 // ==========================================
-// 🌟 音樂播放器核心 (極致喚醒與跨頁面記憶版)
+// 🌟 音樂播放器核心 (SPA 終極無縫版)
 // ==========================================
 let savedVol = localStorage.getItem('bgmVolume');
 let bgmVolume = savedVol !== null ? parseFloat(savedVol) : 0.3; 
@@ -29,7 +28,6 @@ let savedIndex = localStorage.getItem('bgmIndex');
 let currentBgmIndex = savedIndex !== null ? parseInt(savedIndex) : Math.floor(Math.random() * bgmPlaylist.length);
 let audioInitialized = false;
 
-// 記憶吐司：每半秒存檔
 setInterval(() => {
     const bgm = document.getElementById('bgm-audio');
     if (bgm && !bgm.paused && bgm.currentTime > 0) {
@@ -46,15 +44,13 @@ function initAndPlayAudio() {
         bgm.removeAttribute('loop'); 
         bgm.src = bgmPlaylist[currentBgmIndex];
 
-        const applySavedTime = () => {
+        bgm.addEventListener('loadedmetadata', () => {
             let savedTime = localStorage.getItem('bgmTime');
             if (savedTime && parseFloat(savedTime) > 0 && parseFloat(savedTime) < bgm.duration) {
                 bgm.currentTime = parseFloat(savedTime);
             }
-        };
+        }, { once: true });
 
-        // 監聽載入完成後跳轉秒數
-        bgm.addEventListener('loadedmetadata', applySavedTime, { once: true });
         bgm.load();
 
         bgm.addEventListener('ended', () => {
@@ -62,7 +58,7 @@ function initAndPlayAudio() {
             do { nextIndex = Math.floor(Math.random() * bgmPlaylist.length); } while (nextIndex === currentBgmIndex && bgmPlaylist.length > 1);
             currentBgmIndex = nextIndex;
             bgm.src = bgmPlaylist[currentBgmIndex];
-            localStorage.setItem('bgmTime', 0); // 換歌清除進度
+            localStorage.setItem('bgmTime', 0); 
             bgm.load();
             let p = bgm.play();
             if(p !== undefined) p.catch(e => console.log("切歌失敗:", e));
@@ -72,20 +68,8 @@ function initAndPlayAudio() {
 
     bgm.volume = bgmVolume;
     let p = bgm.play();
-    if (p !== undefined) {
-        p.catch(e => console.log("等待使用者互動才能播放:", e));
-    }
+    if (p !== undefined) p.catch(e => console.log("等待使用者互動才能播放:", e));
 }
-
-// 🌟 終極全域喚醒器 (支援點擊、觸碰、滑動螢幕)
-const globalWakeUp = () => {
-    const bgm = document.getElementById('bgm-audio');
-    if (!isBgmMuted && bgm && bgm.paused) {
-        initAndPlayAudio();
-    }
-    // 喚醒成功後，拔除雷達節省效能
-    ['touchstart', 'click', 'scroll'].forEach(evt => window.removeEventListener(evt, globalWakeUp, true));
-};
 
 function setupAudioUI() {
     const icon = isBgmMuted ? '🔇' : '🔊'; 
@@ -100,47 +84,106 @@ function setupAudioUI() {
 function toggleMute() {
     isBgmMuted = !isBgmMuted; 
     if (!isBgmMuted && bgmVolume === 0) bgmVolume = 0.3; 
-    
     localStorage.setItem('isBgmMuted', isBgmMuted);
     localStorage.setItem('bgmVolume', bgmVolume);
     setupAudioUI();
-    
     const bgm = document.getElementById('bgm-audio'); 
-    if (bgm) { 
-        if (isBgmMuted) bgm.pause(); else initAndPlayAudio(); 
-    }
+    if (bgm) { if (isBgmMuted) bgm.pause(); else initAndPlayAudio(); }
 }
 
 function updateVolume(val) {
     bgmVolume = parseFloat(val); 
     isBgmMuted = (bgmVolume === 0);
-    
     localStorage.setItem('isBgmMuted', isBgmMuted);
     localStorage.setItem('bgmVolume', bgmVolume);
     setupAudioUI();
-    
     const bgm = document.getElementById('bgm-audio'); 
-    if (bgm) { 
-        if (isBgmMuted) bgm.pause(); else initAndPlayAudio();
-    }
+    if (bgm) { if (isBgmMuted) bgm.pause(); else initAndPlayAudio(); }
 }
 
-// 正常進入網頁時架設雷達
 window.addEventListener('DOMContentLoaded', () => { 
     setupAudioUI();
+
+    // 🌟 判斷是否處於 SPA 電視機內部
+    if (window.parent !== window) {
+        // 我在裡面！1. 拔掉我的音效卡不跟外面搶
+        const bgm = document.getElementById('bgm-audio');
+        if (bgm) { bgm.pause(); bgm.remove(); }
+        
+        // 2. 攔截我的返回按鈕，改成請外面的爸爸關掉電視
+        const backBtns = document.querySelectorAll('.back-btn');
+        backBtns.forEach(btn => {
+            btn.removeAttribute('href');
+            btn.onclick = (e) => {
+                e.preventDefault();
+                if (typeof window.parent.closeDynamicSheet === 'function') {
+                    window.parent.closeDynamicSheet();
+                }
+            };
+            btn.innerHTML = '⬅ 返回主頁';
+        });
+        return; // 在裡面不需要裝喚醒雷達，結束。
+    }
+
+    // 我在外面！架設喚醒雷達
+    const globalWakeUp = () => {
+        if (!isBgmMuted) initAndPlayAudio();
+        ['touchstart', 'click', 'scroll'].forEach(evt => window.removeEventListener(evt, globalWakeUp, true));
+    };
     if (!isBgmMuted) {
         ['touchstart', 'click', 'scroll'].forEach(evt => window.addEventListener(evt, globalWakeUp, true));
     }
 });
 
-// 🌟 對付 iOS 返回上一頁的冷凍庫復甦機制
-window.addEventListener('pageshow', (event) => {
-    setupAudioUI();
-    // 只要是從上一頁返回，且原本有開音樂，就立刻重新佈署喚醒雷達
-    if (event.persisted && !isBgmMuted) {
-        ['touchstart', 'click', 'scroll'].forEach(evt => window.addEventListener(evt, globalWakeUp, true));
-    }
-});
+// ==========================================
+// 🌟 SPA 動態面板控制
+// ==========================================
+window.openPage = function(url) {
+    const frame = document.getElementById('spa-frame');
+    const sheet = document.getElementById('dynamic-sheet');
+    const overlay = document.getElementById('overlay');
+    
+    // 如果忘記貼 HTML，當作防呆直接跳頁
+    if(!frame || !sheet || !overlay) { window.location.href = url; return; }
+
+    frame.src = url;
+    overlay.style.zIndex = "99990";
+    overlay.classList.add('active');
+    sheet.classList.add('active');
+};
+
+window.closeDynamicSheet = function() {
+    const sheet = document.getElementById('dynamic-sheet');
+    if(sheet) sheet.classList.remove('active');
+    
+    setTimeout(() => {
+        const frame = document.getElementById('spa-frame');
+        if(frame) frame.src = ''; // 清空記憶體
+        
+        if(!document.querySelector('.bottom-sheet.active:not(#dynamic-sheet)')) {
+            const overlay = document.getElementById('overlay');
+            if(overlay) {
+                overlay.classList.remove('active');
+                overlay.style.zIndex = "90";
+            }
+        }
+    }, 300);
+};
+
+// 覆寫 closeAllSheets 把新抽屜也加進去
+function closeAllSheets() { 
+    ['advanced-sheet', 'settings-sheet', 'error-sheet', 'dynamic-sheet'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.remove('active');
+    });
+    const overlay = document.getElementById('overlay'); 
+    if(overlay) overlay.classList.remove('active'); 
+    setTimeout(() => { 
+        if(overlay) overlay.style.zIndex = "90"; 
+        const frame = document.getElementById('spa-frame');
+        if(frame) frame.src = '';
+    }, 300); 
+}
 
 // ==========================================
 // 核心路由與其餘功能
@@ -208,7 +251,10 @@ window.escapeKisaragi = function() {
         localStorage.setItem('unlock_kisaragi', 'true');
         alert('🏃‍♂️ 你死命地沿著隧道狂奔，身後的太鼓聲漸漸遠去，終於回到了現實世界...\n\n🎉 恭喜解鎖隱藏成就【從不存在的車站歸來】！');
     }
-    window.location.href = '/collection.html';
+    
+    // 逃脫後也使用 SPA 無縫跳轉
+    if(typeof openPage === 'function') openPage('/collection.html');
+    else window.location.href = '/collection.html';
 };
 
 async function executeFullSearch() {
@@ -459,7 +505,7 @@ function updateClock() {
     } else {
         if (timeLeft <= 0) { clearInterval(timer); display.innerHTML = "來不及了💸"; display.style.fontSize = "50px"; display.style.color = "#ff5252"; actionBtn.style.display = "none"; cancelBtn.style.display = "none"; planBContainer.style.display = "flex"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex"); statusText.innerHTML = "人生不是只有末班車..."; return; }
         timeLeft--;
-        if (isNotificationEnabled && !notificationTriggered && timeLeft === 600) { new Notification("🏃‍♂️ 末班車警警報！", { body: "距離發車只剩最後 10 分鐘！" }); notificationTriggered = true; }
+        if (isNotificationEnabled && !notificationTriggered && timeLeft === 600) { new Notification("🏃‍♂️ 末班車警報！", { body: "距離發車只剩最後 10 分鐘！" }); notificationTriggered = true; }
         let h = Math.floor(timeLeft / 3600); let m = Math.floor((timeLeft % 3600) / 60); let s = timeLeft % 60;
         display.innerHTML = h > 0 ? `${h}:${m<10?'0':''}${m}:${s<10?'0':''}${s}` : `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
     }
@@ -561,4 +607,5 @@ function shareApp() {
 function toggleContact() { const l = document.getElementById('contact-links'); l.style.display = l.style.display === "flex" ? "none" : "flex"; }
 function openAdvancedSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
 function openSettingsSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
-function closeAllSheets() { document.getElementById('advanced-sheet').classList.remove('active'); document.getElementById('settings-sheet').classList.remove('active'); document.getElementById('error-sheet').classList.remove('active'); const overlay = document.getElementById('overlay'); overlay.classList.remove('active'); setTimeout(() => { overlay.style.zIndex = "90"; }, 300); }
+// 關掉全域的所有電視機
+function closeAllSheets() { document.getElementById('advanced-sheet').classList.remove('active'); document.getElementById('settings-sheet').classList.remove('active'); document.getElementById('error-sheet').classList.remove('active'); const ds = document.getElementById('dynamic-sheet'); if(ds) ds.classList.remove('active'); const overlay = document.getElementById('overlay'); overlay.classList.remove('active'); setTimeout(() => { overlay.style.zIndex = "90"; const frame = document.getElementById('spa-frame'); if(frame) frame.src = ''; }, 300); }
