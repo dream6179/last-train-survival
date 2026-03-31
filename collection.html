@@ -37,7 +37,6 @@
         .main-action-btn { color: white; border: none; padding: 15px; font-size: 17px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.1s; width: auto; padding: 10px 30px; margin-top: 15px; background-color: var(--info); }
         .main-action-btn:active { transform: scale(0.98); }
 
-        /* 工程模式專用按鈕樣式 */
         .dev-reset-btn { background-color: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: none; }
         .dev-reset-btn:active { background-color: #330000; }
     </style>
@@ -54,7 +53,7 @@
 
     <div class="section-title">
         🕹️ 隱藏遊戲機台
-        <button id="dev-reset-btn" class="dev-reset-btn" onclick="resetEasterEggs()">重新上鎖</button>
+        <button id="dev-reset-btn" class="dev-reset-btn" onclick="resetEasterEggs()">重新上鎖與清零紀錄</button>
     </div>
     <div class="game-grid" id="game-list"></div>
 
@@ -89,11 +88,12 @@
         const u1 = localStorage.getItem('unlock_runner') === 'true';
         const u2 = localStorage.getItem('unlock_diver') === 'true';
         const u3 = localStorage.getItem('unlock_password') === 'true';
-        const uk = localStorage.getItem('unlock_kisaragi') === 'true'; // 如月車站成就
+        const uk = localStorage.getItem('unlock_kisaragi') === 'true';
         
-        const s1 = localStorage.getItem('lateCommuterHighScore') || 0;
-        const s2 = localStorage.getItem('deepStationHighScore') || 0;
-        const s3 = localStorage.getItem('passwordHighScore') || 999;
+        // 將字串轉為數字，方便後續判斷大小
+        const s1 = parseInt(localStorage.getItem('lateCommuterHighScore')) || 0;
+        const s2 = parseInt(localStorage.getItem('deepStationHighScore')) || 0;
+        const s3 = parseInt(localStorage.getItem('passwordHighScore')) || 999;
 
         // 渲染機台
         let html = '';
@@ -123,10 +123,12 @@
         }
         list.innerHTML = html;
 
-        // 🌟 渲染如月車站成就
+        // 🌟 渲染成就列表
         let achHtml = '';
+        
+        // 成就 1：如月車站
         if (uk) {
-            achHtml = `<div class="game-card" style="border-color: var(--danger); cursor: default;">
+            achHtml += `<div class="game-card" style="border-color: var(--danger); cursor: default;">
                         <div class="game-info">
                             <span class="game-name" style="color: var(--danger); letter-spacing: 2px; text-shadow: 0 0 8px rgba(255,0,0,0.4);">🩸 從不存在的車站歸來</span>
                             <span class="game-score">你聽見太鼓聲了嗎...？</span>
@@ -134,16 +136,46 @@
                         <div class="play-icon">🎫</div>
                       </div>`;
         } else {
-            achHtml = `<div class="game-card locked" style="cursor: default;">
-                        <div class="game-info">
-                            <span class="game-name">🔒 隱藏成就</span>
-                            <span class="game-score">這班列車，本不該存在。</span>
-                        </div>
+            achHtml += `<div class="game-card locked" style="cursor: default;">
+                        <div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">這班列車，本不該存在。</span></div>
                       </div>`;
         }
+
+        // 成就 2：衝刺 120 秒
+        if (s1 >= 120) {
+            achHtml += `<div class="game-card" style="border-color: var(--warning); cursor: default;">
+                        <div class="game-info"><span class="game-name" style="color: var(--warning);">🏃‍♂️ 壓秒死線達人</span><span class="game-score">在月台狂奔存活超過 120 秒</span></div>
+                        <div class="play-icon">🏅</div></div>`;
+        } else {
+            achHtml += `<div class="game-card locked" style="cursor: default;">
+                        <div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">肺活量考驗：堅持就是勝利...</span></div>
+                      </div>`;
+        }
+
+        // 成就 3：下樓梯 120 層
+        if (s2 >= 120) {
+            achHtml += `<div class="game-card" style="border-color: var(--info); cursor: default;">
+                        <div class="game-info"><span class="game-name" style="color: var(--info);">🚇 地心探險家</span><span class="game-score">成功抵達地下 120 層月台</span></div>
+                        <div class="play-icon">🏅</div></div>`;
+        } else {
+            achHtml += `<div class="game-card locked" style="cursor: default;">
+                        <div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">深淵探索：還能再更深嗎...</span></div>
+                      </div>`;
+        }
+
+        // 成就 4：密碼 <= 2 次
+        if (s3 <= 2) {
+            achHtml += `<div class="game-card" style="border-color: var(--success); cursor: default;">
+                        <div class="game-info"><span class="game-name" style="color: var(--success);">🧠 駭客通靈大師</span><span class="game-score">2 次嘗試以內破解終極密碼</span></div>
+                        <div class="play-icon">🏅</div></div>`;
+        } else {
+            achHtml += `<div class="game-card locked" style="cursor: default;">
+                        <div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">直覺考驗：運氣也是實力的一種...</span></div>
+                      </div>`;
+        }
+
         achList.innerHTML = achHtml;
 
-        // 檢查是否為工程模式，若是則顯示重置按鈕
         if(localStorage.getItem('dev_mode_active') === 'true') {
             document.getElementById('dev-reset-btn').style.display = 'block';
         } else {
@@ -151,15 +183,21 @@
         }
     }
 
-    // 開發者專用：重置解鎖狀態 (包含如月車站)
+    // 開發者專用：重置解鎖狀態 (包含機台、彩蛋、分數)
     function resetEasterEggs() {
-        if(confirm("🛠️ [工程模式] 確定要將所有隱藏機台與成就重新上鎖嗎？")) {
+        if(confirm("🛠️ [工程模式] 確定要將所有機台重新上鎖，並清空最高分紀錄嗎？")) {
             localStorage.removeItem('unlock_runner');
             localStorage.removeItem('unlock_diver');
             localStorage.removeItem('unlock_password');
             localStorage.removeItem('unlock_kisaragi');
+            
+            // 同時把最高分清零，才能重新測試成就解鎖
+            localStorage.removeItem('lateCommuterHighScore');
+            localStorage.removeItem('deepStationHighScore');
+            localStorage.removeItem('passwordHighScore');
+            
             renderGames();
-            alert("✅ 已重新上鎖！現在您可以回主畫面測試了。");
+            alert("✅ 已重新上鎖並清空分數！祝您測試愉快。");
         }
     }
 
