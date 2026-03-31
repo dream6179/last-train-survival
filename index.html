@@ -128,14 +128,12 @@
 <script>
     async function checkDevPassword() {
         const pwd = prompt("🔒 請輸入工程模式密碼：");
-        if (pwd === null) return; // 使用者按取消
+        if (pwd === null) return; 
 
         try {
-            // 跑去 config.json 拿鑰匙
             const res = await fetch('/data/config.json?t=' + new Date().getTime());
             const data = await res.json();
             
-            // 拿輸入的密碼跟設定檔裡的 dev_key 比對
             if (pwd === data.dev_key) {
                 sessionStorage.setItem('dev_mode_bypass', 'true');
                 document.getElementById('maintenance-overlay').style.display = 'none';
@@ -315,10 +313,6 @@
                 <span class="option-name" style="color: var(--warning);">🏆 前往彩蛋與收集冊專區</span>
             </button>
         </div>
-
-        <button class="plan-b-option" onclick="openPage('/developer.html')" style="background-color: #1a1a1a; color: white; border: 1px solid #555; width: 100%; justify-content: center; margin-bottom: 20px;">
-            <span class="option-name">👨‍💻 開發者資訊</span>
-        </button>
         
         <div style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #333; text-align: center;">
             <span onclick="if(localStorage.getItem('unlock_password') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_password', 'true'); alert('🎉 發現彩蛋！隱藏機台【終極密碼】已永久解鎖！'); openPage('/collection.html'); }" style="color: #666; font-size: 13px; font-weight: bold; cursor: pointer; font-variant-numeric: tabular-nums; display: inline-block; padding: 10px;">
