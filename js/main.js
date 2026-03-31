@@ -10,6 +10,9 @@ function showErrorSheet(errorMsg) {
 function closeErrorSheet() { document.getElementById('error-sheet').classList.remove('active'); if (!document.querySelector('.bottom-sheet.active:not(#error-sheet)')) { document.getElementById('overlay').classList.remove('active'); setTimeout(() => { document.getElementById('overlay').style.zIndex = "90"; }, 300); } }
 function copyErrorLog() { const logOutput = document.getElementById('error-log-output'); logOutput.select(); document.execCommand('copy'); alert("✅ 錯誤代碼已複製！"); }
 
+// 🌟 剛剛被我手殘刪掉的靈魂變數補回來了！
+let currentMode = 'survival'; 
+
 // ==========================================
 // 🌟 音樂播放器核心 (SPA 終極無縫版)
 // ==========================================
@@ -102,7 +105,6 @@ function updateVolume(val) {
     if (bgm) { if (isBgmMuted) bgm.pause(); else initAndPlayAudio(); }
 }
 
-// 🌟 關鍵修復：這裡也改成 addEventListener，不殺別人的 code
 window.addEventListener('load', () => { 
     setupAudioUI();
 
@@ -134,7 +136,7 @@ window.addEventListener('load', () => {
 });
 
 // ==========================================
-// 🌟 SPA 動態面板控制 (已修復遮罩卡死問題)
+// 🌟 SPA 動態面板控制
 // ==========================================
 window.openPage = function(url) {
     const frame = document.getElementById('spa-frame');
@@ -155,7 +157,7 @@ window.closeDynamicSheet = function() {
     
     setTimeout(() => {
         const frame = document.getElementById('spa-frame');
-        if(frame) frame.src = ''; 
+        if(frame) frame.src = 'about:blank'; 
         
         const overlay = document.getElementById('overlay');
         if(overlay) {
@@ -179,7 +181,7 @@ function closeAllSheets() {
     setTimeout(() => { 
         if(overlay) overlay.style.zIndex = "90"; 
         const frame = document.getElementById('spa-frame');
-        if(frame) frame.src = '';
+        if(frame) frame.src = 'about:blank';
     }, 300); 
 }
 
@@ -320,7 +322,6 @@ let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; 
 const display = document.getElementById('time-display'); const statusText = document.getElementById('status-text'); const actionBtn = document.getElementById('action-btn'); const cancelBtn = document.getElementById('cancel-btn'); const speedModeText = document.getElementById('speed-mode'); const planBContainer = document.getElementById('plan-b-container'); 
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站' };
 
-// 🌟 關鍵修復：這裡也改成 addEventListener
 window.addEventListener('load', async () => {
     if(localStorage.getItem('dev_mode_active') === 'true') {
         const mt = document.getElementById('main-title');
@@ -605,53 +606,3 @@ function shareApp() {
 function toggleContact() { const l = document.getElementById('contact-links'); l.style.display = l.style.display === "flex" ? "none" : "flex"; }
 function openAdvancedSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
 function openSettingsSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
-// ==========================================
-// 🌟 SPA 動態面板控制 (已修復遮罩卡死問題)
-// ==========================================
-window.openPage = function(url) {
-    const frame = document.getElementById('spa-frame');
-    const sheet = document.getElementById('dynamic-sheet');
-    const overlay = document.getElementById('overlay');
-    
-    if(!frame || !sheet || !overlay) { window.location.href = url; return; }
-
-    frame.src = url;
-    overlay.style.zIndex = "99990"; // 提高遮罩層級
-    overlay.classList.add('active');
-    sheet.classList.add('active');
-};
-
-window.closeDynamicSheet = function() {
-    const sheet = document.getElementById('dynamic-sheet');
-    if(sheet) sheet.classList.remove('active');
-    
-    setTimeout(() => {
-        const frame = document.getElementById('spa-frame');
-        if(frame) frame.src = 'about:blank'; // 🌟 關鍵修復：強制斷電，阻止無限輪迴
-        
-        const overlay = document.getElementById('overlay');
-        if(overlay) {
-            overlay.style.zIndex = "90"; 
-            
-            const hasOtherActive = document.querySelector('.bottom-sheet.active:not(#dynamic-sheet)');
-            if(!hasOtherActive) {
-                overlay.classList.remove('active'); 
-            }
-        }
-    }, 300);
-};
-
-// 覆寫 closeAllSheets
-function closeAllSheets() { 
-    ['advanced-sheet', 'settings-sheet', 'error-sheet', 'dynamic-sheet'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.classList.remove('active');
-    });
-    const overlay = document.getElementById('overlay'); 
-    if(overlay) overlay.classList.remove('active'); 
-    setTimeout(() => { 
-        if(overlay) overlay.style.zIndex = "90"; 
-        const frame = document.getElementById('spa-frame');
-        if(frame) frame.src = 'about:blank'; // 🌟 關鍵修復：強制斷電
-    }, 300); 
-}
