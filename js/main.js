@@ -11,21 +11,41 @@ function closeErrorSheet() { document.getElementById('error-sheet').classList.re
 function copyErrorLog() { const logOutput = document.getElementById('error-log-output'); logOutput.select(); document.execCommand('copy'); alert("✅ 錯誤代碼已複製！"); }
 
 // ==========================================
-// 🌟 音樂播放器核心 (已修復音量 Bug ＆ 升級隨機播放)
+// 🌟 音樂播放器核心 (已修復手機傲嬌封鎖 ＆ 加入新歌)
 // ==========================================
 let savedVol = localStorage.getItem('bgmVolume');
-let bgmVolume = savedVol !== null ? parseFloat(savedVol) : 0.5; // 精準讀取，不怕被 0 誤導
+let bgmVolume = savedVol !== null ? parseFloat(savedVol) : 0.5; 
 let savedMuted = localStorage.getItem('isBgmMuted');
 let isBgmMuted = savedMuted !== null ? savedMuted === 'true' : true;
 let bgmStarted = false; 
 
+// 🌟 你的深夜電台擴充為 4 首歌
 let bgmPlaylist = [
     "/audio/platform_at_midnight.mp3", 
-    "/audio/Midnight_at_Platform_Four.mp3"
+    "/audio/Midnight_at_Platform_Four.mp3",
+    "/audio/Waiting_at_the_Edge.mp3",
+    "/audio/The_Three_AM_Wait.mp3"
 ];
 
-// 隨機決定第一首歌
 let currentBgmIndex = Math.floor(Math.random() * bgmPlaylist.length);
+
+// 將播放邏輯獨立出來，綁定在使用者的點擊動作上，避免被瀏覽器保安封鎖
+function playBgm() {
+    const bgm = document.getElementById('bgm-audio');
+    if (!bgm) return;
+    
+    // 如果是第一次播放，才把隨機抽到的歌塞進去
+    if (!bgm.getAttribute('data-initialized')) {
+        bgm.src = bgmPlaylist[currentBgmIndex];
+        bgm.load(); // 強制讀取
+        bgm.setAttribute('data-initialized', 'true');
+    }
+    
+    bgm.volume = bgmVolume;
+    bgm.play().then(() => {
+        bgmStarted = true;
+    }).catch(e => console.log("音樂啟動失敗(可能仍需使用者手動點擊):", e));
+}
 
 function toggleMute() {
     isBgmMuted = !isBgmMuted; 
@@ -48,9 +68,7 @@ function toggleMute() {
         if (isBgmMuted) {
             bgm.pause(); 
         } else { 
-            bgm.volume = bgmVolume; 
-            bgm.play().catch(e=>console.log(e)); 
-            bgmStarted = true; 
+            playBgm(); // 安全啟動
         } 
     }
 }
@@ -70,17 +88,16 @@ function updateVolume(val) {
     
     const bgm = document.getElementById('bgm-audio'); 
     if (bgm) { 
-        bgm.volume = bgmVolume; 
-        if (bgmVolume > 0) { 
-            if (bgm.paused) bgm.play().catch(e=>console.log(e)); 
-            bgmStarted = true; 
-        } else {
+        if (isBgmMuted) {
             bgm.pause(); 
+        } else {
+            playBgm(); // 安全啟動並調整音量
         }
     }
 }
 
 window.addEventListener('DOMContentLoaded', () => { 
+    // UI 初始化
     const icon = isBgmMuted ? '🔇' : '🔊'; 
     const muteBtn = document.getElementById('mute-btn');
     const headerMuteBtn = document.getElementById('header-mute-btn');
@@ -89,12 +106,11 @@ window.addEventListener('DOMContentLoaded', () => {
     if (headerMuteBtn) headerMuteBtn.innerText = icon; 
     if (volumeSlider) volumeSlider.value = isBgmMuted ? 0 : bgmVolume;
 
+    // 換歌監聽器
     const bgm = document.getElementById('bgm-audio');
     if (bgm) {
-        bgm.src = bgmPlaylist[currentBgmIndex]; // 載入隨機抽到的第一首歌
-        
         bgm.addEventListener('ended', () => {
-            // 隨機抽下一首，且保證不重複
+            // 隨機抽下一首，且保證不會連續兩首一樣
             let nextIndex;
             do {
                 nextIndex = Math.floor(Math.random() * bgmPlaylist.length);
@@ -102,17 +118,17 @@ window.addEventListener('DOMContentLoaded', () => {
             
             currentBgmIndex = nextIndex;
             bgm.src = bgmPlaylist[currentBgmIndex];
+            bgm.load();
             bgm.play().catch(e => console.log("切歌失敗:", e));
         });
     }
     
+    // 隱形監聽器：當使用者在畫面任何地方點第一下，如果沒靜音，就啟動音樂
     document.body.addEventListener('click', () => { 
-        if (bgm && !bgmStarted && !isBgmMuted) { 
-            bgm.volume = bgmVolume; 
-            bgm.play().catch(e => console.log("音樂啟動失敗:", e)); 
-            bgmStarted = true; 
+        if (!bgmStarted && !isBgmMuted) { 
+            playBgm();
         } 
-    }, { once: true }); 
+    }); 
 });
 
 // ==========================================
