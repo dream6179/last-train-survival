@@ -10,7 +10,10 @@ function showErrorSheet(errorMsg) {
 function closeErrorSheet() { document.getElementById('error-sheet').classList.remove('active'); if (!document.querySelector('.bottom-sheet.active:not(#error-sheet)')) { document.getElementById('overlay').classList.remove('active'); setTimeout(() => { document.getElementById('overlay').style.zIndex = "90"; }, 300); } }
 function copyErrorLog() { const logOutput = document.getElementById('error-log-output'); logOutput.select(); document.execCommand('copy'); alert("✅ 錯誤代碼已複製！"); }
 
-let currentMode = 'survival'; let bgmVolume = 0.5; let isBgmMuted = true; let bgmStarted = false; 
+// 🌟 BGM 升級：加入 LocalStorage 記憶功能
+let bgmVolume = parseFloat(localStorage.getItem('bgmVolume')) || 0.5; 
+let isBgmMuted = localStorage.getItem('isBgmMuted') === 'false' ? false : true; 
+let bgmStarted = false; 
 
 let bgmPlaylist = [
     "/audio/platform_at_midnight.mp3", 
@@ -20,16 +23,67 @@ let currentBgmIndex = 0;
 
 function toggleMute() {
     isBgmMuted = !isBgmMuted; if (!isBgmMuted && bgmVolume === 0) bgmVolume = 0.5;
-    const icon = isBgmMuted ? '🔇' : '🔊'; document.getElementById('mute-btn').innerText = icon; document.getElementById('header-mute-btn').innerText = icon; document.getElementById('volume-slider').value = isBgmMuted ? 0 : bgmVolume;
-    const bgm = document.getElementById('bgm-audio'); if (bgm) { if (isBgmMuted) bgm.pause(); else { bgm.volume = bgmVolume; bgm.play().catch(e=>console.log(e)); bgmStarted = true; } }
+    
+    // 記憶設定
+    localStorage.setItem('isBgmMuted', isBgmMuted);
+    localStorage.setItem('bgmVolume', bgmVolume);
+
+    const icon = isBgmMuted ? '🔇' : '🔊'; 
+    const muteBtn = document.getElementById('mute-btn');
+    const headerMuteBtn = document.getElementById('header-mute-btn');
+    const volumeSlider = document.getElementById('volume-slider');
+    
+    if (muteBtn) muteBtn.innerText = icon; 
+    if (headerMuteBtn) headerMuteBtn.innerText = icon; 
+    if (volumeSlider) volumeSlider.value = isBgmMuted ? 0 : bgmVolume;
+    
+    const bgm = document.getElementById('bgm-audio'); 
+    if (bgm) { 
+        if (isBgmMuted) {
+            bgm.pause(); 
+        } else { 
+            bgm.volume = bgmVolume; 
+            bgm.play().catch(e=>console.log(e)); 
+            bgmStarted = true; 
+        } 
+    }
 }
+
 function updateVolume(val) {
     bgmVolume = parseFloat(val); isBgmMuted = (bgmVolume === 0);
-    const icon = isBgmMuted ? '🔇' : '🔊'; document.getElementById('mute-btn').innerText = icon; document.getElementById('header-mute-btn').innerText = icon;
-    const bgm = document.getElementById('bgm-audio'); if (bgm) { bgm.volume = bgmVolume; if (bgmVolume > 0) { if (bgm.paused) bgm.play().catch(e=>console.log(e)); bgmStarted = true; } else bgm.pause(); }
+    
+    // 記憶設定
+    localStorage.setItem('isBgmMuted', isBgmMuted);
+    localStorage.setItem('bgmVolume', bgmVolume);
+
+    const icon = isBgmMuted ? '🔇' : '🔊'; 
+    const muteBtn = document.getElementById('mute-btn');
+    const headerMuteBtn = document.getElementById('header-mute-btn');
+    if (muteBtn) muteBtn.innerText = icon; 
+    if (headerMuteBtn) headerMuteBtn.innerText = icon;
+    
+    const bgm = document.getElementById('bgm-audio'); 
+    if (bgm) { 
+        bgm.volume = bgmVolume; 
+        if (bgmVolume > 0) { 
+            if (bgm.paused) bgm.play().catch(e=>console.log(e)); 
+            bgmStarted = true; 
+        } else {
+            bgm.pause(); 
+        }
+    }
 }
 
 window.addEventListener('DOMContentLoaded', () => { 
+    // 載入時同步 UI 狀態
+    const icon = isBgmMuted ? '🔇' : '🔊'; 
+    const muteBtn = document.getElementById('mute-btn');
+    const headerMuteBtn = document.getElementById('header-mute-btn');
+    const volumeSlider = document.getElementById('volume-slider');
+    if (muteBtn) muteBtn.innerText = icon; 
+    if (headerMuteBtn) headerMuteBtn.innerText = icon; 
+    if (volumeSlider) volumeSlider.value = isBgmMuted ? 0 : bgmVolume;
+
     const bgm = document.getElementById('bgm-audio');
     if (bgm) {
         bgm.addEventListener('ended', () => {
@@ -70,10 +124,10 @@ function toggleAppMode() {
     }
 }
 
-// 🌟 沉浸式如月車站事件觸發器 (修正版)
+// 🌟 沉浸式如月車站事件觸發器
 function triggerKisaragiEvent() {
     clearInterval(timer); isCountingDown = false;
-    const bgm = document.getElementById('bgm-audio'); if (bgm) bgm.pause();
+    const bgm = document.getElementById('bgm-audio'); if (bgm) bgm.pause(); // 👈 就是這裡掐斷了你的音樂！
     
     const overlay = document.createElement('div');
     overlay.id = 'kisaragi-overlay';
@@ -97,16 +151,13 @@ function triggerKisaragiEvent() {
     document.body.appendChild(overlay);
 }
 
-// 🌟 逃脫邏輯防呆判定
 window.escapeKisaragi = function() {
     const overlay = document.getElementById('kisaragi-overlay');
     if(overlay) overlay.remove();
     
     if (localStorage.getItem('unlock_kisaragi') === 'true') {
-        // 已經解鎖過了，不再顯示恭喜，改為恐怖餘韻
         alert('🏃‍♂️ 你死命地沿著隧道狂奔，身後的太鼓聲漸漸遠去，終於回到了現實世界...\n\n（你已經逃出過這裡了，但那股寒意依舊揮之不去...）');
     } else {
-        // 第一次成功逃脫，正式發放成就
         localStorage.setItem('unlock_kisaragi', 'true');
         alert('🏃‍♂️ 你死命地沿著隧道狂奔，身後的太鼓聲漸漸遠去，終於回到了現實世界...\n\n🎉 恭喜解鎖隱藏成就【從不存在的車站歸來】！');
     }
@@ -411,7 +462,7 @@ async function handleAction() {
         return;
     }
 
-    if (isCountingDown) { if ("Notification" in window) { if (Notification.permission === "granted") toggleNotificationState(); else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); }); else alert("⚠️ 您之前拒絕了通知權限，請手手動開啟！"); } else alert("⚠️ 不支援推播通知！"); return; }
+    if (isCountingDown) { if ("Notification" in window) { if (Notification.permission === "granted") toggleNotificationState(); else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); }); else alert("⚠️ 您之前拒絕了通知權限，請手動開啟！"); } else alert("⚠️ 不支援推播通知！"); return; }
     
     const startStationObj = globalStationData[startType]?.options.find(s => s.name === startStationName);
     const endStationObj = globalStationData[endType]?.options.find(s => s.name === endStationName);
