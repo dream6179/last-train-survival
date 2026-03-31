@@ -11,13 +11,12 @@ function closeErrorSheet() { document.getElementById('error-sheet').classList.re
 function copyErrorLog() { const logOutput = document.getElementById('error-log-output'); logOutput.select(); document.execCommand('copy'); alert("✅ 錯誤代碼已複製！"); }
 
 // ==========================================
-// 🌟 音樂播放器核心 (專治 iOS 傲嬌病版)
+// 🌟 音樂播放器核心 (究極抗 iOS 傲嬌版)
 // ==========================================
 let savedVol = localStorage.getItem('bgmVolume');
 let bgmVolume = savedVol !== null ? parseFloat(savedVol) : 0.5; 
 let savedMuted = localStorage.getItem('isBgmMuted');
 let isBgmMuted = savedMuted !== null ? savedMuted === 'true' : true;
-let bgmStarted = false; 
 
 let bgmPlaylist = [
     "/audio/platform_at_midnight.mp3", 
@@ -27,18 +26,39 @@ let bgmPlaylist = [
 ];
 
 let currentBgmIndex = Math.floor(Math.random() * bgmPlaylist.length);
+let audioInitialized = false;
 
 function playBgm() {
     const bgm = document.getElementById('bgm-audio');
     if (!bgm) return;
     
+    // 🌟 核心防護：只在手指真的點擊時，才塞入網址，iOS 保安就不會擋
+    if (!audioInitialized) {
+        bgm.removeAttribute('loop'); // 拔掉 HTML 可能殘留的單曲循環，確保能隨機切歌
+        bgm.src = bgmPlaylist[currentBgmIndex];
+        bgm.load();
+
+        // 綁定切歌機制
+        bgm.addEventListener('ended', () => {
+            let nextIndex;
+            do {
+                nextIndex = Math.floor(Math.random() * bgmPlaylist.length);
+            } while (nextIndex === currentBgmIndex && bgmPlaylist.length > 1);
+            
+            currentBgmIndex = nextIndex;
+            bgm.src = bgmPlaylist[currentBgmIndex];
+            bgm.load();
+            let p = bgm.play();
+            if(p !== undefined) p.catch(e => console.log("切歌失敗:", e));
+        });
+
+        audioInitialized = true;
+    }
+
     bgm.volume = bgmVolume;
-    // 🌟 對付 iOS 的關鍵：只下達最純粹的 play 指令，絕對不能在這裡改 src 或 load
-    let playPromise = bgm.play();
-    if (playPromise !== undefined) {
-        playPromise.then(() => {
-            bgmStarted = true;
-        }).catch(e => console.log("iOS 依然傲嬌阻擋:", e));
+    let p = bgm.play();
+    if (p !== undefined) {
+        p.catch(e => console.log("iOS 終極防護依然啟動:", e));
     }
 }
 
@@ -63,6 +83,7 @@ function toggleMute() {
         if (isBgmMuted) {
             bgm.pause(); 
         } else { 
+            // 直接在點擊事件內呼叫播放
             playBgm(); 
         } 
     }
@@ -100,45 +121,26 @@ window.addEventListener('DOMContentLoaded', () => {
     if (headerMuteBtn) headerMuteBtn.innerText = icon; 
     if (volumeSlider) volumeSlider.value = isBgmMuted ? 0 : bgmVolume;
 
-    const bgm = document.getElementById('bgm-audio');
-    if (bgm) {
-        // 🌟 對付 iOS 的關鍵 2：網頁一打開，趁 iOS 還沒注意，先偷偷把歌塞好載入
-        bgm.src = bgmPlaylist[currentBgmIndex];
-        bgm.load();
-
-        bgm.addEventListener('ended', () => {
-            let nextIndex;
-            do {
-                nextIndex = Math.floor(Math.random() * bgmPlaylist.length);
-            } while (nextIndex === currentBgmIndex && bgmPlaylist.length > 1);
-            
-            currentBgmIndex = nextIndex;
-            bgm.src = bgmPlaylist[currentBgmIndex];
-            bgm.load();
-            bgm.play().catch(e => console.log("切歌失敗:", e));
-        });
-    }
-    
-    // 🌟 iOS 終極解鎖魔法：在螢幕被「觸碰(touchstart)」的瞬間，騙到 iOS 的播放授權
-    const unlockAudioForIOS = () => {
-        if (bgm && !bgmStarted) {
-            let p = bgm.play();
-            if (p !== undefined) {
-                p.then(() => {
-                    if (isBgmMuted) {
-                        bgm.pause(); // 拿到授權了，發現是靜音就趕快按暫停
-                    } else {
-                        bgmStarted = true; // 沒靜音就讓他繼續播
-                    }
-                }).catch(e => {});
+    // 全域解鎖器：只要你在畫面上隨便點一下，就默默取得 iOS 播放授權
+    const globalUnlock = () => {
+        if (!isBgmMuted && !audioInitialized) {
+            playBgm();
+        } else if (isBgmMuted && !audioInitialized) {
+            // 就算靜音，我也先初始化一個空彈匣騙 iOS 授權
+            const bgm = document.getElementById('bgm-audio');
+            if (bgm) {
+                bgm.removeAttribute('loop');
+                bgm.src = bgmPlaylist[currentBgmIndex];
+                bgm.load();
+                audioInitialized = true;
             }
-            document.body.removeEventListener('touchstart', unlockAudioForIOS);
-            document.body.removeEventListener('click', unlockAudioForIOS);
         }
+        document.body.removeEventListener('touchstart', globalUnlock);
+        document.body.removeEventListener('click', globalUnlock);
     };
     
-    document.body.addEventListener('touchstart', unlockAudioForIOS, { once: true });
-    document.body.addEventListener('click', unlockAudioForIOS, { once: true });
+    document.body.addEventListener('touchstart', globalUnlock, { once: true });
+    document.body.addEventListener('click', globalUnlock, { once: true });
 });
 
 // ==========================================
