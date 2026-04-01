@@ -10,7 +10,8 @@ function getSystemTime() {
 }
 
 async function fetchWithTimeout(resource, options = {}) {
-    const { timeout = 3500 } = options; 
+    // 🌟 將預設超時從 3.5 秒延長到 8 秒，給公網跳板多點時間
+    const { timeout = 8000 } = options; 
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     const response = await fetch(resource, { ...options, signal: controller.signal });
@@ -206,7 +207,8 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
     const url = `/api/get-tdx-data?path=${encodeURIComponent(path)}&$format=JSON`;
 
     try {
-        const response = await fetchWithTimeout(url, { timeout: 4000 });
+        // 🌟 對於跨段查詢這種巨無霸資料，給予 10 秒的超級耐心
+        const response = await fetchWithTimeout(url, { timeout: 10000 });
         if (!response.ok) return { time: null, status: "已無高鐵/台鐵班次 (代理伺服器無回應)" };
 
         const data = await response.json(); 
@@ -219,7 +221,7 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
         }
 
         if (validTrains.length === 0) {
-            // 判斷是真的錯過了，還是根本沒有直達車
+            // 🌟 判斷是真的錯過了，還是根本沒有直達車
             const nowHours = getSystemTime().getHours();
             if (nowHours > 6 && nowHours < 21) {
                 // 如果是大白天卻查無班次，高機率是沒直達車
