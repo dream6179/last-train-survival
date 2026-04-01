@@ -218,7 +218,16 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
             data.forEach(t => { if (timeToMinutes(t.DestinationStopTime.ArrivalTime) <= targetArrivalMins) validTrains.push(t.OriginStopTime.DepartureTime); });
         }
 
-        if (validTrains.length === 0) return { time: null, status: "錯過轉乘末班車" };
+        if (validTrains.length === 0) {
+            // 判斷是真的錯過了，還是根本沒有直達車
+            const nowHours = getSystemTime().getHours();
+            if (nowHours > 6 && nowHours < 21) {
+                // 如果是大白天卻查無班次，高機率是沒直達車
+                return { time: null, status: "查無直達轉乘站的班次" };
+            } else {
+                return { time: null, status: "錯過轉乘末班車" };
+            }
+        }
         
         validTrains.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
         return { time: validTrains[validTrains.length - 1], status: "雙段精準計算" };
