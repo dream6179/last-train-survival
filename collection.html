@@ -9,7 +9,7 @@
         :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --success: #4caf50; --warning: #ffb300; --info: #2196F3; }
         html, body { overflow-x: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main); -webkit-user-select: none; user-select: none; }
         
-        /* 🌟 究極去白條魔法：把所有捲軸藏起來 */
+        /* 🌟 究極去白條魔法 */
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -17,11 +17,12 @@
         
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #333; }
         .header-row h1 { font-size: 20px; color: var(--warning); margin: 0; }
-        .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; }
+        
+        /* 🌟 改成更穩定的按鈕樣式 */
+        .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; display: inline-block; }
         .back-btn:active { background: #555; transform: scale(0.95); }
 
         .section-title { font-size: 16px; color: var(--text-sub); margin: 20px 0 10px 0; font-weight: bold; border-left: 4px solid var(--info); padding-left: 10px; display: flex; justify-content: space-between; align-items: center; }
-
         .game-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
         .game-card { background: var(--card-bg); border: 1px solid #333; border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.1s; }
         .game-card:active { transform: scale(0.98); filter: brightness(1.2); }
@@ -40,9 +41,7 @@
         .close-sheet-btn { background: var(--danger); color: white; border: none; padding: 5px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .main-action-btn { color: white; border: none; padding: 15px; font-size: 17px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.1s; width: auto; padding: 10px 30px; margin-top: 15px; background-color: var(--info); }
         .main-action-btn:active { transform: scale(0.98); }
-
         .dev-reset-btn { background-color: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: none; }
-        .dev-reset-btn:active { background-color: #330000; }
     </style>
     
     <script src="/js/game.js"></script>
@@ -52,13 +51,10 @@
 <div class="container">
     <div class="header-row">
         <h1>🏆 彩蛋與收集冊</h1>
-        <a href="/" class="back-btn">⬅ 返回主頁</a>
+        <a href="javascript:void(0)" onclick="if(window.parent && window.parent.closeDynamicSheet) { window.parent.closeDynamicSheet(); } else { window.location.href='/'; }" class="back-btn">⬅ 返回</a>
     </div>
 
-    <div class="section-title">
-        🕹️ 隱藏遊戲機台
-        <button id="dev-reset-btn" class="dev-reset-btn" onclick="resetEasterEggs()">重新上鎖與清零</button>
-    </div>
+    <div class="section-title">🕹️ 隱藏遊戲機台 <button id="dev-reset-btn" class="dev-reset-btn" onclick="resetEasterEggs()">清零</button></div>
     <div class="game-grid" id="game-list"></div>
 
     <div class="section-title" style="border-left-color: var(--danger);">📦 特殊成就</div>
@@ -74,8 +70,6 @@
     <div class="sheet-content" style="text-align: center; padding-top: 10px; overflow: hidden; width: 100%;">
         <div class="game-score-box" id="game-score" style="font-size: 20px; font-weight: bold; color: var(--warning); margin-bottom: 5px;"></div>
         <div id="game-high-score" style="font-size: 13px; color: #888; margin-bottom: 10px; font-weight: bold;"></div>
-        <p id="game-hint" style="font-size: 11px; margin: 0; color: #888;"></p>
-        
         <canvas id="game-canvas" width="350" height="250" style="background: #111; border-radius: 10px; border: 2px dashed #444; width: 100%; max-width: 350px; touch-action: none; margin-top: 10px;"></canvas>
         <div id="password-ui" style="display: none; flex-direction: column; gap: 15px; margin: 20px auto; max-width: 250px; align-items: center;"></div>
         <br>
@@ -87,7 +81,8 @@
     function renderGames() {
         const list = document.getElementById('game-list');
         const achList = document.getElementById('achievement-list');
-        
+        if(!list || !achList) return;
+
         const u1 = localStorage.getItem('unlock_runner') === 'true';
         const u2 = localStorage.getItem('unlock_diver') === 'true';
         const u3 = localStorage.getItem('unlock_password') === 'true';
@@ -97,103 +92,39 @@
         const s2 = parseInt(localStorage.getItem('deepStationHighScore')) || 0;
         const s3 = parseInt(localStorage.getItem('passwordHighScore')) || 999;
 
-        // 渲染機台
         let html = '';
         if (u1) {
-            html += `<div class="game-card" style="border-color: var(--warning);" onclick="triggerEasterEgg(true)">
-                        <div class="game-info"><span class="game-name" style="color: var(--warning);">🏃‍♂️ 社畜的最後衝刺</span><span class="game-score">最高存活：${s1} 秒</span></div>
-                        <div class="play-icon">▶️</div></div>`;
+            html += `<div class="game-card" style="border-color: var(--warning);" onclick="triggerEasterEgg(true)"><div class="game-info"><span class="game-name" style="color: var(--warning);">🏃‍♂️ 社畜的最後衝刺</span><span class="game-score">最高存活：${s1} 秒</span></div><div class="play-icon">▶️</div></div>`;
         } else {
             html += `<div class="game-card locked"><div class="game-info"><span class="game-name">🔒 隱藏機台 01</span><span class="game-score">到處點擊試試...</span></div></div>`;
         }
         
         if (u2) {
-            html += `<div class="game-card" style="border-color: var(--info);" onclick="triggerEasterEgg2(true)">
-                        <div class="game-info"><span class="game-name" style="color: var(--info);">🚇 直奔最深月台</span><span class="game-score">最深抵達：B${s2}</span></div>
-                        <div class="play-icon">▶️</div></div>`;
+            html += `<div class="game-card" style="border-color: var(--info);" onclick="triggerEasterEgg2(true)"><div class="game-info"><span class="game-name" style="color: var(--info);">🚇 直奔最深月台</span><span class="game-score">最深抵達：B${s2}</span></div><div class="play-icon">▶️</div></div>`;
         } else {
             html += `<div class="game-card locked"><div class="game-info"><span class="game-name">🔒 隱藏機台 02</span><span class="game-score">可能有事發生...</span></div></div>`;
         }
         
         if (u3) {
             let showS3 = s3 == 999 ? '尚未通關' : `${s3} 次`;
-            html += `<div class="game-card" style="border-color: var(--success);" onclick="triggerEasterEgg3(true)">
-                        <div class="game-info"><span class="game-name" style="color: var(--success);">🔢 終極密碼</span><span class="game-score">最快破解：${showS3}</span></div>
-                        <div class="play-icon">▶️</div></div>`;
+            html += `<div class="game-card" style="border-color: var(--success);" onclick="triggerEasterEgg3(true)"><div class="game-info"><span class="game-name" style="color: var(--success);">🔢 終極密碼</span><span class="game-score">最快破解：${showS3}</span></div><div class="play-icon">▶️</div></div>`;
         } else {
             html += `<div class="game-card locked"><div class="game-info"><span class="game-name">🔒 隱藏機台 03</span><span class="game-score">好像有點可疑...</span></div></div>`;
         }
         list.innerHTML = html;
 
-        // 渲染成就列表
         let achHtml = '';
-        
-        if (uk) {
-            achHtml += `<div class="game-card" style="border-color: var(--danger); cursor: default;">
-                        <div class="game-info">
-                            <span class="game-name" style="color: var(--danger); letter-spacing: 2px; text-shadow: 0 0 8px rgba(255,0,0,0.4);">🩸 從不存在的車站歸來</span>
-                            <span class="game-score">你聽見太鼓聲了嗎...？</span>
-                        </div>
-                        <div class="play-icon">🎫</div>
-                      </div>`;
-        } else {
-            achHtml += `<div class="game-card locked" style="cursor: default;">
-                        <div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">這班列車，本不該存在。</span></div>
-                      </div>`;
-        }
-
-        if (s1 >= 120) {
-            achHtml += `<div class="game-card" style="border-color: var(--warning); cursor: default;">
-                        <div class="game-info"><span class="game-name" style="color: var(--warning);">🏃‍♂️ 壓秒死線達人</span><span class="game-score">在月台狂奔存活超過 120 秒</span></div>
-                        <div class="play-icon">🏅</div></div>`;
-        } else {
-            achHtml += `<div class="game-card locked" style="cursor: default;">
-                        <div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">肺活量考驗：堅持就是勝利...</span></div>
-                      </div>`;
-        }
-
-        if (s2 >= 120) {
-            achHtml += `<div class="game-card" style="border-color: var(--info); cursor: default;">
-                        <div class="game-info"><span class="game-name" style="color: var(--info);">🚇 地心探險家</span><span class="game-score">成功抵達地下 120 層月台</span></div>
-                        <div class="play-icon">🏅</div></div>`;
-        } else {
-            achHtml += `<div class="game-card locked" style="cursor: default;">
-                        <div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">深淵探索：還能再更深嗎...</span></div>
-                      </div>`;
-        }
-
-        if (s3 <= 2) {
-            achHtml += `<div class="game-card" style="border-color: var(--success); cursor: default;">
-                        <div class="game-info"><span class="game-name" style="color: var(--success);">🧠 駭客通靈大師</span><span class="game-score">2 次嘗試以內破解終極密碼</span></div>
-                        <div class="play-icon">🏅</div></div>`;
-        } else {
-            achHtml += `<div class="game-card locked" style="cursor: default;">
-                        <div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">直覺考驗：運氣也是實力的一種...</span></div>
-                      </div>`;
-        }
-
+        if (uk) { achHtml += `<div class="game-card" style="border-color: var(--danger);"><div class="game-info"><span class="game-name" style="color: var(--danger);">🩸 從不存在的車站歸來</span><span class="game-score">你聽見太鼓聲了嗎...？</span></div><div class="play-icon">🎫</div></div>`; }
+        else { achHtml += `<div class="game-card locked"><div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">這班列車，本不該存在。</span></div></div>`; }
         achList.innerHTML = achHtml;
 
-        if(localStorage.getItem('dev_mode_active') === 'true') {
-            document.getElementById('dev-reset-btn').style.display = 'block';
-        } else {
-            document.getElementById('dev-reset-btn').style.display = 'none';
-        }
+        if(localStorage.getItem('dev_mode_active') === 'true') document.getElementById('dev-reset-btn').style.display = 'block';
     }
 
     function resetEasterEggs() {
-        if(confirm("🛠️ [工程模式] 確定要將所有機台重新上鎖，並清空最高分紀錄嗎？")) {
-            localStorage.removeItem('unlock_runner');
-            localStorage.removeItem('unlock_diver');
-            localStorage.removeItem('unlock_password');
-            localStorage.removeItem('unlock_kisaragi');
-            
-            localStorage.removeItem('lateCommuterHighScore');
-            localStorage.removeItem('deepStationHighScore');
-            localStorage.removeItem('passwordHighScore');
-            
+        if(confirm("🛠️ 確定要重置所有成就與分數嗎？")) {
+            ['unlock_runner','unlock_diver','unlock_password','unlock_kisaragi','lateCommuterHighScore','deepStationHighScore','passwordHighScore'].forEach(k => localStorage.removeItem(k));
             renderGames();
-            alert("✅ 已重新上鎖並清空分數！祝您測試愉快。");
         }
     }
 
@@ -204,7 +135,8 @@
         setTimeout(renderGames, 300);
     }
 
-    window.onload = renderGames;
+    // 🌟 安全的事件監聽
+    window.addEventListener('load', renderGames);
 </script>
 
 <audio id="bgm-audio"></audio>
