@@ -18,8 +18,15 @@
         .back-btn:active { background: #555; transform: scale(0.95); }
         .section { background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid #333; }
         .section h3 { margin-top: 0; border-bottom: 1px dashed #444; padding-bottom: 10px; color: #4caf50; font-size: 16px; }
+        
+        /* 基本按鈕樣式 */
         .link-btn { display: block; background: #1a1a1a; color: white; border: 1px solid #555; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 15px; transition: 0.1s; cursor: pointer; }
         .link-btn:active { background: #333; transform: scale(0.98); }
+        
+        /* 開發日誌專屬樣式 (加點變化) */
+        .link-btn-secondary { display: block; background: rgba(33, 150, 243, 0.1); color: var(--info); border: 1px dashed var(--info); text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 10px; transition: 0.1s; cursor: pointer; }
+        .link-btn-secondary:active { background: rgba(33, 150, 243, 0.2); transform: scale(0.98); }
+
     </style>
 </head>
 <body>
@@ -32,7 +39,10 @@
         <div class="section">
             <h3>👨‍💻 關於作者</h3>
             <p style="font-size: 14px; color: var(--text-sub); margin-top: 0; line-height: 1.6;">本服務由 <strong>綠茶地瓜</strong> 獨立開發與維護。<br><br>這是一個為了拯救無數在深夜狂奔的社畜與夜貓子而誕生的生存工具。查看最新版本資訊、碎碎念與 App 開發秘辛，歡迎至小屋逛逛：</p>
-            <a href="https://home.gamer.com.tw/artwork.php?sn=6312909" target="_blank" class="link-btn">📝 綠茶地瓜的更新日誌 (巴哈姆特)</a>
+            
+            <a href="https://home.gamer.com.tw/artwork.php?sn=6312909" target="_blank" class="link-btn">📝 版本更新日誌 (功能與除錯)</a>
+            
+            <a href="https://home.gamer.com.tw/artwork.php?sn=6312913" target="_blank" class="link-btn-secondary">🧠 App 開發秘辛與日誌</a>
         </div>
 
         <div class="section">
