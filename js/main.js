@@ -10,7 +10,6 @@ function showErrorSheet(errorMsg) {
 function closeErrorSheet() { document.getElementById('error-sheet').classList.remove('active'); if (!document.querySelector('.bottom-sheet.active:not(#error-sheet)')) { document.getElementById('overlay').classList.remove('active'); setTimeout(() => { document.getElementById('overlay').style.zIndex = "90"; }, 300); } }
 function copyErrorLog() { const logOutput = document.getElementById('error-log-output'); logOutput.select(); document.execCommand('copy'); alert("✅ 錯誤代碼已複製！"); }
 
-// 🌟 剛剛被我手殘刪掉的靈魂變數補回來了！
 let currentMode = 'survival'; 
 
 // ==========================================
@@ -256,6 +255,25 @@ window.escapeKisaragi = function() {
     else window.location.href = '/collection.html';
 };
 
+// ==========================================
+// 🛡️ 台灣鄉民防禦系統
+// ==========================================
+function getRealStationObj(inputName, type) {
+    if (!inputName || !globalStationData?.[type]) return null;
+    
+    // 1. 統一將「臺」轉成「台」，並支援鄉民俗稱
+    let normInput = inputName.trim().replace(/臺/g, '台');
+    if (normInput === '北車') normInput = '台北車站';
+    
+    // 2. 先找「完全比對」(兩邊都轉成台來比)
+    let found = globalStationData[type].options.find(s => s.name.replace(/臺/g, '台') === normInput);
+    if (found) return found;
+
+    // 3. 如果找不到，試試看「模糊包含」(例如輸入「台北」，自動配對「台北車站」)
+    found = globalStationData[type].options.find(s => s.name.replace(/臺/g, '台').includes(normInput));
+    return found || null;
+}
+
 async function executeFullSearch() {
     const searchType = document.getElementById('search-type').value; 
     const searchStationName = document.getElementById('search-station-input').value; 
@@ -268,18 +286,22 @@ async function executeFullSearch() {
     if (searchStationName === '如月車站' || searchStationName.toUpperCase() === 'KISARAGI') {
         triggerKisaragiEvent(); return;
     }
+
+    const searchStationObj = getRealStationObj(searchStationName, searchType);
+    if (!searchStationObj) { alert("⚠️ 找不到該車站！請確認輸入名稱。"); return; }
+
+    document.getElementById('search-station-input').value = searchStationObj.name;
     
     searchBtn.disabled = true; searchBtn.innerHTML = "⏳ 連線檢索中..."; 
     resultBox.style.justifyContent = 'center'; resultBox.innerHTML = `正在為您連線交通部與本地資料庫...`;
     
     try {
-        // 🌟 這裡直接呼叫已經改好的 fetchSingleStationTime，連 token 參數都免了！
-        let res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, searchMode);
+        let res = await fetchSingleStationTime(searchStationObj.name, searchType, offlineTimetableData, searchMode);
         
-        if (res.status === "not_found" || res.data.length === 0) { resultBox.innerHTML = `<span style="color:var(--warning)">⚠️ 找不到「${searchStationName}」的資料。</span>`; return; }
+        if (res.status === "not_found" || res.data.length === 0) { resultBox.innerHTML = `<span style="color:var(--warning)">⚠️ 找不到「${searchStationObj.name}」的資料。</span>`; return; }
         
         let titleText = searchMode === 'last' ? '🚨 終極末班車時刻表' : '🚉 接下來發車時刻表';
-        let html = `<div style="width: 100%; text-align: left;"><h4 style="color: white; margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 8px;">${titleText}<br><span style="font-size:12px; color:#aaa; font-weight:normal;">車站：${searchStationName}</span></h4>`;
+        let html = `<div style="width: 100%; text-align: left;"><h4 style="color: white; margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 8px;">${titleText}<br><span style="font-size:12px; color:#aaa; font-weight:normal;">車站：${searchStationObj.name}</span></h4>`;
         
         res.data.forEach(item => { 
             let colorTag = item.source === "即時連線" ? "color: var(--success);" : "color: var(--warning);"; 
@@ -308,21 +330,18 @@ window.addEventListener('load', async () => {
 
     if (!document.getElementById('start-station-input')) return;
 
-    // 1. 讀取離線時刻表 (加上報錯)
     try { 
         const timeRes = await fetchWithTimeout('/data/offline-timetable.json', { timeout: 4000 }); 
         if (timeRes.ok) offlineTimetableData = await timeRes.json(); 
         else console.warn("⚠️ 找不到 offline-timetable.json", timeRes.status);
     } catch (e) { console.error("離線時刻表讀取失敗:", e); }
 
-    // 2. 讀取轉乘時刻表 (加上報錯)
     try { 
         const transferRes = await fetchWithTimeout('/data/transfer-timetable.json', { timeout: 4000 }); 
         if (transferRes.ok) transferTimetableData = await transferRes.json(); 
         else console.warn("⚠️ 找不到 transfer-timetable.json", transferRes.status);
     } catch (e) { console.error("轉乘時刻表讀取失敗:", e); }
 
-    // 3. 讀取最重要的車站清單 (加上全畫面報錯與除錯器)
     try { 
         const stationRes = await fetchWithTimeout('/data/stations.json', { timeout: 4000 }); 
         
@@ -348,11 +367,9 @@ window.addEventListener('load', async () => {
             document.getElementById('search-station-input').value = savedStart; 
             checkTransferLock();
         } else {
-            // 如果檔案存在但伺服器不給過 (例如 404)
             showErrorSheet(`致命錯誤：無法載入車站清單！\n路徑：/data/stations.json\n狀態碼：${stationRes.status}`);
         }
     } catch (e) { 
-        // 如果是跨域阻擋 (CORS) 或斷網
         showErrorSheet(`致命連線異常：無法讀取車站資料！\n\n原因：${e.message}\n\n💡 提示：如果你是直接點開 index.html，請改用 VS Code 的 Live Server 啟動！`);
     }
 });
@@ -378,11 +395,12 @@ function renderCustomDropdown(point) {
     }
     
     listContainer.innerHTML = ''; 
-    const filterText = inputField.value.trim().toLowerCase();
+    const filterText = inputField.value.trim().replace(/臺/g, '台').toLowerCase();
     
     let favList = []; let otherList = [];
     options.forEach(station => {
-        if (station.name.toLowerCase().includes(filterText) || filterText === '') {
+        const normStationName = station.name.replace(/臺/g, '台').toLowerCase();
+        if (normStationName.includes(filterText) || filterText === '') {
             if (favoriteStations.includes(station.name)) favList.push(station); else otherList.push(station);
         }
     });
@@ -494,11 +512,11 @@ async function updateStationOptions(point) {
                     
                     // 🌟 智慧防呆轉換器：不管 JSON 外層包什麼，一律精準抓出陣列
                     if (Array.isArray(fullTraData)) {
-                        globalStationData.tra.options = fullTraData; // 純陣列格式
+                        globalStationData.tra.options = fullTraData;
                     } else if (fullTraData.options && Array.isArray(fullTraData.options)) {
-                        globalStationData.tra.options = fullTraData.options; // 包在 {"options": []} 裡
+                        globalStationData.tra.options = fullTraData.options;
                     } else if (fullTraData.tra && fullTraData.tra.options) {
-                        globalStationData.tra.options = fullTraData.tra.options; // 包在 {"tra": {"options": []}} 裡
+                        globalStationData.tra.options = fullTraData.tra.options;
                     } else {
                         console.error("無法解析的 JSON 結構", fullTraData);
                     }
@@ -516,6 +534,7 @@ async function updateStationOptions(point) {
     }
     if (point === 'start') checkTransferLock();
 }
+
 function toggleNotificationState() {
     isNotificationEnabled = !isNotificationEnabled;
     if (isNotificationEnabled) { actionBtn.innerHTML = "🔕 關閉發車通知"; actionBtn.classList.replace('btn-danger', 'btn-warning'); alert("🔔 已開啟通知！"); } 
@@ -554,13 +573,14 @@ async function handleAction() {
 
     if (isCountingDown) { if ("Notification" in window) { if (Notification.permission === "granted") toggleNotificationState(); else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); }); else alert("⚠️ 您之前拒絕了通知權限，請手動開啟！"); } else alert("⚠️ 不支援推播通知！"); return; }
     
-    // 🌟 修正點：這裡只保留一組帶有 ? 的終極防護罩宣告，絕對不會重複！
-    const startStationObj = globalStationData?.[startType]?.options.find(s => s.name === startStationName);
-    const endStationObj = globalStationData?.[endType]?.options.find(s => s.name === endStationName);
+    const startStationObj = getRealStationObj(startStationName, startType);
+    const endStationObj = getRealStationObj(endStationName, endType);
+    if (!startStationObj || !endStationObj) return alert("⚠️ 找不到車站！請確認輸入名稱。");
     
-    if (!startStationObj || !endStationObj) return alert("⚠️ 找不到起訖車站！");
+    document.getElementById('start-station-input').value = startStationObj.name;
+    document.getElementById('end-station-input').value = endStationObj.name;
     
-    localStorage.setItem('lastTrainStart', startStationName); localStorage.setItem('lastTrainEnd', endStationName);
+    localStorage.setItem('lastTrainStart', startStationObj.name); localStorage.setItem('lastTrainEnd', endStationObj.name);
     const startStation = startStationObj.id; const endStation = endStationObj.id;
 
     if (startType === endType && startStation === endStation) { clearInterval(timer); isCountingDown = false; display.innerHTML = "恭喜到達🎉"; display.style.fontSize = "40px"; display.style.color = "#4caf50"; statusText.innerHTML = "早點回家洗洗睡！"; actionBtn.style.display = "none"; cancelBtn.style.display = "none"; planBContainer.style.display = "flex"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "none"); return; }
@@ -574,7 +594,7 @@ async function handleAction() {
             const transferStationObj = globalStationData[startType]?.transferStations?.find(s => s.name === railTransferName);
             if (!transferStationObj) { alert("⚠️ 無效的轉乘站"); actionBtn.disabled = false; actionBtn.innerHTML = "開始計算轉乘"; return; }
             
-            let res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationName, offlineTimetableData);
+            let res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationObj.name, offlineTimetableData);
             
             if (res.time && res.time !== "TOKEN_EXPIRED") {
                 finalTime = res.time; status = res.status;
@@ -585,7 +605,7 @@ async function handleAction() {
 
         } 
         else {
-            const offlineComputedTime = calculateOfflineTime(offlineTimetableData, startStationName, endStationName, startType);
+            const offlineComputedTime = calculateOfflineTime(offlineTimetableData, startStationObj.name, endStationObj.name, startType);
             if (offlineComputedTime) { finalTime = offlineComputedTime; status = "離線演算法"; } 
             else { alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。"); }
         }
@@ -601,6 +621,7 @@ async function handleAction() {
         isCountingDown = false; actionBtn.innerHTML = "開始計算轉乘"; actionBtn.disabled = false;
     } 
 }
+
 function resetPlan() {
     clearInterval(timer); isCountingDown = false; isNotificationEnabled = false; notificationTriggered = false; planBContainer.style.display = "none"; cancelBtn.style.display = "none"; actionBtn.style.display = "block"; actionBtn.innerHTML = "開始計算轉乘"; actionBtn.classList.remove('btn-danger', 'btn-warning'); actionBtn.classList.add('btn-success'); actionBtn.disabled = false;
     statusText.innerHTML = "現在時間"; speedModeText.innerHTML = "待查驗..."; display.style.color = "#e0e0e0"; display.style.fontSize = "50px"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex"); updateClock(); timer = setInterval(updateClock, 1000);
