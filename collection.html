@@ -60,11 +60,11 @@
     <div class="game-grid" id="achievement-list"></div>
 </div>
 
-<div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
+<div class="overlay" id="overlay" onclick="closeGameSheet()"></div>
 <div class="bottom-sheet" id="game-sheet">
     <div class="sheet-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
         <h3 id="game-title">遊戲機台</h3>
-        <button class="close-sheet-btn" onclick="closeAllSheets()">結束</button>
+        <button class="close-sheet-btn" onclick="closeGameSheet()">結束</button>
     </div>
     <div class="sheet-content" style="text-align: center; padding-top: 10px; overflow: hidden; width: 100%;">
         <div class="game-score-box" id="game-score" style="font-size: 20px; font-weight: bold; color: var(--warning); margin-bottom: 5px;"></div>
@@ -130,14 +130,14 @@
         }
     }
 
-    function closeAllSheets() {
+    // 🌟 關鍵修復：把名字改成 closeGameSheet，徹底跟 main.js 井水不犯河水！
+    function closeGameSheet() {
         document.getElementById('game-sheet').classList.remove('active');
         document.getElementById('overlay').classList.remove('active');
         if (typeof isGameRunning !== 'undefined') isGameRunning = false;
         setTimeout(renderGames, 300);
     }
 
-    // 🌟 關鍵修復：不再依賴 load 事件，直接暴力執行，確保畫面 100% 被畫出來！
     renderGames();
 </script>
 
