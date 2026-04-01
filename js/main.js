@@ -485,16 +485,24 @@ async function updateStationOptions(point) {
         const inputField = document.getElementById(point + '-station-input');
 
         // 🚂 台鐵專屬：懶載入 (Lazy Loading) 機制
-        // 如果選了台鐵，而且還沒載入過完整清單 (isFullLoaded 不存在)
         if (selectedType === 'tra' && !globalStationData.tra.isFullLoaded) {
             inputField.placeholder = "⏳ 載入全台車站中...";
             try {
                 const res = await fetchWithTimeout('/data/tra-stations.json', { timeout: 3500 });
                 if (res.ok) {
                     const fullTraData = await res.json();
-                    // 把原本只有 5 個的預設車站，升級成全台完整版！
-                    globalStationData.tra.options = fullTraData;
-                    // 標記為已載入，下次切換就不會再抓一次了
+                    
+                    // 🌟 智慧防呆轉換器：不管 JSON 外層包什麼，一律精準抓出陣列
+                    if (Array.isArray(fullTraData)) {
+                        globalStationData.tra.options = fullTraData; // 純陣列格式
+                    } else if (fullTraData.options && Array.isArray(fullTraData.options)) {
+                        globalStationData.tra.options = fullTraData.options; // 包在 {"options": []} 裡
+                    } else if (fullTraData.tra && fullTraData.tra.options) {
+                        globalStationData.tra.options = fullTraData.tra.options; // 包在 {"tra": {"options": []}} 裡
+                    } else {
+                        console.error("無法解析的 JSON 結構", fullTraData);
+                    }
+                    
                     globalStationData.tra.isFullLoaded = true;
                 }
             } catch (e) {
@@ -508,7 +516,6 @@ async function updateStationOptions(point) {
     }
     if (point === 'start') checkTransferLock();
 }
-
 function toggleNotificationState() {
     isNotificationEnabled = !isNotificationEnabled;
     if (isNotificationEnabled) { actionBtn.innerHTML = "🔕 關閉發車通知"; actionBtn.classList.replace('btn-danger', 'btn-warning'); alert("🔔 已開啟通知！"); } 
