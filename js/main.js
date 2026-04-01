@@ -512,8 +512,9 @@ if(display) { updateClock(); timer = setInterval(updateClock, 1000); }
 async function handleAction() {
     const startType = document.getElementById('start-type').value; 
     const endType = document.getElementById('end-type').value;
-    const startStationName = document.getElementById('start-station-input').value; 
-    const endStationName = document.getElementById('end-station-input').value;
+    // ✅ 安全防護版：在 globalStationData 後面多加一個 `?.`
+const startStationObj = globalStationData?.[startType]?.options.find(s => s.name === startStationName);
+const endStationObj = globalStationData?.[endType]?.options.find(s => s.name === endStationName);
     
     const uiTransferName = document.getElementById('transfer-station-input').value;
     const railTransferName = uiTransferName === '龍山寺' ? '萬華' : uiTransferName;
