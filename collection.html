@@ -94,6 +94,7 @@
         const s2 = parseInt(localStorage.getItem('deepStationHighScore')) || 0;
         const s3 = parseInt(localStorage.getItem('passwordHighScore')) || 999;
 
+        // --- 渲染遊戲機台 ---
         let html = '';
         if (u1) {
             html += `<div class="game-card" style="border-color: var(--warning);" onclick="triggerEasterEgg(true)"><div class="game-info"><span class="game-name" style="color: var(--warning);">🏃‍♂️ 社畜的最後衝刺</span><span class="game-score">最高存活：${s1} 秒</span></div><div class="play-icon">▶️</div></div>`;
@@ -115,12 +116,39 @@
         }
         list.innerHTML = html;
 
+        // --- 🌟 被我弄丟的特殊成就補回來了 ---
         let achHtml = '';
-        if (uk) { achHtml += `<div class="game-card" style="border-color: var(--danger);"><div class="game-info"><span class="game-name" style="color: var(--danger);">🩸 從不存在的車站歸來</span><span class="game-score">你聽見太鼓聲了嗎...？</span></div><div class="play-icon">🎫</div></div>`; }
-        else { achHtml += `<div class="game-card locked"><div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">這班列車，本不該存在。</span></div></div>`; }
+        
+        if (uk) { 
+            achHtml += `<div class="game-card" style="border-color: var(--danger); cursor: default;"><div class="game-info"><span class="game-name" style="color: var(--danger); letter-spacing: 2px; text-shadow: 0 0 8px rgba(255,0,0,0.4);">🩸 從不存在的車站歸來</span><span class="game-score">你聽見太鼓聲了嗎...？</span></div><div class="play-icon">🎫</div></div>`; 
+        } else { 
+            achHtml += `<div class="game-card locked" style="cursor: default;"><div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">這班列車，本不該存在。</span></div></div>`; 
+        }
+
+        if (s1 >= 120) { 
+            achHtml += `<div class="game-card" style="border-color: var(--warning); cursor: default;"><div class="game-info"><span class="game-name" style="color: var(--warning);">🏃‍♂️ 壓秒死線達人</span><span class="game-score">在月台狂奔存活超過 120 秒</span></div><div class="play-icon">🏅</div></div>`; 
+        } else { 
+            achHtml += `<div class="game-card locked" style="cursor: default;"><div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">肺活量考驗：堅持就是勝利...</span></div></div>`; 
+        }
+
+        if (s2 >= 120) { 
+            achHtml += `<div class="game-card" style="border-color: var(--info); cursor: default;"><div class="game-info"><span class="game-name" style="color: var(--info);">🚇 地心探險家</span><span class="game-score">成功抵達地下 120 層月台</span></div><div class="play-icon">🏅</div></div>`; 
+        } else { 
+            achHtml += `<div class="game-card locked" style="cursor: default;"><div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">深淵探索：還能再更深嗎...</span></div></div>`; 
+        }
+
+        if (s3 <= 2) { 
+            achHtml += `<div class="game-card" style="border-color: var(--success); cursor: default;"><div class="game-info"><span class="game-name" style="color: var(--success);">🧠 駭客通靈大師</span><span class="game-score">2 次嘗試以內破解終極密碼</span></div><div class="play-icon">🏅</div></div>`; 
+        } else { 
+            achHtml += `<div class="game-card locked" style="cursor: default;"><div class="game-info"><span class="game-name">🔒 隱藏成就</span><span class="game-score">直覺考驗：運氣也是實力的一種...</span></div></div>`; 
+        }
+
         achList.innerHTML = achHtml;
 
-        if(localStorage.getItem('dev_mode_active') === 'true') document.getElementById('dev-reset-btn').style.display = 'block';
+        if(localStorage.getItem('dev_mode_active') === 'true') {
+            const btn = document.getElementById('dev-reset-btn');
+            if(btn) btn.style.display = 'block';
+        }
     }
 
     function resetEasterEggs() {
@@ -130,7 +158,6 @@
         }
     }
 
-    // 🌟 關鍵修復：把名字改成 closeGameSheet，徹底跟 main.js 井水不犯河水！
     function closeGameSheet() {
         document.getElementById('game-sheet').classList.remove('active');
         document.getElementById('overlay').classList.remove('active');
@@ -138,6 +165,7 @@
         setTimeout(renderGames, 300);
     }
 
+    // 🌟 關鍵修復：放棄所有 load 事件傲嬌判定，網頁讀到這裡就立刻給我畫出來！
     renderGames();
 </script>
 
