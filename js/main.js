@@ -512,9 +512,8 @@ if(display) { updateClock(); timer = setInterval(updateClock, 1000); }
 async function handleAction() {
     const startType = document.getElementById('start-type').value; 
     const endType = document.getElementById('end-type').value;
-    // ✅ 安全防護版：在 globalStationData 後面多加一個 `?.`
-const startStationObj = globalStationData?.[startType]?.options.find(s => s.name === startStationName);
-const endStationObj = globalStationData?.[endType]?.options.find(s => s.name === endStationName);
+    const startStationName = document.getElementById('start-station-input').value; 
+    const endStationName = document.getElementById('end-station-input').value;
     
     const uiTransferName = document.getElementById('transfer-station-input').value;
     const railTransferName = uiTransferName === '龍山寺' ? '萬華' : uiTransferName;
@@ -526,8 +525,10 @@ const endStationObj = globalStationData?.[endType]?.options.find(s => s.name ===
 
     if (isCountingDown) { if ("Notification" in window) { if (Notification.permission === "granted") toggleNotificationState(); else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); }); else alert("⚠️ 您之前拒絕了通知權限，請手動開啟！"); } else alert("⚠️ 不支援推播通知！"); return; }
     
-    const startStationObj = globalStationData[startType]?.options.find(s => s.name === startStationName);
-    const endStationObj = globalStationData[endType]?.options.find(s => s.name === endStationName);
+    // 🌟 修正點：這裡只保留一組帶有 ? 的終極防護罩宣告，絕對不會重複！
+    const startStationObj = globalStationData?.[startType]?.options.find(s => s.name === startStationName);
+    const endStationObj = globalStationData?.[endType]?.options.find(s => s.name === endStationName);
+    
     if (!startStationObj || !endStationObj) return alert("⚠️ 找不到起訖車站！");
     
     localStorage.setItem('lastTrainStart', startStationName); localStorage.setItem('lastTrainEnd', endStationName);
@@ -544,7 +545,6 @@ const endStationObj = globalStationData?.[endType]?.options.find(s => s.name ===
             const transferStationObj = globalStationData[startType]?.transferStations?.find(s => s.name === railTransferName);
             if (!transferStationObj) { alert("⚠️ 無效的轉乘站"); actionBtn.disabled = false; actionBtn.innerHTML = "開始計算轉乘"; return; }
             
-            // 🌟 拔除原本一整串抓 Token 的邏輯，直接呼叫！
             let res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationName, offlineTimetableData);
             
             if (res.time && res.time !== "TOKEN_EXPIRED") {
@@ -572,7 +572,6 @@ const endStationObj = globalStationData?.[endType]?.options.find(s => s.name ===
         isCountingDown = false; actionBtn.innerHTML = "開始計算轉乘"; actionBtn.disabled = false;
     } 
 }
-
 function resetPlan() {
     clearInterval(timer); isCountingDown = false; isNotificationEnabled = false; notificationTriggered = false; planBContainer.style.display = "none"; cancelBtn.style.display = "none"; actionBtn.style.display = "block"; actionBtn.innerHTML = "開始計算轉乘"; actionBtn.classList.remove('btn-danger', 'btn-warning'); actionBtn.classList.add('btn-success'); actionBtn.disabled = false;
     statusText.innerHTML = "現在時間"; speedModeText.innerHTML = "待查驗..."; display.style.color = "#e0e0e0"; display.style.fontSize = "50px"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex"); updateClock(); timer = setInterval(updateClock, 1000);
