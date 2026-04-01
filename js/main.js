@@ -478,10 +478,32 @@ function checkTransferLock() {
     }
 }
 
-function updateStationOptions(point) {
+async function updateStationOptions(point) {
     if (point !== 'transfer') {
         const typeSelect = document.getElementById(point + '-type');
-        document.getElementById(point + '-station-input').value = defaultStations[typeSelect.value] || '';
+        const selectedType = typeSelect.value;
+        const inputField = document.getElementById(point + '-station-input');
+
+        // 🚂 台鐵專屬：懶載入 (Lazy Loading) 機制
+        // 如果選了台鐵，而且還沒載入過完整清單 (isFullLoaded 不存在)
+        if (selectedType === 'tra' && !globalStationData.tra.isFullLoaded) {
+            inputField.placeholder = "⏳ 載入全台車站中...";
+            try {
+                const res = await fetchWithTimeout('/data/tra-stations.json', { timeout: 3500 });
+                if (res.ok) {
+                    const fullTraData = await res.json();
+                    // 把原本只有 5 個的預設車站，升級成全台完整版！
+                    globalStationData.tra.options = fullTraData;
+                    // 標記為已載入，下次切換就不會再抓一次了
+                    globalStationData.tra.isFullLoaded = true;
+                }
+            } catch (e) {
+                console.error("台鐵車站載入失敗", e);
+            }
+            inputField.placeholder = "輸入或選擇車站";
+        }
+
+        inputField.value = defaultStations[selectedType] || '';
         renderCustomDropdown(point);
     }
     if (point === 'start') checkTransferLock();
