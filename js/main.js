@@ -273,30 +273,8 @@ async function executeFullSearch() {
     resultBox.style.justifyContent = 'center'; resultBox.innerHTML = `正在為您連線交通部與本地資料庫...`;
     
     try {
-        try { 
-            if (!cachedTdxToken && ['trtc', 'tra', 'thsr'].includes(searchType)) { 
-                const tokenRes = await fetchWithTimeout('/api/get-token', { timeout: 3500 });
-                if (tokenRes.ok) {
-                    const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; 
-                }
-            } 
-        } catch(networkErr) { console.log("網路異常或管制，跳過 Token 取得"); }
-        
-        let res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken, searchMode);
-        
-        if (res.status === "TOKEN_EXPIRED") { 
-            try { 
-                const tokenRes = await fetchWithTimeout('/api/get-token', { timeout: 3500 }); 
-                if (tokenRes.ok) {
-                    const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; 
-                    res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, cachedTdxToken, searchMode); 
-                }
-            } catch(networkErr) { } 
-        }
-
-        if (res.status === "TOKEN_EXPIRED") {
-            res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, null, searchMode);
-        }
+        // 🌟 這裡直接呼叫已經改好的 fetchSingleStationTime，連 token 參數都免了！
+        let res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, searchMode);
         
         if (res.status === "not_found" || res.data.length === 0) { resultBox.innerHTML = `<span style="color:var(--warning)">⚠️ 找不到「${searchStationName}」的資料。</span>`; return; }
         
@@ -316,7 +294,7 @@ async function executeFullSearch() {
     }
 }
 
-let isCountingDown = false; let timeLeft = 0; let timer; let cachedTdxToken = ""; let offlineTimetableData = null; let globalStationData = null; let transferTimetableData = null; let isNotificationEnabled = false; let notificationTriggered = false;
+let isCountingDown = false; let timeLeft = 0; let timer; let offlineTimetableData = null; let globalStationData = null; let transferTimetableData = null; let isNotificationEnabled = false; let notificationTriggered = false;
 let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; let savedStart = localStorage.getItem('lastTrainStart') || '台北車站'; let savedEnd = localStorage.getItem('lastTrainEnd') || '台北車站';
 
 const display = document.getElementById('time-display'); const statusText = document.getElementById('status-text'); const actionBtn = document.getElementById('action-btn'); const cancelBtn = document.getElementById('cancel-btn'); const speedModeText = document.getElementById('speed-mode'); const planBContainer = document.getElementById('plan-b-container'); 
@@ -538,32 +516,16 @@ async function handleAction() {
 
     actionBtn.innerHTML = "⏳ 演算法推演中..."; actionBtn.disabled = true;
 
-   try {
+    try {
         let finalTime = "23:59"; let status = "系統預設"; let transferPenalty = 0; 
         
         if (startType === 'tra' || startType === 'thsr') {
             const transferStationObj = globalStationData[startType]?.transferStations?.find(s => s.name === railTransferName);
             if (!transferStationObj) { alert("⚠️ 無效的轉乘站"); actionBtn.disabled = false; actionBtn.innerHTML = "開始計算轉乘"; return; }
             
-            try { 
-                if (!cachedTdxToken) { 
-                    const tokenRes = await fetchWithTimeout('/api/get-token', { timeout: 3500 }); 
-                    if (tokenRes.ok) { const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token; }
-                } 
-            } catch(e) { console.log("網路異常或管制，跳過 Token 取得"); }
+            // 🌟 拔除原本一整串抓 Token 的邏輯，直接呼叫！
+            let res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationName, offlineTimetableData);
             
-            let res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationName, offlineTimetableData, cachedTdxToken);
-            
-            if (res.time === "TOKEN_EXPIRED") { 
-                try {
-                    const tokenRes = await fetchWithTimeout('/api/get-token', { timeout: 3500 }); 
-                    if (tokenRes.ok) {
-                        const tokenData = await tokenRes.json(); cachedTdxToken = tokenData.access_token;
-                        res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationName, offlineTimetableData, cachedTdxToken);
-                    }
-                } catch(e) {}
-            }
-
             if (res.time && res.time !== "TOKEN_EXPIRED") {
                 finalTime = res.time; status = res.status;
             } else {
