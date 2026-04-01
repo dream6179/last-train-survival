@@ -599,7 +599,11 @@ async function handleAction() {
             if (res.time && res.time !== "TOKEN_EXPIRED") {
                 finalTime = res.time; status = res.status;
             } else {
-                alert(`⚠️ ${res.status || '轉乘計算失敗'}！今晚可能無法透過這條路線回家了。`);
+                if (res.status === "查無直達轉乘站的班次") {
+                    alert(`⚠️ 找不到從「${startStationObj.name}」直達轉乘站的列車。\n\n💡 建議：小車站通常沒有直達車，請嘗試將出發地改為鄰近的大站（如：台中、彰化）再查詢一次！`);
+                } else {
+                    alert(`⚠️ ${res.status || '轉乘計算失敗'}！今晚可能無法透過這條路線回家了。`);
+                }
                 throw new Error(res.status);
             }
 
