@@ -308,10 +308,24 @@ window.addEventListener('load', async () => {
 
     if (!document.getElementById('start-station-input')) return;
 
-    try { const timeRes = await fetchWithTimeout('/data/offline-timetable.json', { timeout: 4000 }); if (timeRes.ok) offlineTimetableData = await timeRes.json(); } catch (e) {}
-    try { const transferRes = await fetchWithTimeout('/data/transfer-timetable.json', { timeout: 4000 }); if (transferRes.ok) transferTimetableData = await transferRes.json(); } catch (e) {}
+    // 1. 讀取離線時刻表 (加上報錯)
+    try { 
+        const timeRes = await fetchWithTimeout('/data/offline-timetable.json', { timeout: 4000 }); 
+        if (timeRes.ok) offlineTimetableData = await timeRes.json(); 
+        else console.warn("⚠️ 找不到 offline-timetable.json", timeRes.status);
+    } catch (e) { console.error("離線時刻表讀取失敗:", e); }
+
+    // 2. 讀取轉乘時刻表 (加上報錯)
+    try { 
+        const transferRes = await fetchWithTimeout('/data/transfer-timetable.json', { timeout: 4000 }); 
+        if (transferRes.ok) transferTimetableData = await transferRes.json(); 
+        else console.warn("⚠️ 找不到 transfer-timetable.json", transferRes.status);
+    } catch (e) { console.error("轉乘時刻表讀取失敗:", e); }
+
+    // 3. 讀取最重要的車站清單 (加上全畫面報錯與除錯器)
     try { 
         const stationRes = await fetchWithTimeout('/data/stations.json', { timeout: 4000 }); 
+        
         if (stationRes.ok) { 
             globalStationData = await stationRes.json(); 
             
@@ -333,8 +347,14 @@ window.addEventListener('load', async () => {
             document.getElementById('end-station-input').value = savedEnd; 
             document.getElementById('search-station-input').value = savedStart; 
             checkTransferLock();
-        } 
-    } catch (e) {}
+        } else {
+            // 如果檔案存在但伺服器不給過 (例如 404)
+            showErrorSheet(`致命錯誤：無法載入車站清單！\n路徑：/data/stations.json\n狀態碼：${stationRes.status}`);
+        }
+    } catch (e) { 
+        // 如果是跨域阻擋 (CORS) 或斷網
+        showErrorSheet(`致命連線異常：無法讀取車站資料！\n\n原因：${e.message}\n\n💡 提示：如果你是直接點開 index.html，請改用 VS Code 的 Live Server 啟動！`);
+    }
 });
 
 function toggleFavorite(stationName) {
