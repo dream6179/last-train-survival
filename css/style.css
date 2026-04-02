@@ -25,7 +25,6 @@ body { font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main); dis
 .location-block label { font-size: 11px; color: var(--text-sub); margin-bottom: 4px; font-weight: bold; }
 .select-group { display: flex; gap: 8px; position: relative; width: 100%; margin-bottom: 4px; align-items: stretch; }
 
-/* 🌟 強制交通工具與站牌標籤寬度對齊 */
 select, .station-input { 
     background-color: #2c2c2c; color: white; border: 1px solid #444; 
     padding: 12px; padding-right: 35px; 
@@ -34,17 +33,22 @@ select, .station-input {
 .type-select, .type-select-label { 
     width: 30% !important; flex-shrink: 0; box-sizing: border-box;
 }
+
+/* 🌟 核心修正：讓站牌標籤看起來像鎖定的選單 */
 .type-select-label {
-    background: #333; border: 1px solid #444; border-radius: 10px;
-    font-size: 11px; color: var(--warning);
+    background: #2a2a2a; border: 1px solid #444; border-radius: 10px;
+    font-size: 13px; color: #ccc; font-weight: bold;
     display: flex; align-items: center; justify-content: center;
 }
 
 .autocomplete-wrapper { position: relative; width: 70%; flex-grow: 1; }
 
 .clear-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; background: rgba(255, 255, 255, 0.2); color: #fff; border-radius: 50%; display: none; justify-content: center; align-items: center; cursor: pointer; font-size: 14px; z-index: 5; }
+.clear-btn:active { background: rgba(255, 255, 255, 0.4); }
+
 .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background-color: #2c2c2c; border: 1px solid #444; z-index: 1000; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
 .dropdown-item { padding: 12px; border-bottom: 1px solid #333; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.star-btn { padding: 0 10px; font-size: 18px; }
 
 .time-area { margin: 5px 0 15px 0; display: flex; flex-direction: column; align-items: center; min-height: 110px; justify-content: center; }
 .time-display { font-size: 55px; font-weight: bold; color: #e0e0e0; letter-spacing: 2px; }
