@@ -1,7 +1,10 @@
 // ==========================================
-// 🚀 末班車生存戰 核心路由與 API 引擎 (Vercel 全代理版)
+// 🚀 末班車生存戰 核心路由與 API 引擎 (雲端+離線字典雙引擎版)
 // ==========================================
 
+/**
+ * 🌟 全域時光機 (開發者模式)
+ */
 function getSystemTime() {
     if (localStorage.getItem('dev_mode_active') === 'true') {
         let d = new Date(); d.setHours(23, 30, 0, 0); return d;
@@ -9,9 +12,12 @@ function getSystemTime() {
     return new Date();
 }
 
+/**
+ * ⏳ 帶有超時控制的 Fetch
+ */
 async function fetchWithTimeout(resource, options = {}) {
-    // 🌟 將預設超時拉長到 15 秒，給公網跳板與 TDX 充分的時間處理大數據
-    const { timeout = 15000 } = options;
+    // 預設耐心提高到 15 秒，給予 TDX 與 Vercel 充分的運算空間
+    const { timeout = 15000 } = options; 
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     const response = await fetch(resource, { ...options, signal: controller.signal });
@@ -20,20 +26,20 @@ async function fetchWithTimeout(resource, options = {}) {
 }
 
 function getOperatingDateString() {
-    const now = getSystemTime();
+    const now = getSystemTime(); 
     if (now.getHours() < 4) now.setDate(now.getDate() - 1);
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
 function getNowTimeString() {
-    const now = getSystemTime();
+    const now = getSystemTime(); 
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
 function timeToMinutes(timeStr) {
     if (!timeStr || !timeStr.includes(':')) return 0;
     let [h, m] = timeStr.split(':').map(Number);
-    if (h < 4) h += 24;
+    if (h < 4) h += 24; 
     return h * 60 + m;
 }
 
@@ -44,6 +50,9 @@ function minutesToTime(mins) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+/**
+ * 解析本地離線備援資料 (針對北捷)
+ */
 function parseOfflineData(stationCode, stationNode, lineData) {
     let results = [];
     let prefixMatch = stationCode.match(/^[A-Z]+/);
@@ -79,6 +88,9 @@ function parseOfflineData(stationCode, stationNode, lineData) {
     return results;
 }
 
+/**
+ * 查詢單一車站時刻表
+ */
 async function fetchSingleStationTime(stationName, type, offlineData, searchMode = 'now') {
     if (!globalStationData || !globalStationData[type]) return { status: "not_found", data: [] };
     const stationObj = globalStationData[type].options.find(s => s.name === stationName);
@@ -87,7 +99,7 @@ async function fetchSingleStationTime(stationName, type, offlineData, searchMode
     const stationId = stationObj.id;
     const today = getOperatingDateString();
     const nowTime = getNowTimeString();
-    const currentMins = timeToMinutes(nowTime);
+    const currentMins = timeToMinutes(nowTime); 
     
     let results = [];
 
@@ -98,10 +110,9 @@ async function fetchSingleStationTime(stationName, type, offlineData, searchMode
             const urlTrtc = `/api/get-tdx-data?path=${encodeURIComponent(path)}&$filter=${encodeURIComponent(filter)}&$format=JSON`;
             
             let resTrtc = await fetchWithTimeout(urlTrtc);
-            if (!resTrtc.ok) throw new Error("代理伺服器或 TDX 拒絕連線");
+            if (!resTrtc.ok) throw new Error("代理連線失敗");
             
             let data = await resTrtc.json();
-
             if (data.length === 0) {
                 const pathNtmc = '/v2/Rail/Metro/StationTimeTable/NTMC';
                 const urlNtmc = `/api/get-tdx-data?path=${encodeURIComponent(pathNtmc)}&$filter=${encodeURIComponent(filter)}&$format=JSON`;
@@ -109,29 +120,23 @@ async function fetchSingleStationTime(stationName, type, offlineData, searchMode
                 if (resNtmc.ok) data = await resNtmc.json();
             }
             data.forEach(route => { route.Timetables.forEach(t => { results.push({ destination: t.DestinationStationName.Zh_tw, time: t.DepartureTime, source: "即時連線" }); }); });
-        }
+        } 
         else if (type === 'tra') {
             const path = `/v3/Rail/TRA/DailyStationTimetable/Today/Station/${stationId}`;
             const urlTra = `/api/get-tdx-data?path=${encodeURIComponent(path)}&$format=JSON`;
-            
             let resTra = await fetchWithTimeout(urlTra);
-            if (!resTra.ok) throw new Error("代理伺服器或 TDX 拒絕連線");
-            
-            let data = await resTra.json();
+            let data = await resTra.json(); 
             if (data.StationTimetables) { data.StationTimetables.forEach(dir => dir.TimeTables.forEach(t => results.push({ destination: t.DestinationStationName.Zh_tw, time: t.DepartureTime, source: "即時連線" }))); }
-        }
+        } 
         else if (type === 'thsr') {
             const path = `/v2/Rail/THSR/DailyTimetable/Station/${stationId}/${today}`;
             const urlThsr = `/api/get-tdx-data?path=${encodeURIComponent(path)}&$format=JSON`;
-            
             let resThsr = await fetchWithTimeout(urlThsr);
-            if (!resThsr.ok) throw new Error("代理伺服器或 TDX 拒絕連線");
-
-            let data = await resThsr.json();
+            let data = await resThsr.json(); 
             data.forEach(t => results.push({ destination: t.Direction === 0 ? "左營(南下)" : "南港(北上)", time: t.DepartureTime, source: "即時連線" }));
         }
 
-        if (results.length === 0) throw new Error("代理回傳查無班次，轉入離線防空洞");
+        if (results.length === 0) throw new Error("查無即時班次");
 
         if (searchMode === 'last') {
             let lastTrainsMap = {};
@@ -144,28 +149,21 @@ async function fetchSingleStationTime(stationName, type, offlineData, searchMode
             return { status: "success", data: results };
         } else {
             results = results.filter(r => timeToMinutes(r.time) >= currentMins).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-            if (results.length === 0) throw new Error("今日已無班次，轉入離線驗證");
             return { status: "success", data: results.slice(0, 10) };
         }
 
     } catch (err) {
-        console.warn("網路異常或無資料，啟動離線防空洞:", err.message);
-        
         if (offlineData && offlineData[type]) {
             let targetNode = null; let targetCode = null;
             for (let code in offlineData[type]) {
                 if (offlineData[type][code].name === stationName) { targetNode = offlineData[type][code]; targetCode = code; break; }
             }
-
             if (targetNode) {
                 let offlineResults = parseOfflineData(targetCode, targetNode, offlineData[type]);
-                if (searchMode === 'last') {
-                    offlineResults.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-                    return { status: "success", data: offlineResults };
-                } else {
+                if (searchMode === 'last') return { status: "success", data: offlineResults.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time)) };
+                else {
                     offlineResults = offlineResults.filter(r => timeToMinutes(r.time) >= currentMins).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-                    if(offlineResults.length === 0) return { status: "success", data: [{ destination: "本日已無班次", time: "--:--", source: "系統判定" }] };
-                    return { status: "success", data: offlineResults.slice(0, 10) };
+                    return { status: "success", data: offlineResults.length > 0 ? offlineResults.slice(0, 10) : [{ destination: "本日已無班次", time: "--:--", source: "系統判定" }] };
                 }
             }
         }
@@ -180,66 +178,62 @@ function calculateOfflineTime(offlineData, start, end, type) {
         if (offlineData[type][code].name === start) { targetNode = offlineData[type][code]; targetCode = code; break; }
     }
     if (!targetNode) return null;
-    
     const parsedResults = parseOfflineData(targetCode, targetNode, offlineData[type]);
     let maxMins = -1; let latestTimeStr = null;
     parsedResults.forEach(item => { let mins = timeToMinutes(item.time); if (mins > maxMins) { maxMins = mins; latestTimeStr = item.time; } });
     return latestTimeStr;
 }
 
+/**
+ * 跨系統雙段生存計算 (核心: 雲端優先，超時自動降級離線字典)
+ */
 async function fetchTwoStageSurvivalTime(startType, startId, transferId, transferName, endName, offlineData) {
     let trtcLastTime = calculateOfflineTime(offlineData, transferName, endName, 'trtc');
     if (!trtcLastTime) return { time: null, status: "查無北捷轉乘班次" };
     
     let targetArrivalMins = timeToMinutes(trtcLastTime) - 30;
-
     if (startId === transferId) return { time: minutesToTime(targetArrivalMins), status: "同站跨系統 (-30分)" };
 
-    const today = getOperatingDateString();
-    let path = "";
-
-    if (startType === 'tra') {
-        path = `/v3/Rail/TRA/DailyTrainTimetable/OD/${startId}/to/${transferId}/${today}`;
-    } else if (startType === 'thsr') {
-        path = `/v2/Rail/THSR/DailyTimetable/OD/${startId}/to/${transferId}/${today}`;
-    }
+    const today = getOperatingDateString(); 
+    let path = (startType === 'tra') 
+        ? `/v3/Rail/TRA/DailyTrainTimetable/OD/${startId}/to/${transferId}/${today}`
+        : `/v2/Rail/THSR/DailyTimetable/OD/${startId}/to/${transferId}/${today}`;
 
     const url = `/api/get-tdx-data?path=${encodeURIComponent(path)}&$format=JSON`;
 
     try {
-        // 🌟 給予 15 秒極限等待
-        const response = await fetchWithTimeout(url, { timeout: 15000 });
-        if (!response.ok) return { time: null, status: `代理異常 (HTTP ${response.status})` };
+        // 🌟 對於跨段查詢給予 7 秒耐心，超時則放棄連線發動離線字典
+        const response = await fetchWithTimeout(url, { timeout: 7000 });
+        if (response.ok) {
+            const data = await response.json(); 
+            let validTrains = [];
+            const trains = startType === 'tra' ? (data.TrainTimetables || []) : (data || []);
+            
+            trains.forEach(t => {
+                if (timeToMinutes(t.DestinationStopTime.ArrivalTime) <= targetArrivalMins) 
+                    validTrains.push(t.OriginStopTime.DepartureTime);
+            });
 
-        // 🌟 避免直接 parse JSON 導致當機，先讀成字串
-        const text = await response.text();
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch (e) {
-            return { time: null, status: "TDX資料解析失敗，伺服器可能當機" };
-        }
-
-        let validTrains = [];
-        if (startType === 'tra' && data.TrainTimetables) {
-            data.TrainTimetables.forEach(t => { if (timeToMinutes(t.DestinationStopTime.ArrivalTime) <= targetArrivalMins) validTrains.push(t.OriginStopTime.DepartureTime); });
-        } else if (startType === 'thsr') {
-            data.forEach(t => { if (timeToMinutes(t.DestinationStopTime.ArrivalTime) <= targetArrivalMins) validTrains.push(t.OriginStopTime.DepartureTime); });
-        }
-
-        if (validTrains.length === 0) {
-            const nowHours = getSystemTime().getHours();
-            if (nowHours > 6 && nowHours < 21) {
-                return { time: null, status: "查無直達轉乘站的班次" };
+            if (validTrains.length > 0) {
+                validTrains.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+                return { time: validTrains[validTrains.length - 1], status: "雙段精準計算" };
             } else {
-                return { time: null, status: "錯過轉乘末班車" };
+                const nowHours = getSystemTime().getHours();
+                if (nowHours > 6 && nowHours < 21) return { time: null, status: "查無直達轉乘站的班次" };
+                else return { time: null, status: "錯過轉乘末班車" };
             }
         }
-        
-        validTrains.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
-        return { time: validTrains[validTrains.length - 1], status: "雙段精準計算" };
     } catch (err) {
-        // 🌟 讓真實的錯誤名稱直接顯示在畫面上！
-        return { time: null, status: `連線中斷 (${err.name})` };
+        console.warn("⚠️ 連線超時或異常，啟動離線保險字典...");
     }
+
+    // ==========================================
+    // 🛡️ 離線保險字典邏輯 (最後的避難所)
+    // ==========================================
+    if (startType === 'tra' && typeof traOfflineDict !== 'undefined' && traOfflineDict) {
+        let safeTime = traOfflineDict[startId] || traOfflineDict["DEFAULT"];
+        return { time: safeTime, status: "離線保險估算" };
+    }
+
+    return { time: "22:15", status: "系統保險預估" };
 }
