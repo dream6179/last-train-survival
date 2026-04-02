@@ -12,35 +12,22 @@
         .container { width: 90%; max-width: 400px; margin: 20px auto; padding-bottom: 30px; }
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #333; }
         .header-row h1 { font-size: 20px; color: var(--info); margin: 0; }
-        /* 🌟 防彈返回鍵樣式 */
         .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; display: inline-block; }
         .back-btn:active { background: #555; transform: scale(0.95); }
-        
         .content-box { background: var(--card-bg); border: 1px solid #333; border-radius: 12px; padding: 20px; font-size: 14px; line-height: 1.6; color: #ccc; }
         .content-box h3 { color: white; margin-top: 0; border-left: 3px solid var(--info); padding-left: 10px; }
-        .content-box ul { padding-left: 20px; margin-bottom: 0; }
-        .content-box li { margin-bottom: 10px; }
     </style>
 </head>
 <body>
-
 <div class="container">
     <div class="header-row">
         <h1>📖 快速使用說明</h1>
-        <a href="javascript:void(0)" onclick="if(window.parent && window.parent.closeAllSheets) { window.parent.closeAllSheets(); } else { window.location.href='/'; }" class="back-btn">⬅ 返回主頁</a>
+        <a href="javascript:void(0)" onclick="if(window.parent && window.parent.closePageOnly) { window.parent.closePageOnly(); } else { window.location.href='/'; }" class="back-btn">⬅ 返回設定</a>
     </div>
-
     <div class="content-box">
         <h3>如何使用末班車生存？</h3>
-        <ul>
-            <li><strong>設定起迄站：</strong> 選擇您的出發與目的地，系統將自動判斷最適合的轉乘路線。</li>
-            <li><strong>公車動態：</strong> 若選擇公車客運，請先輸入「路線」，再於下方填入精準的「站牌名稱」。</li>
-            <li><strong>防呆機制：</strong> 系統內建 12 小時跨日判定，確保您在午夜過後查詢依然準確。</li>
-            <li><strong>呼叫支援：</strong> 當倒數計時歸零顯示「來不及了」，下方會自動彈出 Uber 呼叫按鈕，提供您最後的備案。</li>
-        </ul>
-        <p style="margin-top: 20px; color: var(--warning); font-weight: bold; text-align: center;">祝您今晚順利到家！</p>
+        <p>設定起迄站，系統將判斷最適合的轉乘路線。若選擇公車，請輸入路線後再填寫精準站牌名稱。系統內建 12 小時跨日判定，確保深夜查詢準確。</p>
     </div>
 </div>
-
 </body>
 </html>
