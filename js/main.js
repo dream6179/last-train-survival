@@ -186,8 +186,11 @@ window.handleAction = async function() {
 
 window.resetPlan = function() { 
     isCountingDown = false; 
-    document.getElementById('action-btn').style.display = 'block'; 
+    // 隱藏取消按鈕
     document.getElementById('cancel-btn').style.display = 'none'; 
+    // 顯示開始按鈕
+    document.getElementById('action-btn').style.display = 'block'; 
+    // 🌟 隱藏 Uber 備案
     document.getElementById('plan-b-container').style.display = 'none'; 
     document.getElementById('speed-mode').innerText = '待查驗...'; 
     const disp = document.getElementById('time-display');
