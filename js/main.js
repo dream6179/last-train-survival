@@ -11,10 +11,10 @@ window.addEventListener('load', async () => {
 });
 
 function initCustomAutocomplete() {
-    ['start', 'end', 'transfer'].forEach(point => {
+    // 🌟 移除 transfer，只留起迄站
+    ['start', 'end'].forEach(point => {
         const inputField = document.getElementById(point + '-station-input');
         const clearBtn = document.getElementById(point + '-clear-btn');
-        if(!inputField) return;
 
         // 監聽輸入：顯示/隱藏清除按鈕
         inputField.addEventListener('input', () => {
