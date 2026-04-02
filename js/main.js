@@ -6,13 +6,12 @@ let timeLeft = 0;
 let globalStationData = null;
 let offlineTimetableData = null;
 
-// 🌟 補回：讀取鄉民的最愛與上次輸入
 let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; 
 let savedStart = localStorage.getItem('lastTrainStart') || '台北車站'; 
 let savedEnd = localStorage.getItem('lastTrainEnd') || '台北車站';
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站', 'bus': '' };
 
-// 🌟 忍者修復：偷偷把 iOS 的下拉箭頭藏起來，不用改 HTML
+// 隱藏 iOS 原生下拉箭頭
 const style = document.createElement('style');
 style.innerHTML = `select { -webkit-appearance: none; appearance: none; }`;
 document.head.appendChild(style);
@@ -22,7 +21,6 @@ window.addEventListener('load', async () => {
         const res = await fetch('/data/stations.json'); 
         if(res.ok) { 
             globalStationData = await res.json(); 
-            // 🌟 補回：啟動選單工人
             initCustomAutocomplete();
             document.getElementById('start-station-input').value = savedStart; 
             document.getElementById('end-station-input').value = savedEnd; 
@@ -37,7 +35,7 @@ window.addEventListener('load', async () => {
 });
 
 // ==========================================
-// 🌟 補回：車站下拉選單與防呆系統
+// 車站下拉選單與防呆系統
 // ==========================================
 function checkTransferLock() {
     const startType = document.getElementById('start-type').value;
@@ -75,7 +73,6 @@ function renderCustomDropdown(point) {
         const item = document.createElement('div'); item.className = 'dropdown-item';
         item.innerHTML = `<span>${station.name}</span><span class="star-icon" style="color:${isFav?'#ffca28':'#666'}">${isFav?'★':'☆'}</span>`;
         
-        // 點擊星星加入最愛
         item.querySelector('.star-icon').addEventListener('mousedown', (e) => { 
             e.preventDefault(); e.stopPropagation(); 
             if (favoriteStations.includes(station.name)) {
@@ -87,7 +84,6 @@ function renderCustomDropdown(point) {
             renderCustomDropdown(point);
         });
         
-        // 點擊車站選項
         item.addEventListener('click', () => { 
             inputField.value = station.name; 
             listContainer.style.display = 'none'; 
@@ -120,7 +116,6 @@ function initCustomAutocomplete() {
                 if(type !== 'bus') { inputField.value = ''; renderCustomDropdown(point); } 
             });
         }
-        // 點擊外面時關閉選單
         document.addEventListener('click', (e) => {
             const listContainer = document.getElementById(point + '-autocomplete-list');
             const wrapper = inputField?.closest('.autocomplete-wrapper');
@@ -160,14 +155,40 @@ window.getRealStationObj = function(inputName, type) {
 };
 
 window.handleAction = async function() {
-    const type = document.getElementById('start-type').value;
-    let start = document.getElementById('start-station-input').value.trim();
-    if(type === 'bus') { let stop = document.getElementById('start-bus-stop-input').value.trim(); if(stop) start += `|${stop}`; }
-    const end = document.getElementById('end-station-input').value.trim();
+    const startType = document.getElementById('start-type').value;
+    const endType = document.getElementById('end-type').value;
+    let startName = document.getElementById('start-station-input').value.trim();
+    let endName = document.getElementById('end-station-input').value.trim();
     
-    const btn = document.getElementById('action-btn'); btn.innerHTML = "⏳ 計算中..."; btn.disabled = true;
+    if (startType === 'bus') { 
+        let stop = document.getElementById('start-bus-stop-input').value.trim(); 
+        if(stop) startName += `|${stop}`; 
+    }
+    
+    if (!startName || !endName) return alert("⚠️ 請輸入起訖點");
+    
+    const btn = document.getElementById('action-btn'); 
+    btn.innerHTML = "⏳ 計算中..."; 
+    btn.disabled = true;
+    
     try {
-        let res = await fetchTwoStageSurvivalTime(type, start, '', '', end, offlineTimetableData);
+        // 🌟 修復點 1：重新把轉乘邏輯找回來！
+        const startObj = window.getRealStationObj(startName, startType) || {id: startName, name: startName};
+        const endObj = window.getRealStationObj(endName, endType) || {id: endName, name: endName};
+        
+        let transferName = startObj.name;
+        let transferId = startObj.id;
+
+        // 如果是台鐵/高鐵，要抓取畫面上的「轉乘站」輸入框
+        if (startType === 'tra' || startType === 'thsr') {
+            transferName = document.getElementById('transfer-station-input').value;
+            let tObj = window.getRealStationObj(transferName, 'trtc');
+            if(tObj) transferId = tObj.id; else transferId = transferName;
+        }
+
+        // 把正確的參數餵給 routing.js
+        let res = await fetchTwoStageSurvivalTime(startType, startObj.id, transferId, transferName, endObj.name, offlineTimetableData);
+        
         if (res.time) {
             document.getElementById('speed-mode').innerText = res.time;
             document.getElementById('cancel-btn').style.display='flex';
@@ -193,7 +214,6 @@ window.resetPlan = function() {
     document.getElementById('plan-b-container').style.display = 'none'; 
     document.getElementById('speed-mode').innerText = '待查驗...'; 
     
-    // 🌟 補回：解除求生模式時，要把大字體恢復
     const display = document.getElementById('time-display');
     if(display) {
         display.style.fontSize = '50px';
@@ -205,13 +225,15 @@ function updateClock() {
     const display = document.getElementById('time-display');
     if (!display || typeof getSystemTime !== 'function') return;
     const now = getSystemTime();
+    
     if (!isCountingDown) { 
         display.style.fontSize = '50px';
         display.innerHTML = now.toTimeString().split(' ')[0]; 
     } else {
         if (timeLeft <= 0) { 
-            display.style.fontSize = '40px'; // 🌟 防破版：把字體稍微縮小一點
-            display.innerHTML = "來不及了💸"; 
+            // 🌟 修復點 2：字體縮小到 32px，確保「來不及了 💸」乖乖待在同一行
+            display.style.fontSize = '32px'; 
+            display.innerHTML = "來不及了 💸"; 
             document.getElementById('plan-b-container').style.display = 'flex'; 
             return; 
         }
