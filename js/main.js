@@ -1,13 +1,43 @@
+/**
+ * 🌟 超時防護搬運工 (fetchWithTimeout)
+ * 作用：發送請求，如果超時就直接中斷，避免頁面卡死。
+ */
+async function fetchWithTimeout(resource, options = {}) {
+    // 預設超時時間設為 3500 毫秒 (3.5秒)
+    const { timeout = 3500 } = options;
+    
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+        const response = await fetch(resource, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id); // 如果準時回來，就清除計時器
+        return response;
+    } catch (error) {
+        clearTimeout(id); // 發生錯誤（包含超時）也要清除
+        throw error;      // 丟出錯誤讓後面的 try-catch 接住
+    }
+}
+
 let isCountingDown = false; let timeLeft = 0; let globalStationData = null; let offlineTimetableData = null;
 let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; 
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站', 'bus': '' };
 
 window.addEventListener('load', async () => {
+    // 🌟 升級版：給 stations.json 3.5秒限時
     try { 
-        const res = await fetch('/data/stations.json'); 
+        const res = await fetchWithTimeout('/data/stations.json', { timeout: 3500 }); 
         if(res.ok) { globalStationData = await res.json(); initCustomAutocomplete(); } 
-    } catch(e){}
-    try { const timeRes = await fetch('/data/offline-timetable.json'); if(timeRes.ok) offlineTimetableData = await timeRes.json(); } catch(e){}
+    } catch(e) { console.error("車站資料載入超時或失敗"); }
+
+    // 🌟 升級版：給離線資料庫 3.5秒限時
+    try { 
+        const timeRes = await fetchWithTimeout('/data/offline-timetable.json', { timeout: 3500 }); 
+        if(timeRes.ok) offlineTimetableData = await timeRes.json(); 
+    } catch(e) { console.error("離線資料庫載入超時"); }
 });
 
 function initCustomAutocomplete() {
@@ -135,24 +165,47 @@ window.handleAction = async function() {
     let startName = document.getElementById('start-station-input').value.trim();
     const endName = document.getElementById('end-station-input').value.trim();
     if(startType === 'bus') { let stop = document.getElementById('start-bus-stop-input').value.trim(); if(stop) startName += `|${stop}`; }
-    const btn = document.getElementById('action-btn'); btn.innerHTML = "⏳ 計算中..."; btn.disabled = true;
+    
+    const btn = document.getElementById('action-btn'); 
+    btn.innerHTML = "⏳ 計算中..."; 
+    btn.disabled = true;
+
     try {
         let transferName = (startType === 'tra' || startType === 'thsr') ? document.getElementById('transfer-station-input').value : startName;
+        
+        // 🌟 關鍵改動：這裡我們可以給 API 呼叫一個時限 (例如 5 秒)
+        // 注意：這裡假設 fetchTwoStageSurvivalTime 內部會用到 fetch
+        // 如果該函式是你寫在 routing.js 的，建議去裡面把 fetch 改成 fetchWithTimeout
+        
         let res = await fetchTwoStageSurvivalTime(startType, startName, startName, transferName, endName, offlineTimetableData);
-        if (res.time) {
+        
+        if (res && res.time) {
+            // ... 原本的 UI 更新邏輯 ...
             document.getElementById('speed-mode').innerText = res.time;
             document.getElementById('cancel-btn').style.display = 'flex';
             btn.style.display = 'none';
             document.querySelector('.time-area .status').innerText = "剩餘時間";
             isCountingDown = true;
+            
             const now = new Date(); let target = new Date();
             const [hh, mm] = res.time.split(':').map(Number); target.setHours(hh, mm, 0, 0);
             if (now > target) target.setDate(target.getDate() + 1);
             timeLeft = Math.floor((target - now) / 1000);
-            if (timeLeft > 43200) timeLeft = 0; // 超過12小時判定為錯過
-        } else alert(res.status);
-    } catch (e) { alert("計算失敗"); }
-    finally { btn.disabled = false; btn.innerHTML = "開始計算轉乘"; }
+            if (timeLeft > 43200) timeLeft = 0; 
+        } else {
+            alert(res.status || "找不到合適的班次");
+        }
+    } catch (e) { 
+        // 🌟 如果超時，就會跑到這裡
+        if (e.name === 'AbortError') {
+            alert("⚠️ 網路連線過慢，建議切換至全查詢模式或稍後再試。");
+        } else {
+            alert("計算失敗，請檢查站名輸入是否正確。");
+        }
+    } finally { 
+        btn.disabled = false; 
+        btn.innerHTML = "開始計算轉乘"; 
+    }
 };
 
 window.resetPlan = function() {
