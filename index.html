@@ -61,32 +61,8 @@
 </div>
 
 <script>
-    async function checkDevPassword() {
-        const pwd = prompt("🔒 請輸入工程模式密碼：");
-        if (pwd === null) return; 
-        try {
-            const res = await fetch('/data/config.json?t=' + new Date().getTime());
-            const data = await res.json();
-            if (pwd === data.dev_key) {
-                sessionStorage.setItem('dev_mode_bypass', 'true');
-                document.getElementById('maintenance-overlay').style.display = 'none';
-                alert("✅ 密碼正確，已為您暫時解除維護鎖定。");
-            } else { alert("❌ 存取拒絕：密碼錯誤"); }
-        } catch (e) { alert("❌ 系統錯誤，無法驗證鑰匙。"); }
-    }
-
-    fetch('/data/config.json?t=' + new Date().getTime())
-        .then(res => res.json())
-        .then(data => {
-            const isBypassed = sessionStorage.getItem('dev_mode_bypass') === 'true';
-            if (data.maintenance === 1 && !isBypassed) {
-                document.getElementById('maintenance-overlay').style.display = 'flex';
-                if (data.message) document.getElementById('maintenance-msg').innerHTML = data.message;
-            } else if (data.maintenance === 2 && !isBypassed) {
-                document.getElementById('soft-warning-overlay').style.display = 'flex';
-                if (data.warning) document.getElementById('soft-warning-msg').innerHTML = data.warning;
-            }
-        }).catch(e => console.log('正常啟動模式'));
+    <script src="/js/guard.js"></script>
+    
 </script>
 <div class="container">
     <div class="header-row">
