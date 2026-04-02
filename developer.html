@@ -28,8 +28,12 @@
         .section { background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid #333; width: 100%; box-sizing: border-box; }
         .section h3 { margin-top: 0; border-bottom: 1px dashed #444; padding-bottom: 10px; color: var(--success); font-size: 16px; }
         
+        /* 🌟 撿回來的酷酷按鈕樣式 */
         .link-btn { display: block; background: #1a1a1a; color: white; border: 1px solid #555; text-align: center; padding: 12px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 15px; transition: 0.1s; cursor: pointer; width: 100%; box-sizing: border-box; }
         .link-btn:active { background: #333; transform: scale(0.98); }
+
+        .link-btn-secondary { display: block; background: rgba(33, 150, 243, 0.1); color: var(--info); border: 1px dashed var(--info); text-align: center; padding: 12px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 10px; transition: 0.1s; cursor: pointer; width: 100%; box-sizing: border-box; }
+        .link-btn-secondary:active { background: rgba(33, 150, 243, 0.2); transform: scale(0.98); }
         
         .avatar { font-size: 50px; text-align: center; margin-bottom: 15px; }
     </style>
@@ -46,9 +50,11 @@
             <h3>👨‍💻 關於作者</h3>
             <p style="font-size: 14px; color: var(--text-sub); margin-top: 0; line-height: 1.6;">
                 本服務由 <strong>綠茶地瓜</strong> 獨立開發與維護。<br><br>
-                這是一個為了拯救無數在深夜狂奔的社畜與夜貓子而誕生的生存工具。
+                這是一個為了拯救無數在深夜狂奔的社畜與夜貓子而誕生、不斷進化的生存工具。
             </p>
-            <a href="https://home.gamer.com.tw/artwork.php?sn=6310367" target="_blank" class="link-btn">📝 綠茶地瓜的開發日誌 (巴哈)</a>
+            
+            <a href="https://home.gamer.com.tw/artwork.php?sn=6312909" target="_blank" class="link-btn">📝 版本更新日誌 (功能與除錯)</a>
+            <a href="https://home.gamer.com.tw/artwork.php?sn=6312913" target="_blank" class="link-btn-secondary">🧠 App 開發秘辛與碎碎念</a>
         </div>
 
         <div class="section">
@@ -65,7 +71,6 @@
     </div> 
     
     <script>
-        // 更新按鈕狀態視覺
         function updateDevBtn() {
             const btn = document.getElementById('dev-mode-btn');
             if(!btn) return;
@@ -87,14 +92,12 @@
                 localStorage.setItem('dev_mode_active', 'false');
                 alert("🔴 已關閉開發者模式，恢復現實時間。");
                 updateDevBtn();
-                // 重新導引首頁以套用時間
                 if(window.parent) window.parent.location.reload();
             } else {
                 const pwd = prompt("🔒 請輸入工程模式密碼：");
                 if (pwd === null) return;
 
                 try {
-                    // 這裡會去抓取你的 config.json
                     const res = await fetch('/data/config.json?t=' + new Date().getTime());
                     const data = await res.json();
                     
@@ -107,7 +110,7 @@
                         alert("❌ 密碼錯誤！");
                     }
                 } catch (e) {
-                    alert("❌ 系統錯誤，無法驗證鑰匙。\n請確認 /data/config.json 是否存在。");
+                    alert("❌ 系統錯誤，無法驗證鑰匙。");
                 }
             }
         }
