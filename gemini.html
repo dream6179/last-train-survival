@@ -99,18 +99,12 @@
             sendBtn.disabled = true;
             sendBtn.innerHTML = '⏳';
 
-            try {
-                // 🌟 神祕小抄：讀取鄉民目前的車站與時間，讓 AI 變聰明！
-                const savedStart = localStorage.getItem('lastTrainStart') || '未知車站';
-                const savedEnd = localStorage.getItem('lastTrainEnd') || '未知車站';
-                const nowTime = new Date().toLocaleTimeString('zh-TW', {hour12: false});
-                
-                const secretPrompt = `[系統隱藏資訊：現在時間是 ${nowTime}，使用者正打算從「${savedStart}」搭車回「${savedEnd}」] \n\n使用者說：${userMsg}`;
-
+                        try {
+                // 🌟 拔除小抄，回歸純粹的聊天
                 const res = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: secretPrompt })
+                    body: JSON.stringify({ prompt: userMsg })
                 });
                 const data = await res.json();
                 chatBox.innerHTML += `<div class="msg-ai">🤖 導遊：${data.reply || '... (無回應)'}</div>`;
