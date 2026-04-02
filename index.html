@@ -10,51 +10,71 @@
 <body>
 <div class="container">
     <div class="header-row">
-        <h1 id="main-title">末班車生存</h1>
+        <h1>末班車生存</h1>
         <div style="display: flex; gap: 8px;">
             <button class="mode-toggle-btn" onclick="openPage('/gemini.html')">🤖</button>
             <button class="mode-toggle-btn" id="header-mute-btn" onclick="toggleMute()">🔇</button>
             <button class="mode-toggle-btn" onclick="toggleAppMode()">🔍</button>
         </div>
     </div>
+
     <div id="mode-survival">
         <div class="location-block"><label>出發地</label><div class="select-group">
             <select class="type-select" id="start-type" onchange="updateStationOptions('start')">
                 <option value="trtc">北捷</option><option value="tra">台鐵</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>
             </select>
-            <div class="autocomplete-wrapper"><input type="text" id="start-station-input" class="station-input" placeholder="選擇車站"><div id="start-autocomplete-list" class="autocomplete-list"></div></div>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="start-station-input" class="station-input" placeholder="選擇車站">
+                <span class="clear-btn" id="start-clear-btn">×</span>
+                <div id="start-autocomplete-list" class="autocomplete-list"></div>
+            </div>
         </div></div>
-        <div class="location-block" id="start-bus-stop-block" style="display: none; margin-top: 4px;"><div class="select-group">
-            <div class="type-select" style="font-size:11px; color:var(--warning); display:flex; align-items:center; justify-content:center;">📍 站牌</div>
-            <div class="autocomplete-wrapper"><input type="text" id="start-bus-stop-input" class="station-input" placeholder="輸入站牌名稱"></div>
-        </div></div>
+
         <div class="location-block" id="transfer-block" style="display: none;"><label style="color:var(--warning);">轉乘北捷站</label><div class="select-group">
             <div class="type-select" style="font-size:11px; display:flex; align-items:center; justify-content:center; background:#333; border-radius:10px;">🚉 轉乘</div>
-            <div class="autocomplete-wrapper"><input type="text" id="transfer-station-input" class="station-input" placeholder="換哪一站北捷？"><div id="transfer-autocomplete-list" class="autocomplete-list"></div></div>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="transfer-station-input" class="station-input" placeholder="換哪站北捷？">
+                <span class="clear-btn" id="transfer-clear-btn">×</span>
+                <div id="transfer-autocomplete-list" class="autocomplete-list"></div>
+            </div>
         </div></div>
+
         <div class="location-block"><label>目的地</label><div class="select-group">
             <select class="type-select" id="end-type" onchange="updateStationOptions('end')">
                 <option value="trtc">北捷</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>
             </select>
-            <div class="autocomplete-wrapper"><input type="text" id="end-station-input" class="station-input" placeholder="選擇車站"><div id="end-autocomplete-list" class="autocomplete-list"></div></div>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="end-station-input" class="station-input" placeholder="選擇車站">
+                <span class="clear-btn" id="end-clear-btn">×</span>
+                <div id="end-autocomplete-list" class="autocomplete-list"></div>
+            </div>
         </div></div>
-        <div class="time-area"><div class="status">現在時間</div><div id="time-display" class="time-display">00:00:00</div><div class="status">目標發車：<span id="speed-mode" style="color: #ffea00;">待查驗...</span></div></div>
+
+        <div class="time-area">
+            <div class="status">現在時間</div>
+            <div id="time-display" class="time-display">00:00:00</div>
+            <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00;">待查驗...</span></div>
+        </div>
+
         <button id="action-btn" class="main-action-btn" onclick="handleAction()">開始計算轉乘</button>
-        <div id="plan-b-container" class="plan-b-container"><a href="https://www.uber.com" class="plan-b-option"><span>呼叫 Uber</span><span>~$300</span></a><button class="btn-reset" onclick="resetPlan()">🔄 重新安排行程</button></div>
-        <button id="cancel-btn" class="btn-reset" style="display: none;" onclick="resetPlan()">🔄 終止求生</button>
+        
+        <div id="plan-b-container" class="plan-b-container">
+            <a href="https://www.uber.com" class="plan-b-option"><span>呼叫 Uber</span><span>~$300</span></a>
+            <button class="btn-reset" style="display:flex;" onclick="resetPlan()">🔄 重新安排行程</button>
+        </div>
+        <button id="cancel-btn" class="btn-reset" onclick="resetPlan()">🔄 中止求生</button>
     </div>
-    <div class="footer"><div>本服務由綠茶地瓜維護</div><div class="footer-links-container"><a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a><a class="footer-toggle" onclick="openSettingsSheet()">⚙️ 快速設定</a></div></div>
+
+    <div class="footer">
+        <div>本服務由綠茶地瓜維護</div>
+        <div class="footer-links-container">
+            <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
+            <a class="footer-toggle" onclick="openSettingsSheet()">⚙️ 快速設定</a>
+        </div>
+    </div>
 </div>
+
 <div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
-<div class="bottom-sheet" id="settings-sheet">
-    <div class="sheet-header"><h3>⚙️ 快速設定</h3><button onclick="closeAllSheets()" style="background:var(--danger); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer;">關閉</button></div>
-    <div class="sheet-content">
-        <button class="plan-b-option" onclick="shareApp()"><span>🔗 分享工具</span></button>
-        <button class="plan-b-option" onclick="openPage('/about.html')"><span>📖 使用說明</span></button>
-        <div style="background:#222; padding:15px; border-radius:15px;"><h4 style="margin:0 0 10px 0; font-size:13px;">🎵 音樂</h4><div style="display:flex; align-items:center; gap:10px;"><button id="mute-btn" onclick="toggleMute()" style="background:none; border:none; font-size:20px;">🔇</button><input type="range" id="volume-slider" min="0" max="1" step="0.05" oninput="updateVolume(this.value)" style="flex:1;"></div></div>
-    </div>
-</div>
-<div class="bottom-sheet" id="dynamic-sheet" style="padding:0; overflow:hidden;"><iframe id="spa-frame" style="width:100%; height:100%; border:none;"></iframe></div>
 <audio id="bgm-audio"></audio>
 <script src="/js/audio.js"></script><script src="/js/ui.js"></script><script src="/js/main.js"></script><script src="/js/routing.js"></script>
 </body>
