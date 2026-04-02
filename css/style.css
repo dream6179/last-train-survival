@@ -21,19 +21,23 @@ body { font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main); dis
 .location-block label { font-size: 11px; color: var(--text-sub); margin-bottom: 4px; font-weight: bold; }
 .select-group { display: flex; gap: 8px; position: relative; width: 100%; margin-bottom: 4px; }
 
-select, .station-input { background-color: #2c2c2c; color: white; border: 1px solid #444; padding: 12px; border-radius: 10px; font-size: 15px; outline: none; box-sizing: border-box; width: 100%; }
-.type-select { width: 30% !important; flex-shrink: 0; -webkit-appearance: none; appearance: none; }
+/* 🌟 強制交通工具與輸入框寬度對齊，並預留 X 的空間 */
+select, .station-input { 
+    background-color: #2c2c2c; color: white; border: 1px solid #444; 
+    padding: 12px; padding-right: 35px; /* 🌟 預留右側空間給 X */
+    border-radius: 10px; font-size: 15px; outline: none; box-sizing: border-box; width: 100%; 
+}
+.type-select { width: 30% !important; flex-shrink: 0; -webkit-appearance: none; appearance: none; padding-right: 12px; }
 .autocomplete-wrapper { position: relative; width: 70%; flex-grow: 1; }
 
-/* 🌟 清除按鈕專屬樣式 */
+/* 🌟 清除按鈕專屬樣式 (收合在框內) */
 .clear-btn { 
     position: absolute; right: 10px; top: 50%; transform: translateY(-50%); 
-    width: 24px; height: 24px; background: #444; color: #aaa; 
+    width: 20px; height: 20px; background: rgba(255, 255, 255, 0.2); color: #fff; 
     border-radius: 50%; display: none; justify-content: center; 
-    align-items: center; cursor: pointer; font-size: 16px; font-weight: bold; z-index: 5;
+    align-items: center; cursor: pointer; font-size: 14px; z-index: 5;
 }
-.clear-btn:active { background: #666; color: #fff; }
-
+.clear-btn:active { background: rgba(255, 255, 255, 0.4); }
 /* 🌟 下拉選單樣式修正 */
 .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background-color: #2c2c2c; border: 1px solid #444; z-index: 1000; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
 .dropdown-item { padding: 12px; border-bottom: 1px solid #333; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
