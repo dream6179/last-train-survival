@@ -30,14 +30,15 @@
             </div>
         </div></div>
 
-        <div class="location-block" id="transfer-block" style="display: none;"><label style="color:var(--warning);">轉乘北捷站</label><div class="select-group">
-            <div class="type-select" style="font-size:11px; display:flex; align-items:center; justify-content:center; background:#333; border-radius:10px;">🚉 轉乘</div>
-            <div class="autocomplete-wrapper">
-                <input type="text" id="transfer-station-input" class="station-input" placeholder="換哪站北捷？">
-                <span class="clear-btn" id="transfer-clear-btn">×</span>
-                <div id="transfer-autocomplete-list" class="autocomplete-list"></div>
+        <div class="location-block" id="transfer-block" style="display: none;">
+            <label style="color:var(--warning);">轉乘北捷站</label>
+            <div class="select-group">
+                <div class="type-select" style="font-size:11px; display:flex; align-items:center; justify-content:center; background:#333; border-radius:10px;">🚉 轉乘</div>
+                <div class="autocomplete-wrapper">
+                    <select id="transfer-station-input" class="station-input" style="padding-right: 12px;"></select>
+                </div>
             </div>
-        </div></div>
+        </div>
 
         <div class="location-block"><label>目的地</label><div class="select-group">
             <select class="type-select" id="end-type" onchange="updateStationOptions('end')">
