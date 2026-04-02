@@ -3,41 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>使用說明 | 末班車生存</title>
+    <title>快速使用說明 | 末班車生存</title>
     <style>
-        :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --info: #2196F3; --warning: #ffb300; }
-        html, body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; }
+        :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --success: #4caf50; --warning: #ffb300; --info: #2196F3; }
+        html, body { overflow-x: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main); }
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
         .container { width: 90%; max-width: 400px; margin: 20px auto; padding-bottom: 30px; }
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #333; }
-        .header-row h1 { font-size: 20px; margin: 0; color: var(--text-main); }
-        .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; }
+        .header-row h1 { font-size: 20px; color: var(--info); margin: 0; }
+        /* 🌟 防彈返回鍵樣式 */
+        .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; display: inline-block; }
         .back-btn:active { background: #555; transform: scale(0.95); }
-        .section { background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid #333; }
-        .section h3 { margin-top: 0; border-bottom: 1px dashed #444; padding-bottom: 10px; color: var(--info); font-size: 16px; }
-        ul { padding-left: 20px; line-height: 1.8; font-size: 14px; color: var(--text-sub); margin-bottom: 0; }
-        .version-text { text-align: center; color: #666; font-size: 13px; font-weight: bold; margin-top: 20px; font-variant-numeric: tabular-nums; }
+        
+        .content-box { background: var(--card-bg); border: 1px solid #333; border-radius: 12px; padding: 20px; font-size: 14px; line-height: 1.6; color: #ccc; }
+        .content-box h3 { color: white; margin-top: 0; border-left: 3px solid var(--info); padding-left: 10px; }
+        .content-box ul { padding-left: 20px; margin-bottom: 0; }
+        .content-box li { margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header-row">
-            <h1>📖 快速使用說明</h1>
-            <a href="javascript:history.back()" class="back-btn">⬅ 返回設定</a>
-        </div>
 
-        <div class="section">
-            <h3>📖 核心功能指南</h3>
-            <ul>
-                <li>點擊標題右側的「🔍」可切換至全查詢模式。</li>
-                <li>點擊輸入框時，按一下旁邊的星星「☆」即可加入最愛並置頂。</li>
-                <li>系統會優先連線交通部 TDX，若遇斷網則自動啟動離線演算法。</li>
-                <li><span style="color: var(--warning); font-weight: bold;">【轉乘防禦機制】</span>只要偵測到需要跨線轉乘，系統為求安全，一律會自動篩選出「最嚴格（最早）」的發車死線。</li>
-            </ul>
-        </div>
-
-        <div class="version-text">目前版本: v2.21</div>
+<div class="container">
+    <div class="header-row">
+        <h1>📖 快速使用說明</h1>
+        <a href="javascript:void(0)" onclick="if(window.parent && window.parent.closeAllSheets) { window.parent.closeAllSheets(); } else { window.location.href='/'; }" class="back-btn">⬅ 返回主頁</a>
     </div>
-    <audio id="bgm-audio"></audio>
-<script src="/js/main.js"></script>
+
+    <div class="content-box">
+        <h3>如何使用末班車生存？</h3>
+        <ul>
+            <li><strong>設定起迄站：</strong> 選擇您的出發與目的地，系統將自動判斷最適合的轉乘路線。</li>
+            <li><strong>公車動態：</strong> 若選擇公車客運，請先輸入「路線」，再於下方填入精準的「站牌名稱」。</li>
+            <li><strong>防呆機制：</strong> 系統內建 12 小時跨日判定，確保您在午夜過後查詢依然準確。</li>
+            <li><strong>呼叫支援：</strong> 當倒數計時歸零顯示「來不及了」，下方會自動彈出 Uber 呼叫按鈕，提供您最後的備案。</li>
+        </ul>
+        <p style="margin-top: 20px; color: var(--warning); font-weight: bold; text-align: center;">祝您今晚順利到家！</p>
+    </div>
+</div>
+
 </body>
 </html>
