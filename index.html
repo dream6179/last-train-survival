@@ -164,6 +164,7 @@
     <div class="header-row">
         <h1 id="main-title" onclick="if(localStorage.getItem('unlock_runner') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_runner', 'true'); alert('🎉 發現彩蛋！隱藏機台【社畜的最後衝刺】已永久解鎖！'); openPage('/collection.html'); }">末班車生存</h1>
         <div style="display: flex; gap: 8px;">
+            <button class="mode-toggle-btn" id="ai-chat-btn" onclick="openPage('/gemini.html')" title="呼叫 AI 導遊">🤖</button>
             <button class="mode-toggle-btn" id="header-mute-btn" onclick="toggleMute()" title="開關背景音樂">🔇</button>
             <button class="mode-toggle-btn" id="mode-toggle-btn" onclick="toggleAppMode()" title="切換至全查詢模式">🔍</button>
         </div>
@@ -316,7 +317,7 @@
         
         <div style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #333; text-align: center;">
             <span onclick="if(localStorage.getItem('unlock_password') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_password', 'true'); alert('🎉 發現彩蛋！隱藏機台【終極密碼】已永久解鎖！'); openPage('/collection.html'); }" style="color: #666; font-size: 13px; font-weight: bold; cursor: pointer; font-variant-numeric: tabular-nums; display: inline-block; padding: 10px;">
-                目前版本: v3.00
+                目前版本: v2.21
             </span>
         </div>
 
