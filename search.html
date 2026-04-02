@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>時刻表查詢</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body style="background: var(--card-bg); padding: 20px; align-items: flex-start; overflow-y: auto;">
+    <div style="width: 100%; max-width: 400px; margin: 0 auto;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px;">
+            <h2 style="color: var(--info); margin: 0;">🔍 班次時刻檢索</h2>
+            <button onclick="window.parent.closeDynamicSheet()" style="background: var(--danger); color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer;">關閉</button>
+        </div>
+        
+        <div class="location-block">
+            <label>查詢車站</label>
+            <div class="select-group">
+                <select class="type-select" id="search-type" onchange="updateSearchOptions()">
+                    <option value="trtc" selected>北捷</option>
+                    <option value="tra">台鐵</option>
+                    <option value="thsr">高鐵</option>
+                </select>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="search-station-input" class="station-input" placeholder="輸入車站名稱">
+                    <span class="clear-btn" id="search-clear-btn">×</span>
+                    <div id="search-autocomplete-list" class="autocomplete-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <button id="search-action-btn" class="main-action-btn" style="background-color: var(--info); margin-top:15px;" onclick="executeFullSearch()">查詢發車時刻</button>
+        
+        <div class="search-result-box" id="search-result-box" style="margin-top: 15px; background: #222; border-radius: 10px; padding: 15px; min-height: 200px; color: #aaa; font-size: 13px; border: 1px dashed #444; overflow-y: auto;">
+            等待檢索指令...
+        </div>
+    </div>
+    
+    <script src="/js/search.js"></script>
+</body>
+</html>
