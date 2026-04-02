@@ -43,6 +43,50 @@
     </style>
 </head>
 <body>
+<div id="maintenance-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #121212; z-index: 999999; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; text-align: center;">
+    <div style="font-size: 60px; margin-bottom: 20px;">🚧</div>
+    <h2 style="color: #ffb300; margin-top: 0; margin-bottom: 10px;">系統重大升級中</h2>
+    <p id="maintenance-msg" style="color: #aaaaaa; font-size: 14px; line-height: 1.6;"></p>
+    <button onclick="checkDevPassword()" style="margin-top: 40px; background: transparent; border: 1px dashed #555; color: #888; padding: 10px 20px; border-radius: 8px; cursor: pointer; transition: 0.2s;">進入工程模式</button>
+</div>
+
+<div id="soft-warning-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999998; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+    <div style="background: var(--card-bg); border: 1px solid #ff9800; border-radius: 15px; padding: 25px 20px; text-align: center; max-width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.9);">
+        <div style="font-size: 40px; margin-bottom: 15px;">⚠️</div>
+        <h3 style="color: #ff9800; margin-top: 0; margin-bottom: 10px; font-size: 18px;">系統臨時微調中</h3>
+        <p id="soft-warning-msg" style="color: #ccc; font-size: 13px; line-height: 1.6; margin-bottom: 20px;"></p>
+        <button onclick="document.getElementById('soft-warning-overlay').style.display='none';" style="background: #333; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 15px;">我知道了</button>
+    </div>
+</div>
+
+<script>
+    async function checkDevPassword() {
+        const pwd = prompt("🔒 請輸入工程模式密碼：");
+        if (pwd === null) return; 
+        try {
+            const res = await fetch('/data/config.json?t=' + new Date().getTime());
+            const data = await res.json();
+            if (pwd === data.dev_key) {
+                sessionStorage.setItem('dev_mode_bypass', 'true');
+                document.getElementById('maintenance-overlay').style.display = 'none';
+                alert("✅ 密碼正確，已為您暫時解除維護鎖定。");
+            } else { alert("❌ 存取拒絕：密碼錯誤"); }
+        } catch (e) { alert("❌ 系統錯誤，無法驗證鑰匙。"); }
+    }
+
+    fetch('/data/config.json?t=' + new Date().getTime())
+        .then(res => res.json())
+        .then(data => {
+            const isBypassed = sessionStorage.getItem('dev_mode_bypass') === 'true';
+            if (data.maintenance === 1 && !isBypassed) {
+                document.getElementById('maintenance-overlay').style.display = 'flex';
+                if (data.message) document.getElementById('maintenance-msg').innerHTML = data.message;
+            } else if (data.maintenance === 2 && !isBypassed) {
+                document.getElementById('soft-warning-overlay').style.display = 'flex';
+                if (data.warning) document.getElementById('soft-warning-msg').innerHTML = data.warning;
+            }
+        }).catch(e => console.log('正常啟動模式'));
+</script>
 
 <div class="container">
     <div class="header-row">
