@@ -178,6 +178,7 @@
                     <option value="trtc" selected>北捷</option>
                     <option value="tra">台鐵</option>
                     <option value="thsr">高鐵</option>
+                    <option value="bus">公車客運</option>
                 </select>
                 <div class="autocomplete-wrapper">
                     <input type="text" id="start-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
@@ -207,6 +208,7 @@
                 <select class="type-select" id="end-type" onchange="updateStationOptions('end')">
                     <option value="trtc" selected>北捷</option>
                     <option value="thsr">高鐵</option>
+                    <option value="bus">公車客運</option>
                 </select>
                 <div class="autocomplete-wrapper">
                     <input type="text" id="end-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
@@ -251,6 +253,7 @@
                     <option value="trtc" selected>北捷</option>
                     <option value="tra">台鐵</option>
                     <option value="thsr">高鐵</option>
+                    <option value="bus">公車客運</option>
                 </select>
                 <div class="autocomplete-wrapper">
                     <input type="text" id="search-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
@@ -317,7 +320,7 @@
         
         <div style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #333; text-align: center;">
             <span onclick="if(localStorage.getItem('unlock_password') === 'true') return; this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_password', 'true'); alert('🎉 發現彩蛋！隱藏機台【終極密碼】已永久解鎖！'); openPage('/collection.html'); }" style="color: #666; font-size: 13px; font-weight: bold; cursor: pointer; font-variant-numeric: tabular-nums; display: inline-block; padding: 10px;">
-                目前版本: v2.21
+                目前版本: v2.31
             </span>
         </div>
 
