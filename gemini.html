@@ -1,31 +1,66 @@
-<style>
-    body { background: #121212; color: white; font-family: sans-serif; padding: 20px; }
-    #chat-box { height: 70vh; overflow-y: auto; border: 1px solid #333; padding: 10px; border-radius: 10px; margin-bottom: 10px; }
-    input { width: 80%; padding: 10px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; }
-    button { padding: 10px; background: #4caf50; border: none; color: white; border-radius: 5px; cursor: pointer; }
-</style>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>深夜導遊</title>
+    <style>
+        body { background: var(--bg-color, #121212); color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box;}
+        h3 { margin-top: 0; color: #4caf50; border-bottom: 1px dashed #333; padding-bottom: 10px; }
+        #chat-box { flex-grow: 1; overflow-y: auto; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 15px; background: #1a1a1a; font-size: 14px; line-height: 1.6; }
+        .input-area { display: flex; gap: 10px; }
+        input { flex-grow: 1; padding: 12px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 14px; outline: none; }
+        input:focus { border-color: #4caf50; }
+        button { padding: 0 20px; background: #4caf50; border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        button:active { transform: scale(0.95); background: #388e3c; }
+        .msg-user { color: #2196F3; margin-bottom: 10px; }
+        .msg-ai { color: #e0e0e0; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
 
-<div id="chat-box">系統：你好，迷失在月台的旅人。</div>
-<input type="text" id="user-input" placeholder="問問 AI 助手...">
-<button onclick="sendMessage()">傳送</button>
+    <h3>🤖 避難所語音助手</h3>
+    <div id="chat-box">
+        <div class="msg-ai">系統：你好，迷失在月台的旅人。有什麼我能幫你的嗎？</div>
+    </div>
+    <div class="input-area">
+        <input type="text" id="user-input" placeholder="問問導遊...">
+        <button id="send-btn" onclick="sendMessage()">傳送</button>
+    </div>
 
-<script>
-async function sendMessage() {
+    <script>
     const input = document.getElementById('user-input');
-    const chatBox = document.getElementById('chat-box');
-    const userMsg = input.value;
-    if(!userMsg) return;
-
-    chatBox.innerHTML += `<div>👤 你：${userMsg}</div>`;
-    input.value = '';
-
-    const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: userMsg })
+    input.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") sendMessage();
     });
-    const data = await res.json();
-    chatBox.innerHTML += `<div>🤖 導遊：${data.reply}</div>`;
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-</script>
+
+    async function sendMessage() {
+        const chatBox = document.getElementById('chat-box');
+        const sendBtn = document.getElementById('send-btn');
+        const userMsg = input.value.trim();
+        if(!userMsg) return;
+
+        chatBox.innerHTML += `<div class="msg-user">👤 你：${userMsg}</div>`;
+        input.value = '';
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '⏳';
+
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: userMsg })
+            });
+            const data = await res.json();
+            chatBox.innerHTML += `<div class="msg-ai">🤖 導遊：${data.reply || '無回應'}</div>`;
+        } catch (e) {
+            chatBox.innerHTML += `<div class="msg-ai" style="color:#ff5252;">⚠️ 系統：網路斷線或後端無回應。</div>`;
+        }
+        
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '傳送';
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+    </script>
+</body>
+</html>
