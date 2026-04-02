@@ -6,44 +6,31 @@
     <title>深夜導遊</title>
     <style>
         :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --success: #4caf50; --info: #2196F3; }
-        
         body { background: var(--bg-color); color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
-        
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #333; }
         .header-row h3 { margin: 0; color: var(--success); font-size: 18px; }
-        
-        /* 返回按鈕樣式 */
         .back-btn { background: #333; color: white; border: none; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; transition: 0.2s; }
         .back-btn:active { background: #555; transform: scale(0.95); }
-
-        /* 鎖定介面樣式 */
         #lock-screen { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
         .lock-icon { font-size: 50px; margin-bottom: 20px; }
         .lock-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
         .lock-desc { font-size: 13px; color: var(--text-sub); margin-bottom: 20px; line-height: 1.6; }
-        
-        /* 聊天介面樣式 */
         #chat-interface { flex-grow: 1; display: none; flex-direction: column; overflow: hidden; }
-        #chat-box { flex-grow: 1; overflow-y: auto; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 15px; background: #1a1a1a; font-size: 14px; line-height: 1.6; }
-        
+        #chat-box { flex-grow: 1; overflow-y: auto; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 15px; background: #1a1a1a; font-size: 14px; line-height: 1.6; scrollbar-width: none;}
+        #chat-box::-webkit-scrollbar { display: none; }
         .input-area { display: flex; gap: 10px; }
         input { flex-grow: 1; padding: 12px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 14px; outline: none; }
         input:focus { border-color: var(--success); }
-        
         .btn-main { padding: 0 20px; background: var(--success); border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-main:active { transform: scale(0.95); }
-        
         .msg-user { color: var(--info); margin-bottom: 10px; }
         .msg-ai { color: #e0e0e0; margin-bottom: 15px; }
-        
-        /* 隱藏滾動條 */
-        #chat-box::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
 
     <div class="header-row">
-        <h3>🤖 避難所語音助手</h3>
+        <h3>🤖 避難所語音助手 v3.0</h3>
         <button class="back-btn" onclick="closeMe()">⬅ 返回</button>
     </div>
 
@@ -59,7 +46,7 @@
 
     <div id="chat-interface">
         <div id="chat-box">
-            <div class="msg-ai">導遊：你好，迷失在月台的旅人。我是這個避難所的語音助手，有什麼我能幫你的嗎？</div>
+            <div class="msg-ai">導遊：你好，迷失在月台的旅人。我是這個避難所的導遊，有什麼我能幫你的嗎？</div>
         </div>
         <div class="input-area">
             <input type="text" id="user-input" placeholder="問問導遊...">
@@ -72,11 +59,8 @@
         const chatInterface = document.getElementById('chat-interface');
         const input = document.getElementById('user-input');
 
-        // 檢查是否已經解鎖過
         window.onload = () => {
-            if (localStorage.getItem('gemini_unlocked') === 'true') {
-                showChat();
-            }
+            if (localStorage.getItem('gemini_unlocked') === 'true') showChat();
         };
 
         function closeMe() {
@@ -88,9 +72,7 @@
         }
 
         function verifyCode() {
-            const code = document.getElementById('auth-code').value.trim();
-            // 🌟 這裡設定你的測試代碼
-            if (code === 'SURVIVOR2026') {
+            if (document.getElementById('auth-code').value.trim() === 'SURVIVOR2026') {
                 localStorage.setItem('gemini_unlocked', 'true');
                 alert('✅ 驗證成功！導遊已就緒。');
                 showChat();
@@ -118,10 +100,17 @@
             sendBtn.innerHTML = '⏳';
 
             try {
+                // 🌟 神祕小抄：讀取鄉民目前的車站與時間，讓 AI 變聰明！
+                const savedStart = localStorage.getItem('lastTrainStart') || '未知車站';
+                const savedEnd = localStorage.getItem('lastTrainEnd') || '未知車站';
+                const nowTime = new Date().toLocaleTimeString('zh-TW', {hour12: false});
+                
+                const secretPrompt = `[系統隱藏資訊：現在時間是 ${nowTime}，使用者正打算從「${savedStart}」搭車回「${savedEnd}」] \n\n使用者說：${userMsg}`;
+
                 const res = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: userMsg })
+                    body: JSON.stringify({ prompt: secretPrompt })
                 });
                 const data = await res.json();
                 chatBox.innerHTML += `<div class="msg-ai">🤖 導遊：${data.reply || '... (無回應)'}</div>`;
