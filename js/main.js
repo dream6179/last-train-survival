@@ -13,7 +13,7 @@ function closeErrorSheet() { document.getElementById('error-sheet').classList.re
 function copyErrorLog() { const logOutput = document.getElementById('error-log-output'); logOutput.select(); document.execCommand('copy'); alert("✅ 錯誤代碼已複製！"); }
 
 // ==========================================
-// UI 與 核心變數 (🌟 之前漏掉的全部補齊)
+// UI 與 核心變數
 // ==========================================
 let currentMode = 'survival'; 
 let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; 
@@ -21,8 +21,8 @@ let savedStart = localStorage.getItem('lastTrainStart') || '台北車站';
 let savedEnd = localStorage.getItem('lastTrainEnd') || '台北車站';
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站', 'bus': '' };
 
-let isCountingDown = false; // 🌟 計時器心臟
-let timeLeft = 0;           // 🌟 倒數時間
+let isCountingDown = false; 
+let timeLeft = 0;           
 let offlineTimetableData = null; 
 let globalStationData = null;
 
@@ -48,7 +48,7 @@ window.addEventListener('load', async () => {
 });
 
 // ==========================================
-// 🌟 核心：公車專屬輸入框連動
+// 公車與輸入框連動
 // ==========================================
 async function updateStationOptions(point) {
     const typeSelect = document.getElementById(point + '-type');
@@ -80,7 +80,7 @@ function getRealStationObj(inputName, type) {
 }
 
 // ==========================================
-// 🌟 核心：打包路線與站牌給 Routing 處理
+// 🌟 核心：轉乘計算與時間判定
 // ==========================================
 async function handleAction() {
     const startType = document.getElementById('start-type').value; 
@@ -103,12 +103,18 @@ async function handleAction() {
             document.getElementById('cancel-btn').style.display='flex'; 
             actionBtn.style.display='none'; 
             
-            // 啟動倒數計時！
             isCountingDown = true;
             const now = getSystemTime(); let target = getSystemTime(); 
             const [hh, mm] = res.time.split(':').map(Number); target.setHours(hh, mm, 0, 0);
+            
+            // 如果目標時間比現在早，代表車已經開走了（演算法退到明天）
             if (now > target) target.setDate(target.getDate() + 1);
             timeLeft = Math.floor((target - now) / 1000);
+
+            // 🌟 防呆：如果算出要等超過 8 小時 (28800秒)，直接判定為錯過今天的末班車
+            if (timeLeft > 28800) {
+                timeLeft = 0;
+            }
         }
         else alert(res.status);
     } catch (e) { alert("計算失敗"); }
@@ -135,32 +141,46 @@ async function executeFullSearch() {
     } catch (e) { resultBox.innerHTML = `⚠️ 系統錯誤或無公車動態`; }
 }
 
+// 🌟 修改：終止求生時，要把備案介面收起來
 function resetPlan() { 
     isCountingDown = false; 
     document.getElementById('action-btn').style.display = 'block'; 
     document.getElementById('cancel-btn').style.display = 'none'; 
+    document.getElementById('plan-b-container').style.display = 'none'; 
     document.getElementById('speed-mode').innerText = '待查驗...'; 
 }
 
 // ==========================================
-// 🌟 核心：時鐘與倒數系統
+// 🌟 核心：時鐘與倒數系統 (支援小時與超時觸發)
 // ==========================================
 function updateClock() {
     const display = document.getElementById('time-display');
     if (!display) return;
-    
-    // 確保 routing.js 已經載入，避免找不到 getSystemTime 噴錯
     if (typeof getSystemTime !== 'function') return;
 
     const now = getSystemTime();
     if (!isCountingDown) { 
         display.innerHTML = now.toTimeString().split(' ')[0]; 
     } else {
-        if (timeLeft <= 0) { display.innerHTML = "來不及了💸"; resetPlan(); return; }
+        // 🌟 如果時間到了（或已經錯過了）
+        if (timeLeft <= 0) { 
+            display.innerHTML = "來不及了💸"; 
+            document.getElementById('plan-b-container').style.display = 'flex'; // 自動彈出叫車備案
+            return; // 停留在這個畫面，不要呼叫 resetPlan
+        }
+        
         timeLeft--;
-        let m = Math.floor(timeLeft / 60); let s = timeLeft % 60;
-        display.innerHTML = `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
+        let h = Math.floor(timeLeft / 3600);
+        let m = Math.floor((timeLeft % 3600) / 60); 
+        let s = timeLeft % 60;
+        
+        if (h > 0) {
+            // 有小時的格式：HH:MM:SS
+            display.innerHTML = `${h<10?'0':''}${h}:${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
+        } else {
+            // 只有分秒的格式：MM:SS
+            display.innerHTML = `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
+        }
     }
 }
-// 每秒更新一次
 setInterval(updateClock, 1000);
