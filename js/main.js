@@ -46,16 +46,13 @@ function initAndPlayAudio() {
     if (!audioInitialized) {
         bgm.removeAttribute('loop'); 
         bgm.src = bgmPlaylist[currentBgmIndex];
-
         bgm.addEventListener('loadedmetadata', () => {
             let savedTime = localStorage.getItem('bgmTime');
             if (savedTime && parseFloat(savedTime) > 0 && parseFloat(savedTime) < bgm.duration) {
                 bgm.currentTime = parseFloat(savedTime);
             }
         }, { once: true });
-
         bgm.load();
-
         bgm.addEventListener('ended', () => {
             let nextIndex;
             do { nextIndex = Math.floor(Math.random() * bgmPlaylist.length); } while (nextIndex === currentBgmIndex && bgmPlaylist.length > 1);
@@ -68,7 +65,6 @@ function initAndPlayAudio() {
         });
         audioInitialized = true;
     }
-
     bgm.volume = bgmVolume;
     let p = bgm.play();
     if (p !== undefined) p.catch(e => console.log("等待使用者互動才能播放:", e));
@@ -106,32 +102,25 @@ function updateVolume(val) {
 
 window.addEventListener('load', () => { 
     setupAudioUI();
-
     if (window.parent !== window) {
         const bgm = document.getElementById('bgm-audio');
         if (bgm) { bgm.pause(); bgm.remove(); }
-        
         const backBtns = document.querySelectorAll('.back-btn');
         backBtns.forEach(btn => {
             btn.removeAttribute('href');
             btn.onclick = (e) => {
                 e.preventDefault();
-                if (typeof window.parent.closeDynamicSheet === 'function') {
-                    window.parent.closeDynamicSheet();
-                }
+                if (typeof window.parent.closeDynamicSheet === 'function') window.parent.closeDynamicSheet();
             };
             btn.innerHTML = '⬅ 返回'; 
         });
         return;
     }
-
     const globalWakeUp = () => {
         if (!isBgmMuted) initAndPlayAudio();
         ['touchstart', 'click', 'scroll'].forEach(evt => window.removeEventListener(evt, globalWakeUp, true));
     };
-    if (!isBgmMuted) {
-        ['touchstart', 'click', 'scroll'].forEach(evt => window.addEventListener(evt, globalWakeUp, true));
-    }
+    if (!isBgmMuted) ['touchstart', 'click', 'scroll'].forEach(evt => window.addEventListener(evt, globalWakeUp, true));
 });
 
 // ==========================================
@@ -141,9 +130,7 @@ window.openPage = function(url) {
     const frame = document.getElementById('spa-frame');
     const sheet = document.getElementById('dynamic-sheet');
     const overlay = document.getElementById('overlay');
-    
     if(!frame || !sheet || !overlay) { window.location.href = url; return; }
-
     frame.src = url;
     overlay.style.zIndex = "99990"; 
     overlay.classList.add('active');
@@ -153,19 +140,14 @@ window.openPage = function(url) {
 window.closeDynamicSheet = function() {
     const sheet = document.getElementById('dynamic-sheet');
     if(sheet) sheet.classList.remove('active');
-    
     setTimeout(() => {
         const frame = document.getElementById('spa-frame');
         if(frame) frame.src = 'about:blank'; 
-        
         const overlay = document.getElementById('overlay');
         if(overlay) {
             overlay.style.zIndex = "90"; 
-            
             const hasOtherActive = document.querySelector('.bottom-sheet.active:not(#dynamic-sheet)');
-            if(!hasOtherActive) {
-                overlay.classList.remove('active'); 
-            }
+            if(!hasOtherActive) overlay.classList.remove('active'); 
         }
     }, 300);
 };
@@ -185,227 +167,116 @@ function closeAllSheets() {
 }
 
 // ==========================================
-// 核心路由與其餘功能
+// 🛡️ 台灣鄉民防禦系統
 // ==========================================
+function getRealStationObj(inputName, type) {
+    if (type === 'bus') return { id: inputName, name: inputName }; // 公車模式：直接回傳輸入文字
+    if (!inputName || !globalStationData?.[type]) return null;
+    let normInput = inputName.trim().replace(/臺/g, '台');
+    if (normInput === '北車') normInput = '台北車站';
+    let found = globalStationData[type].options.find(s => s.name.replace(/臺/g, '台') === normInput);
+    if (found) return found;
+    found = globalStationData[type].options.find(s => s.name.replace(/臺/g, '台').includes(normInput));
+    return found || null;
+}
+
 function toggleAppMode() {
     const modeSurvival = document.getElementById('mode-survival'); const modeSearch = document.getElementById('mode-search'); const toggleBtn = document.getElementById('mode-toggle-btn'); const mainTitle = document.getElementById('main-title');
     if (currentMode === 'survival') { 
         modeSurvival.style.display = 'none'; modeSearch.style.display = 'block'; 
         toggleBtn.innerHTML = '🏠'; toggleBtn.title = '返回求生模式'; 
         mainTitle.innerHTML = '時刻表檢索'; mainTitle.style.color = 'var(--info)'; 
-        currentMode = 'search'; document.getElementById('search-station-input').value = savedStart; 
+        currentMode = 'search';
     } else { 
         modeSearch.style.display = 'none'; modeSurvival.style.display = 'block'; 
         toggleBtn.innerHTML = '🔍'; toggleBtn.title = '切換至全查詢模式'; 
-        
-        if(localStorage.getItem('dev_mode_active') === 'true') {
-            mainTitle.innerText = "末班車生存 (工程)"; mainTitle.style.color = "var(--warning)";
-        } else {
-            mainTitle.innerText = "末班車生存"; mainTitle.style.color = "var(--danger)"; 
-        }
+        if(localStorage.getItem('dev_mode_active') === 'true') { mainTitle.innerText = "末班車生存 (工程)"; mainTitle.style.color = "var(--warning)"; }
+        else { mainTitle.innerText = "末班車生存"; mainTitle.style.color = "var(--danger)"; }
         currentMode = 'survival'; 
     }
 }
 
-function triggerKisaragiEvent() {
-    clearInterval(timer); isCountingDown = false;
-    const bgm = document.getElementById('bgm-audio'); if (bgm) bgm.pause();
-    
-    const overlay = document.createElement('div');
-    overlay.id = 'kisaragi-overlay';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background-color:#050505;z-index:9999999;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;text-align:center;font-family:"Courier New", monospace; pointer-events:all; animation: glitch 0.2s infinite;';
-    
-    const style = document.createElement('style');
-    style.innerHTML = `@keyframes glitch { 0% { opacity: 1; filter: contrast(1); } 50% { opacity: 0.9; filter: contrast(1.5) invert(0.1); } 100% { opacity: 1; filter: contrast(1); } }`;
-    document.head.appendChild(style);
-
-    overlay.innerHTML = `
-        <h1 style="color:#ff0000; font-size:45px; margin-bottom:20px; text-shadow: 2px 2px 20px #ff0000; letter-spacing: 8px;">如月車站</h1>
-        <p style="color:#cccccc; font-size:15px; line-height:2.5; margin-bottom: 40px; text-align: left; border-left: 2px solid #ff0000; padding-left: 15px;">
-            > 系統警告：電車已駛入未知的軌道。<br>
-            > 錯誤：無法連接 TDX 資料庫。<br>
-            > 錯誤：GPS 訊號遺失。<br>
-            > 偵測到外部音源：微弱的太鼓聲...<br>
-            <span style="color:#ff5252; font-size: 13px; font-weight:bold; display:block; margin-top:15px;">※ 警告：請勿離開車廂，請勿回頭。</span>
-        </p>
-        <button onclick="escapeKisaragi()" style="background:transparent; border:1px solid #ff0000; color:#ff0000; padding:15px 30px; border-radius:8px; font-size:16px; cursor:pointer; box-shadow: 0 0 15px rgba(255,0,0,0.4); font-weight:bold;">沿著伊佐貫隧道狂奔</button>
-    `;
-    document.body.appendChild(overlay);
-}
-
-window.escapeKisaragi = function() {
-    const overlay = document.getElementById('kisaragi-overlay');
-    if(overlay) overlay.remove();
-    
-    if (localStorage.getItem('unlock_kisaragi') === 'true') {
-        alert('🏃‍♂️ 你死命地沿著隧道狂奔，身後的太鼓聲漸漸遠去，終於回到了現實世界...\n\n（你已經逃出過這裡了，但那股寒意依舊揮之不去...）');
-    } else {
-        localStorage.setItem('unlock_kisaragi', 'true');
-        alert('🏃‍♂️ 你死命地沿著隧道狂奔，身後的太鼓聲漸漸遠去，終於回到了現實世界...\n\n🎉 恭喜解鎖隱藏成就【從不存在的車站歸來】！');
-    }
-    
-    if(typeof openPage === 'function') openPage('/collection.html');
-    else window.location.href = '/collection.html';
-};
-
 // ==========================================
-// 🛡️ 台灣鄉民防禦系統 (避開台中港陷阱版)
+// 核心邏輯
 // ==========================================
-function getRealStationObj(inputName, type) {
-    if (!inputName || !globalStationData?.[type]) return null;
-    
-    // 1. 統一將「臺」轉成「台」，並清除頭尾空白
-    let normInput = inputName.trim().replace(/臺/g, '台');
-    if (normInput === '北車') normInput = '台北車站';
-    
-    const options = globalStationData[type].options;
-
-    // 2. 終極完全比對 (連 JSON 裡的空白都無情清除)
-    let found = options.find(s => s.name.trim().replace(/臺/g, '台') === normInput);
-    if (found) return found;
-
-    // 3. 次級比對：如果使用者輸入「台中火車站」或「台中站」，拔掉字尾再比對一次
-    let cleanInput = normInput.replace(/(火車站|車站|站)$/, '');
-    found = options.find(s => s.name.trim().replace(/臺/g, '台') === cleanInput);
-    if (found) return found;
-
-    // 4. 模糊比對 (為避免「台中」配對到「台中港」，優先找字數一樣短的)
-    let possibleMatches = options.filter(s => s.name.replace(/臺/g, '台').includes(cleanInput));
-    if (possibleMatches.length > 0) {
-        possibleMatches.sort((a, b) => a.name.length - b.name.length);
-        return possibleMatches[0];
-    }
-    
-    return null;
-}
-
-async function executeFullSearch() {
-    const searchType = document.getElementById('search-type').value; 
-    const searchStationName = document.getElementById('search-station-input').value; 
-    const resultBox = document.getElementById('search-result-box'); 
-    const searchBtn = document.getElementById('search-action-btn');
-    const searchMode = document.querySelector('input[name="search-time-mode"]:checked').value;
-
-    if (!searchStationName) { alert("⚠️ 請先選擇或輸入要查詢的車站！"); return; }
-    
-    if (searchStationName === '如月車站' || searchStationName.toUpperCase() === 'KISARAGI') {
-        triggerKisaragiEvent(); return;
-    }
-
-    const searchStationObj = getRealStationObj(searchStationName, searchType);
-    if (!searchStationObj) { alert("⚠️ 找不到該車站！請確認輸入名稱。"); return; }
-
-    document.getElementById('search-station-input').value = searchStationObj.name;
-    
-    searchBtn.disabled = true; searchBtn.innerHTML = "⏳ 連線檢索中..."; 
-    resultBox.style.justifyContent = 'center'; resultBox.innerHTML = `正在為您連線交通部與本地資料庫...`;
-    
-    try {
-        let res = await fetchSingleStationTime(searchStationObj.name, searchType, offlineTimetableData, searchMode);
-        
-        if (res.status === "not_found" || res.data.length === 0) { resultBox.innerHTML = `<span style="color:var(--warning)">⚠️ 找不到「${searchStationObj.name}」的資料。</span>`; return; }
-        
-        let titleText = searchMode === 'last' ? '🚨 終極末班車時刻表' : '🚉 接下來發車時刻表';
-        let html = `<div style="width: 100%; text-align: left;"><h4 style="color: white; margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 8px;">${titleText}<br><span style="font-size:12px; color:#aaa; font-weight:normal;">車站：${searchStationObj.name}</span></h4>`;
-        
-        res.data.forEach(item => { 
-            let colorTag = item.source === "即時連線" ? "color: var(--success);" : "color: var(--warning);"; 
-            html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px dashed #333;"><span style="font-weight: bold; color: #ddd; font-size: 14px;">往 ${item.destination}</span><span style="font-size: 18px; font-weight: bold; font-variant-numeric: tabular-nums; color: white;">${item.time} <span style="font-size: 10px; font-weight: normal; ${colorTag}; display: block; text-align: right; margin-top: 2px;">(${item.source})</span></span></div>`; 
-        });
-        html += `</div>`; 
-        resultBox.style.justifyContent = 'flex-start'; resultBox.innerHTML = html;
-    } catch (e) { 
-        console.error(e); resultBox.innerHTML = `<span style="color:var(--danger)">⚠️ 系統讀取失敗。<br>這可能是網路不穩定或資料庫無回應。</span>`; throw e; 
-    } finally { 
-        searchBtn.disabled = false; searchBtn.innerHTML = "🔍 重新查詢"; 
-    }
-}
-
-// 🌟 全域變數區塊
-let isCountingDown = false; let timeLeft = 0; let timer; let offlineTimetableData = null; let globalStationData = null; let transferTimetableData = null; let isNotificationEnabled = false; let notificationTriggered = false;
-let traOfflineDict = null; // 動態離線字典
+let isCountingDown = false; let timeLeft = 0; let timer; let offlineTimetableData = null; let globalStationData = null; let traOfflineDict = null;
 let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; let savedStart = localStorage.getItem('lastTrainStart') || '台北車站'; let savedEnd = localStorage.getItem('lastTrainEnd') || '台北車站';
-
 const display = document.getElementById('time-display'); const statusText = document.getElementById('status-text'); const actionBtn = document.getElementById('action-btn'); const cancelBtn = document.getElementById('cancel-btn'); const speedModeText = document.getElementById('speed-mode'); const planBContainer = document.getElementById('plan-b-container'); 
-const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站' };
+const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站', 'bus': '' };
 
 window.addEventListener('load', async () => {
     if(localStorage.getItem('dev_mode_active') === 'true') {
-        const mt = document.getElementById('main-title');
-        if(mt) { mt.innerText = "末班車生存 (工程)"; mt.style.color = "var(--warning)"; }
+        const mt = document.getElementById('main-title'); if(mt) { mt.innerText = "末班車生存 (工程)"; mt.style.color = "var(--warning)"; }
     }
-
     if (!document.getElementById('start-station-input')) return;
 
     try { 
         const timeRes = await fetchWithTimeout('/data/offline-timetable.json', { timeout: 4000 }); 
         if (timeRes.ok) offlineTimetableData = await timeRes.json(); 
-    } catch (e) { console.log("離線時刻表載入跳過"); }
+    } catch (e) { console.error("離線時刻表載入失敗"); }
 
     try { 
-        const transferRes = await fetchWithTimeout('/data/transfer-timetable.json', { timeout: 4000 }); 
-        if (transferRes.ok) transferTimetableData = await transferRes.json(); 
-    } catch (e) { console.log("轉乘時刻表載入跳過"); }
+        const stationRes = await fetchWithTimeout('/data/stations.json', { timeout: 4000 }); 
+        if (stationRes.ok) { 
+            globalStationData = await stationRes.json(); 
+            initCustomAutocomplete(); 
+            document.getElementById('start-station-input').value = savedStart; 
+            document.getElementById('end-station-input').value = savedEnd; 
+            checkTransferLock();
+        }
+    } catch (e) { showErrorSheet(`車站資料載入失敗`); }
 
-    // 🌟 讀取台鐵離線保險字典
     try {
         const dictRes = await fetchWithTimeout('/data/tra-last-hub.json', { timeout: 3000 });
         if (dictRes.ok) traOfflineDict = await dictRes.json();
     } catch (e) { console.log("離線字典載入跳過"); }
-
-    try { 
-        const stationRes = await fetchWithTimeout('/data/stations.json', { timeout: 4000 }); 
-        
-        if (stationRes.ok) { 
-            globalStationData = await stationRes.json(); 
-            globalStationData['jp'] = { options: [{id: 'kisaragi', name: '如月車站'}] };
-            defaultStations['jp'] = '如月車站';
-
-            const now = getSystemTime();
-            if (now.getMonth() === 3 && now.getDate() === 1) {
-                const endTypeSelect = document.getElementById('end-type');
-                const jpOption = document.createElement('option');
-                jpOption.value = 'jp'; jpOption.textContent = '日鐵'; jpOption.style.color = '#ff5252'; jpOption.style.fontWeight = 'bold';
-                endTypeSelect.appendChild(jpOption);
-                endTypeSelect.value = 'jp'; savedEnd = '如月車站';
-            }
-
-            initCustomAutocomplete(); 
-            document.getElementById('start-station-input').value = savedStart; 
-            document.getElementById('end-station-input').value = savedEnd; 
-            document.getElementById('search-station-input').value = savedStart; 
-            checkTransferLock();
-        } else {
-            showErrorSheet(`致命錯誤：無法載入車站清單！\n路徑：/data/stations.json\n狀態碼：${stationRes.status}`);
-        }
-    } catch (e) { 
-        showErrorSheet(`致命連線異常：無法讀取車站資料！\n\n原因：${e.message}\n\n💡 提示：如果你是直接點開 index.html，請改用 VS Code 的 Live Server 啟動！`);
-    }
 });
 
-function toggleFavorite(stationName) {
-    if (favoriteStations.includes(stationName)) favoriteStations = favoriteStations.filter(name => name !== stationName); else favoriteStations.push(stationName);
-    localStorage.setItem('lastTrainFavs', JSON.stringify(favoriteStations));
-    renderCustomDropdown('start'); renderCustomDropdown('end'); renderCustomDropdown('search'); renderCustomDropdown('transfer');
+async function updateStationOptions(point) {
+    const typeSelect = document.getElementById(point + '-type');
+    const selectedType = typeSelect.value;
+    const inputField = document.getElementById(point + '-station-input');
+    const listContainer = document.getElementById(point + '-autocomplete-list');
+
+    // 🌟 公車/客運：純手動輸入，關閉選單，隱藏自動完成
+    if (selectedType === 'bus') {
+        inputField.value = '';
+        inputField.placeholder = "請輸入路線 (如: 265, 307, 1815)";
+        if (listContainer) listContainer.style.display = 'none';
+        if (point === 'start') checkTransferLock();
+        return;
+    }
+
+    // 🚂 台鐵懶載入
+    if (selectedType === 'tra' && !globalStationData.tra.isFullLoaded) {
+        inputField.placeholder = "⏳ 載入中...";
+        try {
+            const res = await fetchWithTimeout('/data/tra-stations.json', { timeout: 8000 });
+            if (res.ok) {
+                const fullTraData = await res.json();
+                globalStationData.tra.options = Array.isArray(fullTraData) ? fullTraData : (fullTraData.options || fullTraData.tra?.options || []);
+                globalStationData.tra.isFullLoaded = true;
+            }
+        } catch (e) { console.error("台鐵載入失敗"); }
+        inputField.placeholder = "輸入或選擇車站";
+    }
+
+    inputField.value = defaultStations[selectedType] || '';
+    renderCustomDropdown(point);
+    if (point === 'start') checkTransferLock();
 }
 
 function renderCustomDropdown(point) {
+    const typeSelect = document.getElementById(point + '-type');
+    if (typeSelect && typeSelect.value === 'bus') return; // 🌟 公車不支援下拉選單
+
     const inputField = document.getElementById(point + '-station-input');
     const listContainer = document.getElementById(point + '-autocomplete-list');
-    let options = [];
-
-    if (point === 'transfer') {
-        const startType = document.getElementById('start-type').value;
-        let rawOptions = globalStationData?.[startType]?.transferStations || [];
-        options = rawOptions.map(s => { if (s.name === '萬華') return { ...s, name: '龍山寺' }; return s; });
-    } else {
-        const selectedType = document.getElementById(point + '-type').value;
-        options = globalStationData?.[selectedType]?.options || [];
-    }
+    const selectedType = typeSelect.value;
+    let options = globalStationData?.[selectedType]?.options || [];
     
     listContainer.innerHTML = ''; 
     const filterText = inputField.value.trim().replace(/臺/g, '台').toLowerCase();
-    
     let favList = []; let otherList = [];
     options.forEach(station => {
         const normStationName = station.name.replace(/臺/g, '台').toLowerCase();
@@ -416,51 +287,24 @@ function renderCustomDropdown(point) {
 
     const createItem = (station, isFav) => {
         const item = document.createElement('div'); item.className = 'dropdown-item';
-        const nameSpan = document.createElement('span'); nameSpan.textContent = station.name;
-        
-        if (station.name === '如月車站') {
-            nameSpan.style.color = '#ff5252'; nameSpan.style.letterSpacing = '2px';
-            item.appendChild(nameSpan);
-        } else {
-            const starSpan = document.createElement('span'); starSpan.className = 'star-icon';
-            starSpan.textContent = isFav ? '★' : '☆'; starSpan.style.color = isFav ? '#ffca28' : '#666'; 
-            starSpan.addEventListener('mousedown', function(e) { e.preventDefault(); e.stopPropagation(); toggleFavorite(station.name); });
-            item.appendChild(nameSpan); item.appendChild(starSpan); 
-        }
-
-        item.addEventListener('mousedown', function(e) { e.preventDefault(); });
-        item.addEventListener('click', function() { 
-            inputField.value = station.name; listContainer.style.display = 'none'; 
-            if (point === 'start') checkTransferLock();
-        });
+        item.innerHTML = `<span>${station.name}</span><span class="star-icon" style="color:${isFav?'#ffca28':'#666'}">${isFav?'★':'☆'}</span>`;
+        item.querySelector('.star-icon').addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(station.name); });
+        item.addEventListener('click', () => { inputField.value = station.name; listContainer.style.display = 'none'; if (point === 'start') checkTransferLock(); });
         return item;
     };
-
-    favList.forEach(station => { listContainer.appendChild(createItem(station, true)); });
-    if (favList.length > 0 && otherList.length > 0) { const divider = document.createElement('div'); divider.className = 'dropdown-divider'; listContainer.appendChild(divider); }
-    otherList.forEach(station => { listContainer.appendChild(createItem(station, false)); });
-    
+    favList.forEach(s => listContainer.appendChild(createItem(s, true)));
+    if (favList.length > 0 && otherList.length > 0) listContainer.appendChild(document.createElement('div')).className = 'dropdown-divider';
+    otherList.forEach(s => listContainer.appendChild(createItem(s, false)));
     listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
 }
 
 function initCustomAutocomplete() {
-    ['start', 'end', 'search', 'transfer'].forEach(point => {
+    ['start', 'end', 'search'].forEach(point => {
         const inputField = document.getElementById(point + '-station-input');
         inputField.addEventListener('input', () => renderCustomDropdown(point));
-        inputField.addEventListener('focus', () => { if(inputField.disabled) return; inputField.value = ''; renderCustomDropdown(point); });
-        inputField.addEventListener('blur', () => { if (point === 'start') setTimeout(checkTransferLock, 100); });
+        inputField.addEventListener('focus', () => { if(inputField.disabled) return; const type = document.getElementById(point + '-type').value; if(type !== 'bus') { inputField.value = ''; renderCustomDropdown(point); } });
     });
 }
-
-document.addEventListener('click', function (e) {
-    ['start', 'end', 'search', 'transfer'].forEach(point => {
-        const wrapper = document.getElementById(point + '-station-input').parentElement;
-        if (wrapper && !wrapper.contains(e.target)) {
-            const list = document.getElementById(point + '-autocomplete-list');
-            if(list) list.style.display = 'none';
-        }
-    });
-});
 
 function checkTransferLock() {
     const startType = document.getElementById('start-type').value;
@@ -473,160 +317,83 @@ function checkTransferLock() {
         transferBlock.style.display = 'flex';
         const transferStations = globalStationData?.[startType]?.transferStations || [];
         const isOriginTransferStation = transferStations.some(s => s.name === startInput);
-
         if (isOriginTransferStation) {
             transferInput.value = startInput === '萬華' ? '龍山寺' : startInput;
-            transferInput.disabled = true; transferInput.style.opacity = '0.5'; transferInput.style.pointerEvents = 'none'; 
+            transferInput.disabled = true; transferInput.style.opacity = '0.5';
         } else {
-            transferInput.disabled = false; transferInput.style.opacity = '1'; transferInput.style.pointerEvents = 'auto';
-            let validNames = transferStations.map(s => s.name === '萬華' ? '龍山寺' : s.name);
-            if (!validNames.includes(transferInput.value)) { transferInput.value = validNames[0] || '南港'; }
+            transferInput.disabled = false; transferInput.style.opacity = '1';
+            if (!transferStations.map(s => s.name === '萬華' ? '龍山寺' : s.name).includes(transferInput.value)) transferInput.value = '台北車站';
         }
-
-        const hasJpOption = Array.from(endTypeSelect.options).some(opt => opt.value === 'jp');
-        if (hasJpOption) {
-            endTypeSelect.querySelector('option[value="jp"]').remove();
-            if(document.getElementById('end-station-input').value === '如月車站') { document.getElementById('end-station-input').value = '台北車站'; }
-        }
-
-        if (endTypeSelect.options.length > 1) {
-            endTypeSelect.innerHTML = '<option value="trtc" selected>北捷</option>';
-            document.getElementById('end-station-input').value = defaultStations['trtc'];
-            renderCustomDropdown('end');
-        }
-
+        endTypeSelect.innerHTML = '<option value="trtc" selected>北捷</option>';
     } else {
         transferBlock.style.display = 'none';
-        const now = getSystemTime();
-        const isAprilFools = (now.getMonth() === 3 && now.getDate() === 1);
-        let optionsHtml = '<option value="trtc" selected>北捷</option><option value="thsr">高鐵</option>';
-        if (isAprilFools) { optionsHtml += '<option value="jp" style="color:#ff5252; font-weight:bold;">日鐵</option>'; }
-        endTypeSelect.innerHTML = optionsHtml;
+        endTypeSelect.innerHTML = '<option value="trtc" selected>北捷</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>';
     }
 }
 
-async function updateStationOptions(point) {
-    if (point !== 'transfer') {
-        const typeSelect = document.getElementById(point + '-type');
-        const selectedType = typeSelect.value;
-        const inputField = document.getElementById(point + '-station-input');
-
-        // 🚂 台鐵專屬：懶載入
-        if (selectedType === 'tra' && !globalStationData.tra.isFullLoaded) {
-            inputField.placeholder = "⏳ 載入全台車站中...";
-            try {
-                const res = await fetchWithTimeout('/data/tra-stations.json', { timeout: 3500 });
-                if (res.ok) {
-                    const fullTraData = await res.json();
-                    if (Array.isArray(fullTraData)) globalStationData.tra.options = fullTraData;
-                    else if (fullTraData.options && Array.isArray(fullTraData.options)) globalStationData.tra.options = fullTraData.options;
-                    else if (fullTraData.tra && fullTraData.tra.options) globalStationData.tra.options = fullTraData.tra.options;
-                    globalStationData.tra.isFullLoaded = true;
-                }
-            } catch (e) { console.error("台鐵車站載入失敗", e); }
-            inputField.placeholder = "輸入或選擇車站";
-        }
-
-        inputField.value = defaultStations[selectedType] || '';
-        renderCustomDropdown(point);
-    }
-    if (point === 'start') checkTransferLock();
-}
-
-function toggleNotificationState() {
-    isNotificationEnabled = !isNotificationEnabled;
-    if (isNotificationEnabled) { actionBtn.innerHTML = "🔕 關閉發車通知"; actionBtn.classList.replace('btn-danger', 'btn-warning'); alert("🔔 已開啟通知！"); } 
-    else { actionBtn.innerHTML = "🔔 開啟發車通知"; actionBtn.classList.replace('btn-warning', 'btn-danger'); }
+async function executeFullSearch() {
+    const searchType = document.getElementById('search-type').value; 
+    const searchStationName = document.getElementById('search-station-input').value; 
+    const resultBox = document.getElementById('search-result-box'); 
+    const searchBtn = document.getElementById('search-action-btn');
+    if (!searchStationName) return alert("⚠️ 請先輸入名稱！");
+    
+    searchBtn.disabled = true; searchBtn.innerHTML = "⏳ 檢索中..."; 
+    resultBox.innerHTML = `正在連線 TDX 資料庫...`;
+    
+    try {
+        // 🌟 這裡之後會在 routing.js 實作公車查詢邏輯
+        let res = await fetchSingleStationTime(searchStationName, searchType, offlineTimetableData, document.querySelector('input[name="search-time-mode"]:checked').value);
+        if (res.status === "not_found" || res.data.length === 0) { resultBox.innerHTML = `⚠️ 找不到資料。`; return; }
+        let html = `<div style="width: 100%; text-align: left;"><h4>時刻表：${searchStationName}</h4>`;
+        res.data.forEach(item => { html += `<div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px dashed #333;"><span>往 ${item.destination}</span><b>${item.time}</b></div>`; });
+        resultBox.innerHTML = html + `</div>`;
+    } catch (e) { resultBox.innerHTML = `⚠️ 系統錯誤`; }
+    finally { searchBtn.disabled = false; searchBtn.innerHTML = "🔍 重新查詢"; }
 }
 
 function updateClock() {
     if (!display) return;
     const now = getSystemTime();
-    
     if (!isCountingDown) { 
-        display.innerHTML = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`; 
+        display.innerHTML = now.toTimeString().split(' ')[0]; 
     } else {
-        if (timeLeft <= 0) { clearInterval(timer); display.innerHTML = "來不及了💸"; display.style.fontSize = "50px"; display.style.color = "#ff5252"; actionBtn.style.display = "none"; cancelBtn.style.display = "none"; planBContainer.style.display = "flex"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex"); statusText.innerHTML = "人生不是只有末班車..."; return; }
+        if (timeLeft <= 0) { display.innerHTML = "來不及了💸"; resetPlan(); return; }
         timeLeft--;
-        if (isNotificationEnabled && !notificationTriggered && timeLeft === 600) { new Notification("🏃‍♂️ 末班車警報！", { body: "距離發車只剩最後 10 分鐘！" }); notificationTriggered = true; }
-        let h = Math.floor(timeLeft / 3600); let m = Math.floor((timeLeft % 3600) / 60); let s = timeLeft % 60;
-        display.innerHTML = h > 0 ? `${h}:${m<10?'0':''}${m}:${s<10?'0':''}${s}` : `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
+        let m = Math.floor(timeLeft / 60); let s = timeLeft % 60;
+        display.innerHTML = `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
     }
 }
-if(display) { updateClock(); timer = setInterval(updateClock, 1000); }
+setInterval(updateClock, 1000);
 
 async function handleAction() {
     const startType = document.getElementById('start-type').value; 
     const endType = document.getElementById('end-type').value;
-    const startStationName = document.getElementById('start-station-input').value; 
-    const endStationName = document.getElementById('end-station-input').value;
-    
-    const uiTransferName = document.getElementById('transfer-station-input').value;
-    const railTransferName = uiTransferName === '龍山寺' ? '萬華' : uiTransferName;
-    const trtcTransferName = uiTransferName; 
-
-    if (endStationName === '如月車站' || endStationName.toUpperCase() === 'KISARAGI') { triggerKisaragiEvent(); return; }
-    if (isCountingDown) { if ("Notification" in window) { if (Notification.permission === "granted") toggleNotificationState(); else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); }); else alert("⚠️ 您之前拒絕了通知權限，請手動開啟！"); } else alert("⚠️ 不支援推播通知！"); return; }
-    
-    const startStationObj = getRealStationObj(startStationName, startType);
-    const endStationObj = getRealStationObj(endStationName, endType);
-    if (!startStationObj || !endStationObj) return alert("⚠️ 找不到車站！請確認輸入名稱。");
-    
-    document.getElementById('start-station-input').value = startStationObj.name;
-    document.getElementById('end-station-input').value = endStationObj.name;
-    
-    localStorage.setItem('lastTrainStart', startStationObj.name); localStorage.setItem('lastTrainEnd', endStationObj.name);
-    const startStation = startStationObj.id; const endStation = endStationObj.id;
-
-    if (startType === endType && startStation === endStation) { clearInterval(timer); isCountingDown = false; display.innerHTML = "恭喜到達🎉"; display.style.fontSize = "40px"; display.style.color = "#4caf50"; statusText.innerHTML = "早點回家洗洗睡！"; actionBtn.style.display = "none"; cancelBtn.style.display = "none"; planBContainer.style.display = "flex"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "none"); return; }
+    const startName = document.getElementById('start-station-input').value;
+    const endName = document.getElementById('end-station-input').value;
+    if (!startName || !endName) return alert("⚠️ 請輸入起訖點");
 
     actionBtn.innerHTML = "⏳ 演算法推演中..."; actionBtn.disabled = true;
-
     try {
-        let finalTime = "23:59"; let status = "系統預設"; let transferPenalty = 0; 
-        
-        if (startType === 'tra' || startType === 'thsr') {
-            const transferStationObj = globalStationData[startType]?.transferStations?.find(s => s.name === railTransferName);
-            if (!transferStationObj) { alert("⚠️ 無效的轉乘站"); actionBtn.disabled = false; actionBtn.innerHTML = "開始計算轉乘"; return; }
-            
-            let res = await fetchTwoStageSurvivalTime(startType, startStation, transferStationObj.id, trtcTransferName, endStationObj.name, offlineTimetableData);
-            
-            if (res.time && res.time !== "TOKEN_EXPIRED") {
-                finalTime = res.time; status = res.status;
-            } else {
-                if (res.status === "查無直達轉乘站的班次") alert(`⚠️ 找不到從「${startStationObj.name}」直達轉乘站的列車。\n\n💡 建議：小車站通常沒有直達車，請嘗試將出發地改為鄰近的大站再查詢一次！`);
-                else alert(`⚠️ ${res.status || '轉乘計算失敗'}！今晚可能無法透過這條路線回家了。`);
-                throw new Error(res.status);
-            }
-        } 
-        else {
-            const offlineComputedTime = calculateOfflineTime(offlineTimetableData, startStationObj.name, endStationObj.name, startType);
-            if (offlineComputedTime) { finalTime = offlineComputedTime; status = "離線演算法"; } 
-            else alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。");
+        const startObj = getRealStationObj(startName, startType);
+        const endObj = getRealStationObj(endName, endType);
+        // 🌟 這裡之後會在 routing.js 整合公車查詢
+        let res = await fetchTwoStageSurvivalTime(startType, startObj.id, (startType==='trtc'?'':document.getElementById('transfer-station-input').value), '', endObj.name, offlineTimetableData);
+        if (res.time) {
+            isCountingDown = true;
+            const now = getSystemTime(); let target = getSystemTime(); 
+            const [hh, mm] = res.time.split(':').map(Number); target.setHours(hh, mm, 0, 0);
+            if (now > target) target.setDate(target.getDate() + 1);
+            timeLeft = Math.floor((target - now) / 1000);
+            speedModeText.innerText = res.time;
+            actionBtn.style.display = 'none'; cancelBtn.style.display = 'flex';
         }
-        
-        isCountingDown = true; statusText.innerHTML = "距離末班車發車還剩"; display.style.color = "#4caf50"; speedModeText.innerHTML = `${finalTime} <span style="font-size:10px; color:#aaa;">(${status})</span>`; actionBtn.innerHTML = "🔔 開啟發車通知"; actionBtn.classList.replace('btn-success', 'btn-danger'); cancelBtn.style.display = "flex";
-        
-        const now = getSystemTime(); let target = getSystemTime(); 
-        const [hh, mm] = finalTime.split(':').map(Number); target.setHours(hh, mm, 0, 0); 
-        if (now.getHours() >= 4 && hh < 4) target.setDate(target.getDate() + 1); else if (now.getHours() < 4 && hh >= 4) target.setDate(target.getDate() - 1); 
-        timeLeft = Math.floor((target.getTime() - now.getTime()) / 1000) - transferPenalty; if (timeLeft < 0) timeLeft = 0; updateClock(); 
-        
-    } catch (error) { 
-        isCountingDown = false; actionBtn.innerHTML = "開始計算轉乘"; actionBtn.disabled = false;
-    } 
+    } catch (e) { alert("計算失敗"); }
+    finally { actionBtn.disabled = false; actionBtn.innerHTML = "開始計算轉乘"; }
 }
 
-function resetPlan() {
-    clearInterval(timer); isCountingDown = false; isNotificationEnabled = false; notificationTriggered = false; planBContainer.style.display = "none"; cancelBtn.style.display = "none"; actionBtn.style.display = "block"; actionBtn.innerHTML = "開始計算轉乘"; actionBtn.classList.remove('btn-danger', 'btn-warning'); actionBtn.classList.add('btn-success'); actionBtn.disabled = false;
-    statusText.innerHTML = "現在時間"; speedModeText.innerHTML = "待查驗..."; display.style.color = "#e0e0e0"; display.style.fontSize = "50px"; document.querySelectorAll('.vehicle-option').forEach(btn => btn.style.display = "flex"); updateClock(); timer = setInterval(updateClock, 1000);
-}
-
-function shareApp() { 
-    if (navigator.share) navigator.share({ title: '末班車生存', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href }).catch(err => { if (err.name !== 'AbortError') console.error("分享失敗:", err); });
-    else { navigator.clipboard.writeText(window.location.href); alert("✅ 網址已複製！"); } 
-}
-
+function resetPlan() { isCountingDown = false; actionBtn.style.display = 'block'; cancelBtn.style.display = 'none'; speedModeText.innerText = '待查驗...'; }
 function toggleContact() { const l = document.getElementById('contact-links'); l.style.display = l.style.display === "flex" ? "none" : "flex"; }
-function openAdvancedSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
-function openSettingsSheet() { document.getElementById('overlay').style.zIndex = "90"; document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
+function openAdvancedSheet() { document.getElementById('overlay').classList.add('active'); document.getElementById('advanced-sheet').classList.add('active'); }
+function openSettingsSheet() { document.getElementById('overlay').classList.add('active'); document.getElementById('settings-sheet').classList.add('active'); }
+function closeAllSheets() { document.querySelectorAll('.bottom-sheet').forEach(s => s.classList.remove('active')); document.getElementById('overlay').classList.remove('active'); }
