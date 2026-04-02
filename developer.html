@@ -12,35 +12,23 @@
         .container { width: 90%; max-width: 400px; margin: 20px auto; padding-bottom: 30px; }
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #333; }
         .header-row h1 { font-size: 20px; color: var(--success); margin: 0; }
-        /* 🌟 防彈返回鍵樣式 */
         .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; display: inline-block; }
         .back-btn:active { background: #555; transform: scale(0.95); }
-        
         .content-box { background: var(--card-bg); border: 1px solid #333; border-radius: 12px; padding: 20px; font-size: 14px; line-height: 1.6; color: #ccc; text-align: center; }
-        .avatar { font-size: 60px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-
 <div class="container">
     <div class="header-row">
         <h1>👨‍💻 開發者資訊</h1>
-        <a href="javascript:void(0)" onclick="if(window.parent && window.parent.closeAllSheets) { window.parent.closeAllSheets(); } else { window.location.href='/'; }" class="back-btn">⬅ 返回主頁</a>
+        <a href="javascript:void(0)" onclick="if(window.parent && window.parent.closePageOnly) { window.parent.closePageOnly(); } else { window.location.href='/'; }" class="back-btn">⬅ 返回設定</a>
     </div>
-
     <div class="content-box">
-        <div class="avatar">🍠</div>
+        <div style="font-size: 60px;">🍠</div>
         <h3 style="color: white; margin: 5px 0;">綠茶地瓜</h3>
-        <p style="color: var(--warning); font-weight: bold; margin-bottom: 20px;">專案核心維護者</p>
-        
-        <p style="text-align: left;">這個專案誕生於無數個趕不上末班車的夜晚。致力於打造最直覺、最無壓力的深夜通勤導航系統。</p>
-        
-        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #444; font-size: 12px; color: #888;">
-            Version: 2.0.0 (微服務防彈版)<br>
-            Powered by TDX API & Gemini
-        </div>
+        <p style="color: var(--warning); font-weight: bold;">專案核心維護者</p>
+        <p>致力於打造深夜通勤最直覺的導航體驗。</p>
     </div>
 </div>
-
 </body>
 </html>
