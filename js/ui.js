@@ -1,12 +1,13 @@
 // ==========================================
-// 📱 介面與視窗控制 (ui.js) - 穩定版
+// 📱 介面控制 (ui.js) - 電視遙控器修復版
 // ==========================================
-let currentMode = 'survival';
 
+// 📺 打開電視頻道 (切換 iframe)
 window.openPage = function(url) { 
     const frame = document.getElementById('spa-frame');
     const overlay = document.getElementById('overlay');
     const sheet = document.getElementById('dynamic-sheet');
+    
     if (frame && overlay && sheet) {
         frame.src = url; 
         overlay.classList.add('active'); 
@@ -14,51 +15,50 @@ window.openPage = function(url) {
     }
 };
 
+// 📺 關閉電視頻道
 window.closeDynamicSheet = function() { 
     const sheet = document.getElementById('dynamic-sheet');
     const overlay = document.getElementById('overlay');
+    
     if (sheet) sheet.classList.remove('active'); 
     setTimeout(() => { 
-        const frame = document.getElementById('spa-frame');
-        if (frame) frame.src = 'about:blank'; 
+        if (document.getElementById('spa-frame')) document.getElementById('spa-frame').src = 'about:blank'; 
         if (overlay) overlay.classList.remove('active'); 
     }, 300); 
 };
 
-window.closeAllSheets = function() { 
-    document.querySelectorAll('.bottom-sheet').forEach(s => s.classList.remove('active')); 
-    const overlay = document.getElementById('overlay');
-    if (overlay) overlay.classList.remove('active'); 
-};
-
+// 打開快速設定
 window.openSettingsSheet = function() {
     const overlay = document.getElementById('overlay'); 
     const sheet = document.getElementById('settings-sheet');
-    if (overlay && sheet) { 
+    if(overlay && sheet) { 
         overlay.classList.add('active'); 
         sheet.classList.add('active'); 
     }
 };
 
-window.toggleAppMode = function() {
-    const modeSurvival = document.getElementById('mode-survival'); 
-    const modeSearch = document.getElementById('mode-search');
-    const mainTitle = document.getElementById('main-title');
-    if (currentMode === 'survival') { 
-        modeSurvival.style.display = 'none'; modeSearch.style.display = 'block'; 
-        if (mainTitle) mainTitle.innerText = "時刻表檢索"; currentMode = 'search'; 
-    } else { 
-        modeSearch.style.display = 'none'; modeSurvival.style.display = 'block'; 
-        if (mainTitle) mainTitle.innerText = "末班車生存"; currentMode = 'survival'; 
-    }
+// 關閉所有面板 (包含設定與電視)
+window.closeAllSheets = function() { 
+    document.querySelectorAll('.bottom-sheet').forEach(s => s.classList.remove('active')); 
+    const overlay = document.getElementById('overlay');
+    if (overlay) overlay.classList.remove('active'); 
+    
+    // 順便清空電視畫面，節省效能
+    setTimeout(() => {
+        const frame = document.getElementById('spa-frame');
+        if (frame) frame.src = 'about:blank';
+    }, 300);
 };
 
-// 其他 toggleContact, shareApp 保留...
 window.toggleContact = function() {
-    const l = document.getElementById('contact-links');
-    if(l) l.style.display = (l.style.display === "flex") ? "none" : "flex";
+    const links = document.getElementById('contact-links');
+    if(links) links.style.display = (links.style.display === 'flex') ? 'none' : 'flex';
 };
+
 window.shareApp = function() {
-    if (navigator.share) { navigator.share({ title: '末班車生存', text: '開啟極限求生模式！', url: window.location.href }).catch(e=>e); } 
-    else { alert("請直接複製網址！"); }
+    if (navigator.share) { 
+        navigator.share({ title: '末班車生存', url: window.location.origin }).catch(e=>e); 
+    } else { 
+        alert("請直接複製網址分享！"); 
+    }
 };
