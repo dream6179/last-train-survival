@@ -1,5 +1,5 @@
 // ==========================================
-// 📱 介面控制 (ui.js) - 電視遙控器修復版
+// 📱 介面控制 (ui.js) - 精準層級版
 // ==========================================
 
 // 📺 打開電視頻道 (切換 iframe)
@@ -15,16 +15,28 @@ window.openPage = function(url) {
     }
 };
 
-// 📺 關閉電視頻道
-window.closeDynamicSheet = function() { 
+// 📺 🌟 新增：只關閉電視頁面，保留設定選單
+window.closePageOnly = function() {
     const sheet = document.getElementById('dynamic-sheet');
-    const overlay = document.getElementById('overlay');
+    if (sheet) sheet.classList.remove('active');
     
-    if (sheet) sheet.classList.remove('active'); 
-    setTimeout(() => { 
-        if (document.getElementById('spa-frame')) document.getElementById('spa-frame').src = 'about:blank'; 
-        if (overlay) overlay.classList.remove('active'); 
-    }, 300); 
+    // 延遲清空內容，避免縮回動畫時看到白屏
+    setTimeout(() => {
+        const frame = document.getElementById('spa-frame');
+        if (frame) frame.src = 'about:blank';
+    }, 300);
+};
+
+// 📺 關閉所有面板 (回到首頁最乾淨狀態)
+window.closeAllSheets = function() { 
+    document.querySelectorAll('.bottom-sheet').forEach(s => s.classList.remove('active')); 
+    const overlay = document.getElementById('overlay');
+    if (overlay) overlay.classList.remove('active'); 
+    
+    setTimeout(() => {
+        const frame = document.getElementById('spa-frame');
+        if (frame) frame.src = 'about:blank';
+    }, 300);
 };
 
 // 打開快速設定
@@ -35,19 +47,6 @@ window.openSettingsSheet = function() {
         overlay.classList.add('active'); 
         sheet.classList.add('active'); 
     }
-};
-
-// 關閉所有面板 (包含設定與電視)
-window.closeAllSheets = function() { 
-    document.querySelectorAll('.bottom-sheet').forEach(s => s.classList.remove('active')); 
-    const overlay = document.getElementById('overlay');
-    if (overlay) overlay.classList.remove('active'); 
-    
-    // 順便清空電視畫面，節省效能
-    setTimeout(() => {
-        const frame = document.getElementById('spa-frame');
-        if (frame) frame.src = 'about:blank';
-    }, 300);
 };
 
 window.toggleContact = function() {
