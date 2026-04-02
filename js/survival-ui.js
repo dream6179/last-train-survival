@@ -1,5 +1,5 @@
 // ==========================================
-// 🟢 輸入槽專屬大腦 (survival-ui.js) - 全量對稱版
+// 🟢 輸入槽專屬大腦 (survival-ui.js) - 公車專精版
 // ==========================================
 
 let globalStationData = null;
@@ -14,6 +14,7 @@ window.addEventListener('load', async () => {
 });
 
 function initCustomAutocomplete() {
+    // 1. 處理主站點 (北捷/台鐵/高鐵/客運主路線)
     ['start', 'end'].forEach(point => {
         const inputField = document.getElementById(point + '-station-input');
         const clearBtn = document.getElementById(point + '-clear-btn');
@@ -41,6 +42,23 @@ function initCustomAutocomplete() {
             const list = document.getElementById(point + '-autocomplete-list');
             if (list && !inputField.contains(e.target)) list.style.display = 'none';
         });
+    });
+
+    // 🌟 2. 處理公車站牌的專屬 × 清除按鈕
+    ['start', 'end'].forEach(point => {
+        const busInput = document.getElementById(point + '-bus-stop-input');
+        const busClearBtn = document.getElementById(point + '-bus-clear-btn');
+        if(busInput && busClearBtn) {
+            busInput.addEventListener('input', () => {
+                busClearBtn.style.display = busInput.value ? 'flex' : 'none';
+            });
+            busClearBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                busInput.value = '';
+                busClearBtn.style.display = 'none';
+                busInput.focus();
+            });
+        }
     });
 }
 
@@ -105,17 +123,23 @@ function renderCustomDropdown(point) {
 window.updateStationOptions = function(point) {
     const type = document.getElementById(point + '-type').value;
     const input = document.getElementById(point + '-station-input');
-    
-    // 🌟 核心修正：根據傳入的 point (start/end) 尋找對應的站牌區塊
     const busBlock = document.getElementById(point + '-bus-stop-block');
-    const transBlock = document.getElementById('transfer-block');
-    const transSelect = document.getElementById('transfer-station-input');
+    
+    // 🌟 核心動態調整：切換 Placeholder 與顯示站牌區塊
+    if(busBlock) {
+        if (type === 'bus') {
+            busBlock.style.display = 'flex';
+            input.placeholder = '選擇路線'; // 切換成公車時的提示
+        } else {
+            busBlock.style.display = 'none';
+            input.placeholder = '選擇車站'; // 非公車時的提示
+        }
+    }
 
-    // 顯示/隱藏公車站牌區塊
-    if(busBlock) busBlock.style.display = (type === 'bus') ? 'flex' : 'none';
-
-    // 只有出發地需要處理轉乘站鎖定
+    // 出發地的轉乘站邏輯
     if (point === 'start') {
+        const transBlock = document.getElementById('transfer-block');
+        const transSelect = document.getElementById('transfer-station-input');
         if(transBlock) {
             transBlock.style.display = (type === 'tra' || type === 'thsr') ? 'flex' : 'none';
             if (type === 'tra') {
