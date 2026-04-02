@@ -249,22 +249,34 @@ window.escapeKisaragi = function() {
 };
 
 // ==========================================
-// 🛡️ 台灣鄉民防禦系統
+// 🛡️ 台灣鄉民防禦系統 (避開台中港陷阱版)
 // ==========================================
 function getRealStationObj(inputName, type) {
     if (!inputName || !globalStationData?.[type]) return null;
     
-    // 1. 統一將「臺」轉成「台」，並支援鄉民俗稱
+    // 1. 統一將「臺」轉成「台」，並清除頭尾空白
     let normInput = inputName.trim().replace(/臺/g, '台');
     if (normInput === '北車') normInput = '台北車站';
     
-    // 2. 先找「完全比對」(兩邊都轉成台來比)
-    let found = globalStationData[type].options.find(s => s.name.replace(/臺/g, '台') === normInput);
+    const options = globalStationData[type].options;
+
+    // 2. 終極完全比對 (連 JSON 裡的空白都無情清除)
+    let found = options.find(s => s.name.trim().replace(/臺/g, '台') === normInput);
     if (found) return found;
 
-    // 3. 如果找不到，試試看「模糊包含」(例如輸入「台北」，自動配對「台北車站」)
-    found = globalStationData[type].options.find(s => s.name.replace(/臺/g, '台').includes(normInput));
-    return found || null;
+    // 3. 次級比對：如果使用者輸入「台中火車站」或「台中站」，拔掉字尾再比對一次
+    let cleanInput = normInput.replace(/(火車站|車站|站)$/, '');
+    found = options.find(s => s.name.trim().replace(/臺/g, '台') === cleanInput);
+    if (found) return found;
+
+    // 4. 模糊比對 (為避免「台中」配對到「台中港」，優先找字數一樣短的)
+    let possibleMatches = options.filter(s => s.name.replace(/臺/g, '台').includes(cleanInput));
+    if (possibleMatches.length > 0) {
+        possibleMatches.sort((a, b) => a.name.length - b.name.length);
+        return possibleMatches[0];
+    }
+    
+    return null;
 }
 
 async function executeFullSearch() {
@@ -309,9 +321,9 @@ async function executeFullSearch() {
     }
 }
 
-// 🌟 全域變數區塊 (新增 traOfflineDict)
+// 🌟 全域變數區塊
 let isCountingDown = false; let timeLeft = 0; let timer; let offlineTimetableData = null; let globalStationData = null; let transferTimetableData = null; let isNotificationEnabled = false; let notificationTriggered = false;
-let traOfflineDict = null; // 🌟 這是我們新增的台鐵離線保險字典全域變數
+let traOfflineDict = null; // 動態離線字典
 let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; let savedStart = localStorage.getItem('lastTrainStart') || '台北車站'; let savedEnd = localStorage.getItem('lastTrainEnd') || '台北車站';
 
 const display = document.getElementById('time-display'); const statusText = document.getElementById('status-text'); const actionBtn = document.getElementById('action-btn'); const cancelBtn = document.getElementById('cancel-btn'); const speedModeText = document.getElementById('speed-mode'); const planBContainer = document.getElementById('plan-b-container'); 
@@ -328,16 +340,14 @@ window.addEventListener('load', async () => {
     try { 
         const timeRes = await fetchWithTimeout('/data/offline-timetable.json', { timeout: 4000 }); 
         if (timeRes.ok) offlineTimetableData = await timeRes.json(); 
-        else console.warn("⚠️ 找不到 offline-timetable.json", timeRes.status);
-    } catch (e) { console.error("離線時刻表讀取失敗:", e); }
+    } catch (e) { console.log("離線時刻表載入跳過"); }
 
     try { 
         const transferRes = await fetchWithTimeout('/data/transfer-timetable.json', { timeout: 4000 }); 
         if (transferRes.ok) transferTimetableData = await transferRes.json(); 
-        else console.warn("⚠️ 找不到 transfer-timetable.json", transferRes.status);
-    } catch (e) { console.error("轉乘時刻表讀取失敗:", e); }
+    } catch (e) { console.log("轉乘時刻表載入跳過"); }
 
-    // 🌟 新增：讀取台鐵離線保險字典
+    // 🌟 讀取台鐵離線保險字典
     try {
         const dictRes = await fetchWithTimeout('/data/tra-last-hub.json', { timeout: 3000 });
         if (dictRes.ok) traOfflineDict = await dictRes.json();
@@ -348,7 +358,6 @@ window.addEventListener('load', async () => {
         
         if (stationRes.ok) { 
             globalStationData = await stationRes.json(); 
-            
             globalStationData['jp'] = { options: [{id: 'kisaragi', name: '如月車站'}] };
             defaultStations['jp'] = '如月車站';
 
@@ -358,7 +367,6 @@ window.addEventListener('load', async () => {
                 const jpOption = document.createElement('option');
                 jpOption.value = 'jp'; jpOption.textContent = '日鐵'; jpOption.style.color = '#ff5252'; jpOption.style.fontWeight = 'bold';
                 endTypeSelect.appendChild(jpOption);
-                
                 endTypeSelect.value = 'jp'; savedEnd = '如月車站';
             }
 
@@ -503,29 +511,19 @@ async function updateStationOptions(point) {
         const selectedType = typeSelect.value;
         const inputField = document.getElementById(point + '-station-input');
 
-        // 🚂 台鐵專屬：懶載入 (Lazy Loading) 機制
+        // 🚂 台鐵專屬：懶載入
         if (selectedType === 'tra' && !globalStationData.tra.isFullLoaded) {
             inputField.placeholder = "⏳ 載入全台車站中...";
             try {
                 const res = await fetchWithTimeout('/data/tra-stations.json', { timeout: 3500 });
                 if (res.ok) {
                     const fullTraData = await res.json();
-                    
-                    if (Array.isArray(fullTraData)) {
-                        globalStationData.tra.options = fullTraData;
-                    } else if (fullTraData.options && Array.isArray(fullTraData.options)) {
-                        globalStationData.tra.options = fullTraData.options;
-                    } else if (fullTraData.tra && fullTraData.tra.options) {
-                        globalStationData.tra.options = fullTraData.tra.options;
-                    } else {
-                        console.error("無法解析的 JSON 結構", fullTraData);
-                    }
-                    
+                    if (Array.isArray(fullTraData)) globalStationData.tra.options = fullTraData;
+                    else if (fullTraData.options && Array.isArray(fullTraData.options)) globalStationData.tra.options = fullTraData.options;
+                    else if (fullTraData.tra && fullTraData.tra.options) globalStationData.tra.options = fullTraData.tra.options;
                     globalStationData.tra.isFullLoaded = true;
                 }
-            } catch (e) {
-                console.error("台鐵車站載入失敗", e);
-            }
+            } catch (e) { console.error("台鐵車站載入失敗", e); }
             inputField.placeholder = "輸入或選擇車站";
         }
 
@@ -567,10 +565,7 @@ async function handleAction() {
     const railTransferName = uiTransferName === '龍山寺' ? '萬華' : uiTransferName;
     const trtcTransferName = uiTransferName; 
 
-    if (endStationName === '如月車站' || endStationName.toUpperCase() === 'KISARAGI') {
-        triggerKisaragiEvent(); return;
-    }
-
+    if (endStationName === '如月車站' || endStationName.toUpperCase() === 'KISARAGI') { triggerKisaragiEvent(); return; }
     if (isCountingDown) { if ("Notification" in window) { if (Notification.permission === "granted") toggleNotificationState(); else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") toggleNotificationState(); }); else alert("⚠️ 您之前拒絕了通知權限，請手動開啟！"); } else alert("⚠️ 不支援推播通知！"); return; }
     
     const startStationObj = getRealStationObj(startStationName, startType);
@@ -599,19 +594,15 @@ async function handleAction() {
             if (res.time && res.time !== "TOKEN_EXPIRED") {
                 finalTime = res.time; status = res.status;
             } else {
-                if (res.status === "查無直達轉乘站的班次") {
-                    alert(`⚠️ 找不到從「${startStationObj.name}」直達轉乘站的列車。\n\n💡 建議：小車站通常沒有直達車，請嘗試將出發地改為鄰近的大站（如：台中、彰化）再查詢一次！`);
-                } else {
-                    alert(`⚠️ ${res.status || '轉乘計算失敗'}！今晚可能無法透過這條路線回家了。`);
-                }
+                if (res.status === "查無直達轉乘站的班次") alert(`⚠️ 找不到從「${startStationObj.name}」直達轉乘站的列車。\n\n💡 建議：小車站通常沒有直達車，請嘗試將出發地改為鄰近的大站再查詢一次！`);
+                else alert(`⚠️ ${res.status || '轉乘計算失敗'}！今晚可能無法透過這條路線回家了。`);
                 throw new Error(res.status);
             }
-
         } 
         else {
             const offlineComputedTime = calculateOfflineTime(offlineTimetableData, startStationObj.name, endStationObj.name, startType);
             if (offlineComputedTime) { finalTime = offlineComputedTime; status = "離線演算法"; } 
-            else { alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。"); }
+            else alert("⚠️ 跨線轉乘資料尚未備齊，使用 23:59 估算。");
         }
         
         isCountingDown = true; statusText.innerHTML = "距離末班車發車還剩"; display.style.color = "#4caf50"; speedModeText.innerHTML = `${finalTime} <span style="font-size:10px; color:#aaa;">(${status})</span>`; actionBtn.innerHTML = "🔔 開啟發車通知"; actionBtn.classList.replace('btn-success', 'btn-danger'); cancelBtn.style.display = "flex";
@@ -632,11 +623,8 @@ function resetPlan() {
 }
 
 function shareApp() { 
-    if (navigator.share) {
-        navigator.share({ title: '末班車生存', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href }).catch(err => { if (err.name !== 'AbortError') console.error("分享失敗:", err); });
-    } else { 
-        navigator.clipboard.writeText(window.location.href); alert("✅ 網址已複製！"); 
-    } 
+    if (navigator.share) navigator.share({ title: '末班車生存', text: '趕不上末班車？快用這個工具一鍵查詢倒數！', url: window.location.href }).catch(err => { if (err.name !== 'AbortError') console.error("分享失敗:", err); });
+    else { navigator.clipboard.writeText(window.location.href); alert("✅ 網址已複製！"); } 
 }
 
 function toggleContact() { const l = document.getElementById('contact-links'); l.style.display = l.style.display === "flex" ? "none" : "flex"; }
