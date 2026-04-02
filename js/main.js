@@ -95,3 +95,28 @@ async function executeFullSearch() {
     } catch (e) { resultBox.innerHTML = `⚠️ 系統錯誤或無公車動態`; }
 }
 function resetPlan() { document.getElementById('action-btn').style.display = 'block'; document.getElementById('cancel-btn').style.display = 'none'; document.getElementById('speed-mode').innerText = '待查驗...'; }
+
+// ==========================================
+// 核心邏輯 - UI 變數定義 (補上這段，時鐘才會動！)
+// ==========================================
+const display = document.getElementById('time-display'); 
+const statusText = document.getElementById('status-text'); 
+const actionBtn = document.getElementById('action-btn'); 
+const cancelBtn = document.getElementById('cancel-btn'); 
+const speedModeText = document.getElementById('speed-mode'); 
+const planBContainer = document.getElementById('plan-b-container'); 
+
+// 這裡接原本的 updateClock 函數...
+function updateClock() {
+    if (!display) return;
+    const now = getSystemTime();
+    if (!isCountingDown) { 
+        display.innerHTML = now.toTimeString().split(' ')[0]; 
+    } else {
+        if (timeLeft <= 0) { display.innerHTML = "來不及了💸"; resetPlan(); return; }
+        timeLeft--;
+        let m = Math.floor(timeLeft / 60); let s = timeLeft % 60;
+        display.innerHTML = `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
+    }
+}
+setInterval(updateClock, 1000);
