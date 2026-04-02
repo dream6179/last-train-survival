@@ -1,67 +1,70 @@
 /* ==========================================
-   末班車生存 終極皮膚 (style.css)
+   末班車生存 最終校準皮膚 (style.css)
    ========================================== */
 
 :root { 
-    --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; 
-    --danger: #ff5252; --success: #4caf50; --warning: #ffb300; --info: #2196F3; 
+    --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; 
+    --text-sub: #aaaaaa; --danger: #ff5252; --success: #4caf50; 
+    --warning: #ffb300; --info: #2196F3; 
 }
 
-html, body { overflow: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); overscroll-behavior: none; }
-body { font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main); display: flex; justify-content: center; align-items: center; }
+html, body { overflow: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); }
+body { font-family: 'Segoe UI', sans-serif; color: var(--text-main); display: flex; justify-content: center; align-items: center; }
 
+/* 主容器 */
 .container { 
-    text-align: center; width: 90%; max-width: 400px; height: 92vh; max-height: 680px; 
-    background-color: var(--card-bg); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
-    display: flex; flex-direction: column; justify-content: center; padding: 0 20px; box-sizing: border-box; gap: 8px; position: relative; 
+    text-align: center; width: 90%; max-width: 400px; height: 92vh; 
+    background-color: var(--card-bg); border-radius: 20px; 
+    display: flex; flex-direction: column; padding: 0 20px; 
+    box-sizing: border-box; position: relative; gap: 8px;
 }
 
-.header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-.header-row h1 { font-size: 22px; color: var(--danger); margin: 0; }
-
-.mode-toggle-btn { 
-    background: #333; color: white; border: none; border-radius: 50%; width: 35px; height: 35px; 
-    font-size: 16px; cursor: pointer; display: flex; justify-content: center; align-items: center; 
+/* 🌟 選單面板：強制層級與高度 */
+.overlay { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.8); opacity: 0; pointer-events: none; 
+    transition: opacity 0.3s; z-index: 900; 
 }
-
-.location-block { display: flex; flex-direction: column; width: 100%; text-align: left; }
-.location-block label { font-size: 11px; color: var(--text-sub); margin-bottom: 4px; font-weight: bold; }
-
-.select-group { display: flex; gap: 8px; position: relative; margin-bottom: 4px; }
-select, .station-input { 
-    background-color: #2c2c2c; color: white; border: 1px solid #444; padding: 12px; 
-    border-radius: 10px; font-size: 15px; outline: none; width: 100%; box-sizing: border-box; 
-    -webkit-appearance: none; appearance: none;
-}
-
-.time-area { margin: 15px 0; display: flex; flex-direction: column; align-items: center; min-height: 110px; justify-content: center; }
-.time-display { font-size: 55px; font-weight: bold; color: #e0e0e0; letter-spacing: 2px; }
-.status { font-size: 13px; color: var(--text-sub); }
-
-.main-action-btn { background-color: var(--success); color: white; border: none; padding: 16px; font-size: 17px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; }
-.btn-reset { background: transparent; color: var(--text-sub); border: 1px dashed #555; width: 100%; padding: 12px; border-radius: 10px; cursor: pointer; margin-top: 8px; }
-
-/* 🌟 選單與面板：關鍵寬度與層級 */
-.overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 900; }
 .overlay.active { opacity: 1; pointer-events: all; }
 
 .bottom-sheet { 
-    position: fixed; bottom: 0; left: 50%; width: 100%; max-width: 400px; height: 80vh; 
-    background-color: var(--card-bg); border-radius: 20px 20px 0 0; 
-    transform: translate(-50%, 100%); transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); 
-    z-index: 1000; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; 
+    position: fixed; bottom: 0; left: 50%; 
+    width: 100%; max-width: 400px; 
+    height: 90vh; /* 🌟 從 80 提高到 90，解決顯示太短問題 */
+    background-color: var(--card-bg); 
+    border-radius: 20px 20px 0 0; 
+    transform: translate(-50%, 100%); 
+    transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); 
+    z-index: 2000; /* 🌟 絕對最高層級 */
+    padding: 20px; box-sizing: border-box; 
+    display: flex; flex-direction: column;
 }
 .bottom-sheet.active { transform: translate(-50%, 0); }
 
-.sheet-content { flex: 1; display: flex; flex-direction: column; align-items: stretch; gap: 8px; overflow-y: auto; }
-.plan-b-container { display: none; flex-direction: column; width: 100%; gap: 10px; }
-
-.plan-b-option { 
-    border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; 
-    align-items: center; text-decoration: none; background: #2a2a2a; color: white; 
-    border: 1px solid #333; width: 100%; box-sizing: border-box; cursor: pointer;
+/* 🌟 內部排版：強制按鈕撐滿 (不再變形) */
+.sheet-header { 
+    display: flex; justify-content: space-between; align-items: center; 
+    margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; 
+    width: 100%;
+}
+.sheet-content { 
+    flex: 1; display: flex; flex-direction: column; 
+    gap: 12px; overflow-y: auto; 
+    align-items: stretch; /* 🌟 關鍵：強制子元素橫向拉伸 */
+    width: 100%;
 }
 
-.autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background-color: #2c2c2c; border: 1px solid #444; z-index: 100; max-height: 200px; overflow-y: auto; display: none; }
-.dropdown-item { padding: 12px; border-bottom: 1px solid #333; cursor: pointer; display: flex; justify-content: space-between; }
-.footer { margin-top: 15px; font-size: 11px; color: #666; text-align: center; }
+.plan-b-option { 
+    display: flex; justify-content: space-between; align-items: center; 
+    padding: 16px; border-radius: 12px; background: #2a2a2a; 
+    border: 1px solid #333; color: white; text-decoration: none;
+    width: 100%; box-sizing: border-box; /* 🌟 關鍵：確保寬度包含內邊距 */
+}
+
+/* 頁尾按鈕 */
+.footer-links-container { display: flex; gap: 20px; justify-content: center; margin-top: 10px; }
+.footer-toggle { color: var(--success); font-weight: bold; cursor: pointer; }
+
+/* 其他組件保留... */
+.time-display { font-size: 55px; font-weight: bold; }
+.main-action-btn { background-color: var(--success); color: white; padding: 16px; border-radius: 12px; width: 100%; border: none; font-weight: bold; cursor: pointer; }
