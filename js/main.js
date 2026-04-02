@@ -1,23 +1,157 @@
 // ==========================================
-// 🚀 核心業務與時鐘 (main.js)
+// 🚀 核心業務、時鐘與車站選單 (main.js)
 // ==========================================
 let isCountingDown = false; 
 let timeLeft = 0;           
 let globalStationData = null;
 let offlineTimetableData = null;
+
+// 🌟 補回：讀取鄉民的最愛與上次輸入
+let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; 
+let savedStart = localStorage.getItem('lastTrainStart') || '台北車站'; 
+let savedEnd = localStorage.getItem('lastTrainEnd') || '台北車站';
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站', 'bus': '' };
 
 window.addEventListener('load', async () => {
-    try { const res = await fetch('/data/stations.json'); if(res.ok) globalStationData = await res.json(); } catch(e){}
-    try { const timeRes = await fetch('/data/offline-timetable.json'); if(timeRes.ok) offlineTimetableData = await timeRes.json(); } catch(e){}
+    try { 
+        const res = await fetch('/data/stations.json'); 
+        if(res.ok) { 
+            globalStationData = await res.json(); 
+            // 🌟 補回：啟動選單工人
+            initCustomAutocomplete();
+            document.getElementById('start-station-input').value = savedStart; 
+            document.getElementById('end-station-input').value = savedEnd; 
+            checkTransferLock();
+        } 
+    } catch(e){ console.log("車站資料載入失敗"); }
+    
+    try { 
+        const timeRes = await fetch('/data/offline-timetable.json'); 
+        if(timeRes.ok) offlineTimetableData = await timeRes.json(); 
+    } catch(e){}
 });
 
+// ==========================================
+// 🌟 補回：車站下拉選單與防呆系統
+// ==========================================
+function checkTransferLock() {
+    const startType = document.getElementById('start-type').value;
+    const transferBlock = document.getElementById('transfer-block');
+    if (startType === 'tra' || startType === 'thsr') {
+        if(transferBlock) transferBlock.style.display = 'flex'; 
+    } else {
+        if(transferBlock) transferBlock.style.display = 'none';
+    }
+}
+
+function renderCustomDropdown(point) {
+    const typeSelect = document.getElementById(point + '-type');
+    if (typeSelect && typeSelect.value === 'bus') return; 
+
+    const inputField = document.getElementById(point + '-station-input');
+    const listContainer = document.getElementById(point + '-autocomplete-list');
+    if(!listContainer) return;
+
+    const selectedType = typeSelect.value;
+    let options = globalStationData?.[selectedType]?.options || [];
+    
+    listContainer.innerHTML = ''; 
+    const filterText = inputField.value.trim().replace(/臺/g, '台').toLowerCase();
+    let favList = []; let otherList = [];
+    
+    options.forEach(station => {
+        const normStationName = station.name.replace(/臺/g, '台').toLowerCase();
+        if (normStationName.includes(filterText) || filterText === '') {
+            if (favoriteStations.includes(station.name)) favList.push(station); else otherList.push(station);
+        }
+    });
+
+    const createItem = (station, isFav) => {
+        const item = document.createElement('div'); item.className = 'dropdown-item';
+        item.innerHTML = `<span>${station.name}</span><span class="star-icon" style="color:${isFav?'#ffca28':'#666'}">${isFav?'★':'☆'}</span>`;
+        
+        // 點擊星星加入最愛
+        item.querySelector('.star-icon').addEventListener('mousedown', (e) => { 
+            e.preventDefault(); e.stopPropagation(); 
+            if (favoriteStations.includes(station.name)) {
+                favoriteStations = favoriteStations.filter(fav => fav !== station.name);
+            } else {
+                favoriteStations.push(station.name);
+            }
+            localStorage.setItem('lastTrainFavs', JSON.stringify(favoriteStations));
+            renderCustomDropdown(point);
+        });
+        
+        // 點擊車站選項
+        item.addEventListener('click', () => { 
+            inputField.value = station.name; 
+            listContainer.style.display = 'none'; 
+            if (point === 'start') {
+                savedStart = station.name; localStorage.setItem('lastTrainStart', savedStart);
+                checkTransferLock(); 
+            }
+            if (point === 'end') {
+                savedEnd = station.name; localStorage.setItem('lastTrainEnd', savedEnd);
+            }
+        });
+        return item;
+    };
+    
+    favList.forEach(s => listContainer.appendChild(createItem(s, true)));
+    if (favList.length > 0 && otherList.length > 0) listContainer.appendChild(document.createElement('div')).className = 'dropdown-divider';
+    otherList.forEach(s => listContainer.appendChild(createItem(s, false)));
+    
+    listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
+}
+
+function initCustomAutocomplete() {
+    ['start', 'end', 'search'].forEach(point => {
+        const inputField = document.getElementById(point + '-station-input');
+        if(inputField) {
+            inputField.addEventListener('input', () => renderCustomDropdown(point));
+            inputField.addEventListener('focus', () => { 
+                if(inputField.disabled) return; 
+                const type = document.getElementById(point + '-type').value; 
+                if(type !== 'bus') { inputField.value = ''; renderCustomDropdown(point); } 
+            });
+        }
+        // 點擊外面時關閉選單
+        document.addEventListener('click', (e) => {
+            const listContainer = document.getElementById(point + '-autocomplete-list');
+            const wrapper = inputField?.closest('.autocomplete-wrapper');
+            if (listContainer && wrapper && !wrapper.contains(e.target)) {
+                listContainer.style.display = 'none';
+            }
+        });
+    });
+}
+
+// ==========================================
+// UI 連動與轉乘計算
+// ==========================================
 window.updateStationOptions = async function(point) {
     const type = document.getElementById(point + '-type').value;
     const input = document.getElementById(point + '-station-input');
     const busBlock = document.getElementById(point + '-bus-stop-block');
-    if (type === 'bus') { input.value = ''; input.placeholder = "輸入路線 (如: 265)"; if(busBlock) busBlock.style.display = 'flex'; } 
-    else { if(busBlock) busBlock.style.display = 'none'; input.value = defaultStations[type] || ''; }
+    const listContainer = document.getElementById(point + '-autocomplete-list');
+
+    if (type === 'bus') { 
+        input.value = ''; input.placeholder = "輸入路線 (如: 265)"; 
+        if(busBlock) busBlock.style.display = 'flex'; 
+        if(listContainer) listContainer.style.display = 'none';
+    } else { 
+        if(busBlock) busBlock.style.display = 'none'; 
+        input.value = defaultStations[type] || ''; 
+        renderCustomDropdown(point);
+    }
+    if (point === 'start') checkTransferLock();
+};
+
+window.getRealStationObj = function(inputName, type) {
+    if (type === 'bus') return { id: inputName, name: inputName }; 
+    if (!inputName || !globalStationData?.[type]) return null;
+    let found = globalStationData[type].options.find(s => s.name.replace(/臺/g, '台') === inputName.trim().replace(/臺/g, '台'));
+    return found || null;
 };
 
 window.handleAction = async function() {
