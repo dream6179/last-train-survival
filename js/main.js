@@ -1,4 +1,10 @@
-let isCountingDown = false; let timeLeft = 0; let globalStationData = null; let offlineTimetableData = null;
+let isCountingDown = false; 
+let timeLeft = 0; 
+let globalStationData = null; 
+let offlineTimetableData = null;
+
+// 🌟 1. 找回我的最愛星星功能
+let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; 
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站', 'bus': '' };
 
 window.addEventListener('load', async () => {
@@ -10,6 +16,15 @@ function initCustomAutocomplete() {
     ['start', 'end', 'transfer'].forEach(point => {
         const inputField = document.getElementById(point + '-station-input');
         if(!inputField) return;
+        
+        // 點擊外面時自動關閉選單的保全
+        document.addEventListener('click', (e) => {
+            const listContainer = document.getElementById(point + '-autocomplete-list');
+            if (listContainer && !inputField.contains(e.target) && !listContainer.contains(e.target)) {
+                listContainer.style.display = 'none';
+            }
+        });
+
         inputField.addEventListener('focus', (e) => { e.stopPropagation(); renderCustomDropdown(point); });
         inputField.addEventListener('click', (e) => { e.stopPropagation(); renderCustomDropdown(point); });
         inputField.addEventListener('input', () => renderCustomDropdown(point));
@@ -21,14 +36,44 @@ function renderCustomDropdown(point) {
     const inputField = document.getElementById(point + '-station-input');
     const listContainer = document.getElementById(point + '-autocomplete-list');
     if(!inputField || !listContainer || typeSelect.value === 'bus') return;
+
     const options = globalStationData?.[typeSelect.value]?.options || [];
     listContainer.innerHTML = '';
-    const filterText = inputField.value.trim().toLowerCase();
+    
+    // 🌟 2. 找回「台/臺」防呆轉換
+    const filterText = inputField.value.trim().replace(/臺/g, '台').toLowerCase();
+    
     options.forEach(station => {
-        if (station.name.toLowerCase().includes(filterText) || filterText === '') {
-            const item = document.createElement('div'); item.className = 'dropdown-item';
-            item.innerHTML = `<span>${station.name}</span>`;
-            item.addEventListener('click', (e) => { e.stopPropagation(); inputField.value = station.name; listContainer.style.display = 'none'; });
+        const normName = station.name.replace(/臺/g, '台').toLowerCase();
+        if (normName.includes(filterText) || filterText === '') {
+            const isFav = favoriteStations.includes(station.name);
+            const item = document.createElement('div'); 
+            item.className = 'dropdown-item';
+            
+            // 🌟 渲染星星 UI
+            item.innerHTML = `<span>${station.name}</span><span class="star-icon" style="color:${isFav?'#ffca28':'#666'}; padding:0 10px; font-size:18px;">${isFav?'★':'☆'}</span>`;
+            
+            // 星星點擊事件
+            const starBtn = item.querySelector('.star-icon');
+            if (starBtn) {
+                starBtn.addEventListener('mousedown', (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    if (favoriteStations.includes(station.name)) {
+                        favoriteStations = favoriteStations.filter(fav => fav !== station.name);
+                    } else {
+                        favoriteStations.push(station.name);
+                    }
+                    localStorage.setItem('lastTrainFavs', JSON.stringify(favoriteStations));
+                    renderCustomDropdown(point);
+                });
+            }
+
+            // 選項點擊事件
+            item.addEventListener('click', (e) => { 
+                e.stopPropagation(); 
+                inputField.value = station.name; 
+                listContainer.style.display = 'none'; 
+            });
             listContainer.appendChild(item);
         }
     });
@@ -41,8 +86,8 @@ window.updateStationOptions = function(point) {
     const busBlock = document.getElementById('start-bus-stop-block');
     const transBlock = document.getElementById('transfer-block');
     if (point === 'start') {
-        busBlock.style.display = (type === 'bus') ? 'flex' : 'none';
-        transBlock.style.display = (type === 'tra' || type === 'thsr') ? 'flex' : 'none';
+        if(busBlock) busBlock.style.display = (type === 'bus') ? 'flex' : 'none';
+        if(transBlock) transBlock.style.display = (type === 'tra' || type === 'thsr') ? 'flex' : 'none';
     }
     input.value = defaultStations[type] || '';
 };
@@ -55,8 +100,15 @@ window.handleAction = async function() {
     
     const btn = document.getElementById('action-btn'); btn.innerHTML = "⏳ 計算中..."; btn.disabled = true;
     try {
+        // 🌟 3. 修復 Uber 幽靈：每次計算前，強制隱藏 Uber 備案
+        const planB = document.getElementById('plan-b-container');
+        if (planB) planB.style.display = 'none';
+        const disp = document.getElementById('time-display');
+        if (disp) disp.style.fontSize = '55px';
+
         let transferName = (startType === 'tra' || startType === 'thsr') ? document.getElementById('transfer-station-input').value : startName;
         let res = await fetchTwoStageSurvivalTime(startType, startName, startName, transferName, endName, offlineTimetableData);
+        
         if (res.time) {
             document.getElementById('speed-mode').innerText = res.time;
             document.getElementById('cancel-btn').style.display = 'flex';
@@ -79,6 +131,9 @@ window.resetPlan = function() {
     document.getElementById('cancel-btn').style.display = 'none';
     document.getElementById('plan-b-container').style.display = 'none';
     document.getElementById('speed-mode').innerText = '待查驗...';
+    
+    const disp = document.getElementById('time-display');
+    if(disp) disp.style.fontSize = '55px';
 };
 
 setInterval(() => {
@@ -86,7 +141,14 @@ setInterval(() => {
     if (!display) return;
     if (!isCountingDown) { display.innerHTML = new Date().toTimeString().split(' ')[0]; } 
     else {
-        if (timeLeft <= 0) { display.innerHTML = "來不及了 💸"; document.getElementById('plan-b-container').style.display = 'flex'; return; }
+        if (timeLeft <= 0) { 
+            // 🌟 4. 修復破版：縮小字體並隱藏打架的取消按鈕
+            display.style.fontSize = '35px'; 
+            display.innerHTML = "來不及了 💸"; 
+            document.getElementById('plan-b-container').style.display = 'flex'; 
+            document.getElementById('cancel-btn').style.display = 'none';
+            return; 
+        }
         timeLeft--;
         let h = Math.floor(timeLeft / 3600), m = Math.floor((timeLeft % 3600) / 60), s = timeLeft % 60;
         display.innerHTML = h > 0 ? `${h}:${m<10?'0':''}${m}:${s<10?'0':''}${s}` : `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
