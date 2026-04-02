@@ -105,15 +105,25 @@ function renderCustomDropdown(point) {
     listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
 }
 
-// updateStationOptions, handleAction, resetPlan 邏輯保持之前穩定版不變...
 window.updateStationOptions = function(point) {
     const type = document.getElementById(point + '-type').value;
     const input = document.getElementById(point + '-station-input');
     const busBlock = document.getElementById('start-bus-stop-block');
     const transBlock = document.getElementById('transfer-block');
+    const transSelect = document.getElementById('transfer-station-input');
+
     if (point === 'start') {
         if(busBlock) busBlock.style.display = (type === 'bus') ? 'flex' : 'none';
-        if(transBlock) transBlock.style.display = (type === 'tra' || type === 'thsr') ? 'flex' : 'none';
+        if(transBlock) {
+            transBlock.style.display = (type === 'tra' || type === 'thsr') ? 'flex' : 'none';
+            
+            // 🌟 依照交通工具鎖定轉乘站選項
+            if (type === 'tra') {
+                transSelect.innerHTML = '<option value="台北車站">台北車站</option><option value="板橋">板橋</option><option value="龍山寺">龍山寺</option><option value="松山">松山</option><option value="南港">南港</option>';
+            } else if (type === 'thsr') {
+                transSelect.innerHTML = '<option value="台北車站">台北車站</option><option value="板橋">板橋</option><option value="松山">松山</option><option value="南港">南港</option>';
+            }
+        }
     }
     input.value = defaultStations[type] || '';
     const clearBtn = document.getElementById(point + '-clear-btn');
