@@ -12,6 +12,11 @@ let savedStart = localStorage.getItem('lastTrainStart') || '台北車站';
 let savedEnd = localStorage.getItem('lastTrainEnd') || '台北車站';
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站', 'bus': '' };
 
+// 🌟 忍者修復：偷偷把 iOS 的下拉箭頭藏起來，不用改 HTML
+const style = document.createElement('style');
+style.innerHTML = `select { -webkit-appearance: none; appearance: none; }`;
+document.head.appendChild(style);
+
 window.addEventListener('load', async () => {
     try { 
         const res = await fetch('/data/stations.json'); 
@@ -187,6 +192,13 @@ window.resetPlan = function() {
     document.getElementById('cancel-btn').style.display = 'none'; 
     document.getElementById('plan-b-container').style.display = 'none'; 
     document.getElementById('speed-mode').innerText = '待查驗...'; 
+    
+    // 🌟 補回：解除求生模式時，要把大字體恢復
+    const display = document.getElementById('time-display');
+    if(display) {
+        display.style.fontSize = '50px';
+        if (typeof getSystemTime === 'function') display.innerHTML = getSystemTime().toTimeString().split(' ')[0];
+    }
 };
 
 function updateClock() {
@@ -194,9 +206,16 @@ function updateClock() {
     if (!display || typeof getSystemTime !== 'function') return;
     const now = getSystemTime();
     if (!isCountingDown) { 
+        display.style.fontSize = '50px';
         display.innerHTML = now.toTimeString().split(' ')[0]; 
     } else {
-        if (timeLeft <= 0) { display.innerHTML = "來不及了💸"; document.getElementById('plan-b-container').style.display = 'flex'; return; }
+        if (timeLeft <= 0) { 
+            display.style.fontSize = '40px'; // 🌟 防破版：把字體稍微縮小一點
+            display.innerHTML = "來不及了💸"; 
+            document.getElementById('plan-b-container').style.display = 'flex'; 
+            return; 
+        }
+        display.style.fontSize = '50px';
         timeLeft--;
         let h = Math.floor(timeLeft / 3600), m = Math.floor((timeLeft % 3600) / 60), s = timeLeft % 60;
         display.innerHTML = h > 0 ? `${h<10?'0':''}${h}:${m<10?'0':''}${m}:${s<10?'0':''}${s}` : `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
