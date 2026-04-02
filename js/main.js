@@ -5,23 +5,66 @@ let isCountingDown = false;
 let timeLeft = 0;           
 let globalStationData = null;
 let offlineTimetableData = null;
+
+let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; 
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站', 'bus': '' };
 
 window.addEventListener('load', async () => {
     try { 
         const res = await fetch('/data/stations.json'); 
-        if(res.ok) {
-            globalStationData = await res.json();
-            if (typeof initCustomAutocomplete === 'function') initCustomAutocomplete();
-            document.getElementById('start-station-input').value = localStorage.getItem('lastTrainStart') || '台北車站';
-            document.getElementById('end-station-input').value = localStorage.getItem('lastTrainEnd') || '台北車站';
-        }
+        if(res.ok) { 
+            globalStationData = await res.json(); 
+            initCustomAutocomplete();
+            document.getElementById('start-station-input').value = localStorage.getItem('lastTrainStart') || '台北車站'; 
+            document.getElementById('end-station-input').value = localStorage.getItem('lastTrainEnd') || '台北車站'; 
+        } 
     } catch(e){}
-    try { 
-        const timeRes = await fetch('/data/offline-timetable.json'); 
-        if(timeRes.ok) offlineTimetableData = await timeRes.json(); 
-    } catch(e){}
+    try { const timeRes = await fetch('/data/offline-timetable.json'); if(timeRes.ok) offlineTimetableData = await timeRes.json(); } catch(e){}
 });
+
+function renderCustomDropdown(point) {
+    const typeSelect = document.getElementById(point + '-type');
+    const inputField = document.getElementById(point + '-station-input');
+    const listContainer = document.getElementById(point + '-autocomplete-list');
+    if(!inputField || !listContainer || typeSelect.value === 'bus') return;
+
+    const options = globalStationData?.[typeSelect.value]?.options || [];
+    listContainer.innerHTML = ''; 
+    const filterText = inputField.value.trim().replace(/臺/g, '台').toLowerCase();
+    
+    options.forEach(station => {
+        const normName = station.name.replace(/臺/g, '台').toLowerCase();
+        if (normName.includes(filterText) || filterText === '') {
+            const isFav = favoriteStations.includes(station.name);
+            const item = document.createElement('div'); item.className = 'dropdown-item';
+            item.innerHTML = `<span>${station.name}</span><span style="color:${isFav?'#ffca28':'#666'}">${isFav?'★':'☆'}</span>`;
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                inputField.value = station.name; listContainer.style.display = 'none';
+                localStorage.setItem('lastTrain' + (point==='start'?'Start':'End'), station.name);
+            });
+            listContainer.appendChild(item);
+        }
+    });
+    listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
+}
+
+function initCustomAutocomplete() {
+    ['start', 'end'].forEach(point => {
+        const inputField = document.getElementById(point + '-station-input');
+        const listContainer = document.getElementById(point + '-autocomplete-list');
+        
+        inputField.addEventListener('focus', (e) => { e.stopPropagation(); renderCustomDropdown(point); });
+        inputField.addEventListener('click', (e) => { e.stopPropagation(); renderCustomDropdown(point); });
+        inputField.addEventListener('input', () => renderCustomDropdown(point));
+        
+        document.addEventListener('click', (e) => {
+            if (!inputField.contains(e.target) && !listContainer.contains(e.target)) {
+                listContainer.style.display = 'none';
+            }
+        });
+    });
+}
 
 window.handleAction = async function() {
     const startType = document.getElementById('start-type').value;
