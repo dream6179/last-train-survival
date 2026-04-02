@@ -1,5 +1,5 @@
 // ==========================================
-// 🟢 輸入槽專屬大腦 (survival-ui.js)
+// 🟢 輸入槽專屬大腦 (survival-ui.js) - 全量對稱版
 // ==========================================
 
 let globalStationData = null;
@@ -105,12 +105,17 @@ function renderCustomDropdown(point) {
 window.updateStationOptions = function(point) {
     const type = document.getElementById(point + '-type').value;
     const input = document.getElementById(point + '-station-input');
-    const busBlock = document.getElementById('start-bus-stop-block');
+    
+    // 🌟 核心修正：根據傳入的 point (start/end) 尋找對應的站牌區塊
+    const busBlock = document.getElementById(point + '-bus-stop-block');
     const transBlock = document.getElementById('transfer-block');
     const transSelect = document.getElementById('transfer-station-input');
 
+    // 顯示/隱藏公車站牌區塊
+    if(busBlock) busBlock.style.display = (type === 'bus') ? 'flex' : 'none';
+
+    // 只有出發地需要處理轉乘站鎖定
     if (point === 'start') {
-        if(busBlock) busBlock.style.display = (type === 'bus') ? 'flex' : 'none';
         if(transBlock) {
             transBlock.style.display = (type === 'tra' || type === 'thsr') ? 'flex' : 'none';
             if (type === 'tra') {
@@ -120,6 +125,7 @@ window.updateStationOptions = function(point) {
             }
         }
     }
+    
     input.value = defaultStations[type] || '';
     const clearBtn = document.getElementById(point + '-clear-btn');
     if(clearBtn) clearBtn.style.display = input.value ? 'flex' : 'none';
