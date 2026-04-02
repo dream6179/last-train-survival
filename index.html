@@ -9,74 +9,43 @@
         html, body { overflow: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); overscroll-behavior: none; }
         body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--text-main); display: flex; justify-content: center; align-items: center; user-select: none; -webkit-user-select: none; }
         .container { text-align: center; width: 90%; max-width: 400px; height: 92vh; max-height: 680px; background-color: var(--card-bg); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; justify-content: center; padding: 0 20px; box-sizing: border-box; gap: 6px; position: relative; }
-        .sheet-content, .search-result-box, .autocomplete-list { -ms-overflow-style: none; scrollbar-width: none; }
-        .sheet-content::-webkit-scrollbar, .search-result-box::-webkit-scrollbar, .autocomplete-list::-webkit-scrollbar { display: none; }
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .header-row h1 { font-size: 22px; color: var(--danger); margin: 0; cursor: pointer; transition: transform 0.1s; }
-        .header-row h1:active { transform: scale(0.95); }
-        .mode-toggle-btn { background: #333; color: white; border: none; border-radius: 50%; width: 35px; height: 35px; font-size: 16px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .mode-toggle-btn:active { transform: scale(0.9); background: #555; }
+        .header-row h1 { font-size: 22px; color: var(--danger); margin: 0; cursor: pointer; }
+        .mode-toggle-btn { background: #333; color: white; border: none; border-radius: 50%; width: 35px; height: 35px; font-size: 16px; cursor: pointer; display: flex; justify-content: center; align-items: center; }
         .location-block { display: flex; flex-direction: column; width: 100%; text-align: left; margin-bottom: 2px; }
         .location-block label { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; font-weight: bold; }
         .select-group { display: flex; gap: 8px; position: relative; }
-        select, .station-input { background-color: #2c2c2c; color: white; border: 1px solid #444; padding: 10px; border-radius: 8px; font-size: 15px; outline: none; cursor: pointer; box-sizing: border-box; }
-        select { appearance: none; }
-        select:focus, .station-input:focus { border-color: var(--danger); }
+        select, .station-input { background-color: #2c2c2c; color: white; border: 1px solid #444; padding: 10px; border-radius: 8px; font-size: 15px; outline: none; width: 100%; box-sizing: border-box; }
         .type-select { width: 35%; text-align: center; }
         .autocomplete-wrapper { position: relative; width: 65%; }
-        .station-input { width: 100%; }
-        .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background-color: #2c2c2c; border: 1px solid #444; border-top: none; border-radius: 0 0 8px 8px; z-index: 99; max-height: 250px; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.9); display: none; }
-        .dropdown-item { padding: 12px 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: white; font-size: 15px; transition: background-color 0.1s; }
-        .dropdown-item:active { background-color: #444; }
-        .advanced-toggle-btn { background: none; border: 1px dashed #444; color: var(--text-sub); padding: 5px; border-radius: 8px; font-size: 12px; cursor: pointer; margin: 5px 0; transition: 0.2s; }
-        .advanced-toggle-btn:active { background: #333; color: white; }
         .time-area { margin: 10px 0; display: flex; flex-direction: column; align-items: center; }
-        .time-display { font-size: 50px; font-weight: bold; color: #e0e0e0; font-variant-numeric: tabular-nums; letter-spacing: 1px; line-height: 1; transition: 0.2s; cursor: pointer; }
-        .time-display:active { transform: scale(0.95); }
+        .time-display { font-size: 50px; font-weight: bold; color: #e0e0e0; letter-spacing: 1px; line-height: 1; }
         .status { font-size: 13px; color: var(--text-sub); margin: 5px 0; height: 16px; }
-        .main-action-btn { color: white; border: none; padding: 15px; font-size: 17px; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.1s; margin-top: 5px; }
-        .main-action-btn:active { transform: scale(0.98); }
-        .main-action-btn:disabled { background-color: #555; cursor: not-allowed; transform: none; }
-        #action-btn { background-color: var(--success); }
-        #search-action-btn { background-color: var(--info); margin-top: 15px;}
-        #search-action-btn:active { background-color: #1976D2; }
+        .main-action-btn { background-color: var(--success); color: white; border: none; padding: 15px; font-size: 17px; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px; }
         .plan-b-container { display: none; flex-direction: column; width: 100%; gap: 8px; margin-top: 5px; }
-        .plan-b-option { border: none; border-radius: 10px; padding: 12px 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.1s; text-decoration: none; }
-        .plan-b-option:active { transform: scale(0.98); filter: brightness(1.1); }
-        .option-name { font-size: 15px; font-weight: bold; }
-        .option-meta { font-size: 11px; opacity: 0.7; margin-left: 5px; }
-        .option-price { font-size: 15px; font-weight: bold; font-variant-numeric: tabular-nums; }
-        .btn-uber { background-color: #1a1a1a; color: #ffffff; border: 1px solid #333; }
-        .btn-goshare { background-color: #009999; color: #ffffff; }
-        .btn-youbike { background-color: #ccaa00; color: #121212; }
-        .btn-reset { background-color: transparent; color: var(--text-sub); border: 1px dashed #555; justify-content: center; margin-top: 5px; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; }
-        .btn-reset:active { background-color: #333; color: white; border-color: #888; }
-        .footer { margin-top: 15px; font-size: 11px; color: #666; line-height: 1.6; display: flex; flex-direction: column; align-items: center; }
+        .plan-b-option { border-radius: 10px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; background: #1a1a1a; color: white; border: 1px solid #333; }
+        .btn-reset { background: transparent; color: var(--text-sub); border: 1px dashed #555; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; margin-top: 5px; display: flex; justify-content: center; }
+        .footer { margin-top: 15px; font-size: 11px; color: #666; display: flex; flex-direction: column; align-items: center; }
         .footer-links-container { display: flex; gap: 20px; margin-top: 5px; }
-        .footer-toggle { color: var(--success); text-decoration: none; font-weight: bold; padding: 5px 10px; cursor: pointer; border-radius: 5px; transition: 0.2s; }
+        .footer-toggle { color: var(--success); font-weight: bold; cursor: pointer; padding: 5px; }
+        .contact-links { display: none; gap: 10px; margin-top: 8px; }
+        .contact-btn { text-decoration: none; color: white; font-size: 12px; padding: 6px 12px; border-radius: 15px; }
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 90; }
         .overlay.active { opacity: 1; pointer-events: all; }
-        .bottom-sheet { position: fixed; bottom: 0; left: 50%; width: 100%; max-width: 400px; height: 80vh; background-color: var(--card-bg); border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); transform: translate(-50%, 100%); transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); z-index: 100; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        .bottom-sheet { position: fixed; bottom: 0; left: 50%; width: 100%; max-width: 400px; height: 80vh; background-color: var(--card-bg); border-radius: 20px 20px 0 0; transform: translate(-50%, 100%); transition: transform 0.3s; z-index: 100; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; }
         .bottom-sheet.active { transform: translate(-50%, 0); }
-        .sheet-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
-        .sheet-header h3 { margin: 0; font-size: 18px; color: var(--text-main); }
-        .close-sheet-btn { background: var(--danger); color: white; border: none; padding: 5px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .sheet-content { flex-grow: 1; overflow-y: auto; color: var(--text-sub); font-size: 14px; line-height: 1.5; }
-        .search-result-box { margin-top: 15px; background: #222; border-radius: 10px; padding: 15px; min-height: 150px; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #666; font-size: 13px; border: 1px dashed #444; }
-        input[type=range] { -webkit-appearance: none; background: transparent; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--info); cursor: pointer; margin-top: -6px; }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #444; border-radius: 2px; }
+        .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        #spa-frame { width: 100%; height: 100%; border: none; border-radius: 20px 20px 0 0; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header-row">
-        <h1 id="main-title">末班車生存</h1>
+        <h1>末班車生存</h1>
         <div style="display: flex; gap: 8px;">
-            <button class="mode-toggle-btn" id="ai-chat-btn" onclick="openPage('/gemini.html')" title="呼叫 AI 導遊">🤖</button>
-            <button class="mode-toggle-btn" id="header-mute-btn" onclick="toggleMute()" title="開關背景音樂">🔇</button>
-            <button class="mode-toggle-btn" id="mode-toggle-btn" onclick="toggleAppMode()" title="切換至全查詢模式">🔍</button>
+            <button class="mode-toggle-btn" onclick="openPage('/gemini.html')">🤖</button>
+            <button class="mode-toggle-btn" onclick="toggleAppMode()">🔍</button>
         </div>
     </div>
 
@@ -85,32 +54,15 @@
             <label>出發地</label>
             <div class="select-group">
                 <select class="type-select" id="start-type" onchange="updateStationOptions('start')">
-                    <option value="trtc" selected>北捷</option>
-                    <option value="tra">台鐵</option>
-                    <option value="thsr">高鐵</option>
-                    <option value="bus">公車客運</option>
+                    <option value="trtc">北捷</option><option value="tra">台鐵</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>
                 </select>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="start-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
-                    <div id="start-autocomplete-list" class="autocomplete-list"></div>
-                </div>
+                <div class="autocomplete-wrapper"><input type="text" id="start-station-input" class="station-input" placeholder="選擇車站"></div>
             </div>
         </div>
-        
-        <div class="location-block" id="start-bus-stop-block" style="display: none; margin-top: -2px; margin-bottom: 6px;">
+        <div class="location-block" id="start-bus-stop-block" style="display: none; margin-top: 4px;">
             <div class="select-group">
-                <div class="type-select" style="background:transparent; border:none; display:flex; align-items:center; justify-content:center; color:var(--warning); font-size:13px; font-weight:bold; padding: 0;">📍 所在站牌</div>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="start-bus-stop-input" class="station-input" placeholder="自行填入 (如: 台北車站)" autocomplete="off">
-                </div>
-            </div>
-        </div>
-
-        <div class="location-block" id="transfer-block" style="display: none;">
-            <label style="color: var(--warning);">轉乘站</label>
-            <div class="select-group">
-                <select class="type-select" disabled style="opacity: 0.7; cursor: not-allowed; background-color: #333;"><option selected>換北捷</option></select>
-                <div class="autocomplete-wrapper"><input type="text" id="transfer-station-input" class="station-input" placeholder="選擇轉乘車站" autocomplete="off"><div id="transfer-autocomplete-list" class="autocomplete-list"></div></div>
+                <div class="type-select" style="font-size:12px; color:var(--warning);">📍 所在站牌</div>
+                <div class="autocomplete-wrapper"><input type="text" id="start-bus-stop-input" class="station-input" placeholder="輸入站牌名稱"></div>
             </div>
         </div>
 
@@ -118,106 +70,57 @@
             <label>目的地</label>
             <div class="select-group">
                 <select class="type-select" id="end-type" onchange="updateStationOptions('end')">
-                    <option value="trtc" selected>北捷</option>
-                    <option value="thsr">高鐵</option>
-                    <option value="bus">公車客運</option>
+                    <option value="trtc">北捷</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>
                 </select>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="end-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
-                    <div id="end-autocomplete-list" class="autocomplete-list"></div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="location-block" id="end-bus-stop-block" style="display: none; margin-top: -2px; margin-bottom: 6px;">
-            <div class="select-group">
-                <div class="type-select" style="background:transparent; border:none; display:flex; align-items:center; justify-content:center; color:var(--text-sub); font-size:13px; font-weight:bold; padding: 0;">📍 目的地站牌</div>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="end-bus-stop-input" class="station-input" placeholder="(選填) 如: 捷運公館站" autocomplete="off">
-                </div>
+                <div class="autocomplete-wrapper"><input type="text" id="end-station-input" class="station-input" placeholder="選擇車站"></div>
             </div>
         </div>
         
         <div class="time-area">
-            <div class="status" id="status-text">現在時間</div>
-            <div class="time-display" id="time-display">00:00:00</div>
-            <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00; opacity:0.8;">待查驗...</span></div>
+            <div class="status">現在時間</div>
+            <div id="time-display" class="time-display">00:00:00</div>
+            <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00;">待查驗...</span></div>
         </div>
         
         <button id="action-btn" class="main-action-btn" onclick="handleAction()">開始計算轉乘</button>
-        <button id="cancel-btn" class="btn-reset" style="display: none;" onclick="resetPlan()"><span class="option-name">🔄 終止求生，重新安排</span></button>
+        <button id="cancel-btn" class="btn-reset" style="display: none;" onclick="resetPlan()">🔄 終止求生</button>
 
         <div id="plan-b-container" class="plan-b-container">
-            <button class="plan-b-option btn-uber vehicle-option" onclick="openWeb('Uber')"><span class="option-name">呼叫 Uber</span><span class="option-price">~$300</span></button>
-            <button class="plan-b-option btn-goshare vehicle-option" onclick="openWeb('GoShare')"><span class="option-name">騎 GoShare</span><span class="option-price">~$80</span></button>
-            <button class="plan-b-option btn-reset" onclick="resetPlan()"><span class="option-name">🔄 重新安排行程</span></button>
+            <a href="https://www.uber.com" class="plan-b-option"><span>呼叫 Uber</span><span>~$300</span></a>
+            <button class="btn-reset" onclick="resetPlan()">🔄 重新安排</button>
         </div>
-    </div>
-
-    <div id="mode-search" style="display: none;">
-        <p style="color: var(--text-sub); font-size: 13px; margin-top: 0; margin-bottom: 15px;">想查哪站？我們去 TDX 資料庫幫你找。</p>
-        
-        <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; background: #222; padding: 10px; border-radius: 10px; border: 1px solid #333;">
-            <label style="color: white; font-size: 13px; display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                <input type="radio" name="search-time-mode" value="now" checked style="accent-color: var(--info);"> ⏱️ 即時班次
-            </label>
-            <label style="color: white; font-size: 13px; display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                <input type="radio" name="search-time-mode" value="last" style="accent-color: var(--danger);"> 🚨 終極末班車
-            </label>
-        </div>
-
-        <div class="location-block">
-            <label>查詢車站</label>
-            <div class="select-group">
-                <select class="type-select" id="search-type" onchange="updateStationOptions('search')">
-                    <option value="trtc" selected>北捷</option>
-                    <option value="tra">台鐵</option>
-                    <option value="thsr">高鐵</option>
-                    <option value="bus">公車客運</option>
-                </select>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="search-station-input" class="station-input" placeholder="輸入或選擇車站" autocomplete="off">
-                    <div id="search-autocomplete-list" class="autocomplete-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="location-block" id="search-bus-stop-block" style="display: none; margin-top: -2px; margin-bottom: 6px;">
-            <div class="select-group">
-                <div class="type-select" style="background:transparent; border:none; display:flex; align-items:center; justify-content:center; color:var(--info); font-size:13px; font-weight:bold; padding: 0;">📍 目標站牌</div>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="search-bus-stop-input" class="station-input" placeholder="(選填) 如: 捷運公館站" autocomplete="off">
-                </div>
-            </div>
-        </div>
-
-        <button id="search-action-btn" class="main-action-btn" onclick="executeFullSearch()">🔍 查詢發車時刻</button>
-        <div class="search-result-box" id="search-result-box">等待檢索指令...</div>
     </div>
 
     <div class="footer">
         <span>本服務由綠茶地瓜維護</span>
-        <div class="footer-links-container"><a class="footer-toggle" onclick="openSettingsSheet()">⚙️ 快速設定</a></div>
+        <div class="footer-links-container">
+            <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
+            <a class="footer-toggle" onclick="openSettingsSheet()">⚙️ 快速設定</a>
+        </div>
+        <div class="contact-links" id="contact-links">
+            <a href="mailto:x778888778@gmail.com" class="contact-btn" style="background:#ea4335;">✉️ Gmail</a>
+            <a href="https://discord.gg/vPgU2KaSZr" class="contact-btn" style="background:#5865F2;">💬 Discord</a>
+        </div>
     </div>
 </div>
 
 <div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
 
 <div class="bottom-sheet" id="settings-sheet">
-    <div class="sheet-header"><h3>⚙️ 快速設定</h3><button class="close-sheet-btn" onclick="closeAllSheets()">關閉</button></div>
-    <div class="sheet-content">
-        <div style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #333; text-align: center;">
-            <span style="color: #666; font-size: 13px; font-weight: bold; font-variant-numeric: tabular-nums;">目前版本: v2.41</span>
+    <div class="sheet-header"><h3>⚙️ 快速設定</h3><button onclick="closeAllSheets()" style="background:var(--danger); color:white; border:none; padding:5px 10px; border-radius:5px;">關閉</button></div>
+    <div class="sheet-content" style="text-align:center; padding-top:20px;">
+        <p style="color:var(--text-sub);">深夜的月台，祝你平安回家。</p>
+        <div style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #333;">
+            <span style="color: #666; font-size: 13px;">目前版本: v2.42</span>
         </div>
     </div>
 </div>
 
-<audio id="bgm-audio"></audio>
-<script src="/js/main.js"></script>
-<script src="/js/routing.js"></script>
-<div class="bottom-sheet" id="dynamic-sheet" style="height: 92vh; max-height: 92vh; padding: 0; overflow: hidden; z-index: 99991; background-color: var(--bg-color); border-radius: 20px 20px 0 0;">
-    <iframe id="spa-frame" style="width: 100%; height: 100%; border: none; border-radius: 20px 20px 0 0; background: transparent;"></iframe>
+<div class="bottom-sheet" id="dynamic-sheet" style="padding:0; overflow:hidden;">
+    <iframe id="spa-frame"></iframe>
 </div>
 
+<script src="/js/main.js"></script>
+<script src="/js/routing.js"></script>
 </body>
 </html>
