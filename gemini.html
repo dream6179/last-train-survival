@@ -2,36 +2,62 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>深夜導遊</title>
     <style>
         :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --success: #4caf50; --info: #2196F3; }
-        body { background: var(--bg-color); color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
-        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #333; }
+        
+        /* 🌟 SPA 專用：究極去白條與物理隔離排版 */
+        html, body { 
+            overflow: hidden; 
+            height: 100%; 
+            width: 100%; 
+            margin: 0; 
+            padding: 0; 
+            background-color: var(--bg-color); 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            color: var(--text-main); 
+            -webkit-user-select: none; 
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+
+        body { padding: 20px; box-sizing: border-box; }
+
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #333; flex-shrink: 0; }
         .header-row h3 { margin: 0; color: var(--success); font-size: 18px; }
-        .back-btn { background: #333; color: white; border: none; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        
+        /* 🌟 返回按鈕樣式 */
+        .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 13px; cursor: pointer; transition: 0.2s; }
         .back-btn:active { background: #555; transform: scale(0.95); }
+
         #lock-screen { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
         .lock-icon { font-size: 50px; margin-bottom: 20px; }
         .lock-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
         .lock-desc { font-size: 13px; color: var(--text-sub); margin-bottom: 20px; line-height: 1.6; }
+        
         #chat-interface { flex-grow: 1; display: none; flex-direction: column; overflow: hidden; }
-        #chat-box { flex-grow: 1; overflow-y: auto; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 15px; background: #1a1a1a; font-size: 14px; line-height: 1.6; scrollbar-width: none;}
-        #chat-box::-webkit-scrollbar { display: none; }
-        .input-area { display: flex; gap: 10px; }
+        #chat-box { flex-grow: 1; overflow-y: auto; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 15px; background: #1a1a1a; font-size: 14px; line-height: 1.6; }
+        
+        .input-area { display: flex; gap: 10px; flex-shrink: 0; }
         input { flex-grow: 1; padding: 12px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 14px; outline: none; }
         input:focus { border-color: var(--success); }
         .btn-main { padding: 0 20px; background: var(--success); border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-main:active { transform: scale(0.95); }
-        .msg-user { color: var(--info); margin-bottom: 10px; }
-        .msg-ai { color: #e0e0e0; margin-bottom: 15px; }
+        
+        .msg-user { color: var(--info); margin-bottom: 10px; text-align: right; }
+        .msg-ai { color: #e0e0e0; margin-bottom: 15px; text-align: left; }
     </style>
 </head>
 <body>
 
     <div class="header-row">
         <h3>🤖 避難所語音助手 v3.0</h3>
-        <button class="back-btn" onclick="closeMe()">⬅ 返回</button>
+        <button class="back-btn" onclick="if(window.parent && window.parent.closeDynamicSheet) { window.parent.closeDynamicSheet(); } else { window.history.back(); }">⬅ 返回</button>
     </div>
 
     <div id="lock-screen">
@@ -46,7 +72,7 @@
 
     <div id="chat-interface">
         <div id="chat-box">
-            <div class="msg-ai">導遊：你好，迷失在月台的旅人。我是這個避難所的導遊，有什麼我能幫你的嗎？</div>
+            <div class="msg-ai">🤖 導遊：你好，迷失在月台的旅人。我是這個避難所的導遊，有什麼我能幫你的嗎？</div>
         </div>
         <div class="input-area">
             <input type="text" id="user-input" placeholder="問問導遊...">
@@ -59,17 +85,10 @@
         const chatInterface = document.getElementById('chat-interface');
         const input = document.getElementById('user-input');
 
-        window.onload = () => {
+        // 使用較穩定的事件掛載
+        window.addEventListener('load', () => {
             if (localStorage.getItem('gemini_unlocked') === 'true') showChat();
-        };
-
-        function closeMe() {
-            if (window.parent && typeof window.parent.closeDynamicSheet === 'function') {
-                window.parent.closeDynamicSheet();
-            } else {
-                window.history.back();
-            }
-        }
+        });
 
         function verifyCode() {
             if (document.getElementById('auth-code').value.trim() === 'SURVIVOR2026') {
@@ -99,8 +118,7 @@
             sendBtn.disabled = true;
             sendBtn.innerHTML = '⏳';
 
-                        try {
-                // 🌟 拔除小抄，回歸純粹的聊天
+            try {
                 const res = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -117,5 +135,7 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
     </script>
+    
+    <script src="/js/main.js"></script>
 </body>
 </html>
