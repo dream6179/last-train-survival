@@ -2,6 +2,12 @@
 // 🚀 核心路由引擎 (routing.js) - 最終防彈版 + TDX 全網檢索
 // ==========================================
 window.getSystemTime = function() {
+    // 🌟 檢查開發者模式
+    if (localStorage.getItem('dev_mode_active') === 'true') {
+        const devTime = new Date();
+        devTime.setHours(23, 30, 0); // 鎖定在 23:30
+        return devTime;
+    }
     return new Date(); 
 };
 
