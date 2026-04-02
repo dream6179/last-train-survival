@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>末班車生存 | 深夜通勤導航</title>
+    
+    <script src="/js/guard.js"></script>
+
     <style>
         :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --success: #4caf50; --warning: #ffb300; --info: #2196F3; }
         html, body { overflow: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); overscroll-behavior: none; }
@@ -44,26 +47,6 @@
 </head>
 <body>
 
-<div id="maintenance-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #121212; z-index: 999999; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; text-align: center;">
-    <div style="font-size: 60px; margin-bottom: 20px;">🚧</div>
-    <h2 style="color: #ffb300; margin-top: 0; margin-bottom: 10px;">系統重大升級中</h2>
-    <p id="maintenance-msg" style="color: #aaaaaa; font-size: 14px; line-height: 1.6;"></p>
-    <button onclick="checkDevPassword()" style="margin-top: 40px; background: transparent; border: 1px dashed #555; color: #888; padding: 10px 20px; border-radius: 8px; cursor: pointer; transition: 0.2s;">進入工程模式</button>
-</div>
-
-<div id="soft-warning-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999998; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
-    <div style="background: var(--card-bg); border: 1px solid #ff9800; border-radius: 15px; padding: 25px 20px; text-align: center; max-width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.9);">
-        <div style="font-size: 40px; margin-bottom: 15px;">⚠️</div>
-        <h3 style="color: #ff9800; margin-top: 0; margin-bottom: 10px; font-size: 18px;">系統臨時微調中</h3>
-        <p id="soft-warning-msg" style="color: #ccc; font-size: 13px; line-height: 1.6; margin-bottom: 20px;"></p>
-        <button onclick="document.getElementById('soft-warning-overlay').style.display='none';" style="background: #333; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 15px;">我知道了</button>
-    </div>
-</div>
-
-<script>
-    <script src="/js/guard.js"></script>
-    
-</script>
 <div class="container">
     <div class="header-row">
         <h1 id="main-title">末班車生存</h1>
@@ -81,7 +64,7 @@
                 <select class="type-select" id="start-type" onchange="updateStationOptions('start')">
                     <option value="trtc">北捷</option><option value="tra">台鐵</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>
                 </select>
-                <div class="autocomplete-wrapper"><input type="text" id="start-station-input" class="station-input" placeholder="選擇車站"></div>
+                <div class="autocomplete-wrapper"><input type="text" id="start-station-input" class="station-input" placeholder="選擇車站"><div id="start-autocomplete-list" class="autocomplete-list"></div></div>
             </div>
         </div>
         <div class="location-block" id="start-bus-stop-block" style="display: none; margin-top: 4px;">
@@ -91,13 +74,21 @@
             </div>
         </div>
 
+        <div class="location-block" id="transfer-block" style="display: none;">
+            <label style="color: var(--warning);">轉乘站</label>
+            <div class="select-group">
+                <select class="type-select" disabled style="opacity: 0.7; cursor: not-allowed; background-color: #333;"><option selected>換北捷</option></select>
+                <div class="autocomplete-wrapper"><input type="text" id="transfer-station-input" class="station-input" placeholder="選擇轉乘車站" autocomplete="off"><div id="transfer-autocomplete-list" class="autocomplete-list"></div></div>
+            </div>
+        </div>
+
         <div class="location-block">
             <label>目的地</label>
             <div class="select-group">
                 <select class="type-select" id="end-type" onchange="updateStationOptions('end')">
                     <option value="trtc">北捷</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>
                 </select>
-                <div class="autocomplete-wrapper"><input type="text" id="end-station-input" class="station-input" placeholder="選擇車站"></div>
+                <div class="autocomplete-wrapper"><input type="text" id="end-station-input" class="station-input" placeholder="選擇車站"><div id="end-autocomplete-list" class="autocomplete-list"></div></div>
             </div>
         </div>
         
@@ -114,6 +105,39 @@
             <a href="https://www.uber.com" class="plan-b-option" style="width: 100%;"><span>呼叫 Uber</span><span>~$300</span></a>
             <button class="btn-reset" onclick="resetPlan()">🔄 重新安排</button>
         </div>
+    </div>
+
+    <div id="mode-search" style="display: none;">
+        <p style="color: var(--text-sub); font-size: 13px; margin-top: 0; margin-bottom: 15px;">想查哪站？我們去 TDX 資料庫幫你找。</p>
+        
+        <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; background: #222; padding: 10px; border-radius: 10px; border: 1px solid #333;">
+            <label style="color: white; font-size: 13px; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                <input type="radio" name="search-time-mode" value="now" checked style="accent-color: var(--info);"> ⏱️ 即時班次
+            </label>
+            <label style="color: white; font-size: 13px; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                <input type="radio" name="search-time-mode" value="last" style="accent-color: var(--danger);"> 🚨 終極末班車
+            </label>
+        </div>
+
+        <div class="location-block">
+            <label>查詢車站</label>
+            <div class="select-group">
+                <select class="type-select" id="search-type" onchange="updateStationOptions('search')">
+                    <option value="trtc" selected>北捷</option><option value="tra">台鐵</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>
+                </select>
+                <div class="autocomplete-wrapper"><input type="text" id="search-station-input" class="station-input" placeholder="輸入或選擇車站"><div id="search-autocomplete-list" class="autocomplete-list"></div></div>
+            </div>
+        </div>
+
+        <div class="location-block" id="search-bus-stop-block" style="display: none; margin-top: 4px;">
+            <div class="select-group">
+                <div class="type-select" style="background:transparent; border:none; display:flex; align-items:center; justify-content:center; color:var(--info); font-size:13px; font-weight:bold; padding: 0;">📍 目標站牌</div>
+                <div class="autocomplete-wrapper"><input type="text" id="search-bus-stop-input" class="station-input" placeholder="(選填) 如: 捷運公館站"></div>
+            </div>
+        </div>
+
+        <button id="search-action-btn" class="main-action-btn" style="background-color: var(--info);" onclick="executeFullSearch()">🔍 查詢發車時刻</button>
+        <div class="search-result-box" id="search-result-box" style="margin-top: 15px; background: #222; border-radius: 10px; padding: 15px; min-height: 150px; color: #666; font-size: 13px; border: 1px dashed #444;">等待檢索指令...</div>
     </div>
 
     <div class="footer">
@@ -161,7 +185,7 @@
         </div>
         
         <div style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #333; text-align: center;">
-            <span style="color: #666; font-size: 13px; font-weight: bold;">目前版本: v2.44</span>
+            <span style="color: #666; font-size: 13px; font-weight: bold;">目前版本: v2.45</span>
         </div>
     </div>
 </div>
