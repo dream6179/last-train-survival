@@ -1,10 +1,7 @@
 // ==========================================
-// 🚀 末班車生存戰 核心路由與 API 引擎 (雲端+離線字典雙引擎版)
+// 🚀 末班車生存戰 核心路由與 API 引擎 (防空洞連動北捷版)
 // ==========================================
 
-/**
- * 🌟 全域時光機 (開發者模式)
- */
 function getSystemTime() {
     if (localStorage.getItem('dev_mode_active') === 'true') {
         let d = new Date(); d.setHours(23, 30, 0, 0); return d;
@@ -12,11 +9,7 @@ function getSystemTime() {
     return new Date();
 }
 
-/**
- * ⏳ 帶有超時控制的 Fetch
- */
 async function fetchWithTimeout(resource, options = {}) {
-    // 預設耐心提高到 15 秒，給予 TDX 與 Vercel 充分的運算空間
     const { timeout = 15000 } = options; 
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
@@ -50,14 +43,10 @@ function minutesToTime(mins) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-/**
- * 解析本地離線備援資料 (針對北捷)
- */
 function parseOfflineData(stationCode, stationNode, lineData) {
     let results = [];
     let prefixMatch = stationCode.match(/^[A-Z]+/);
     let prefix = prefixMatch ? prefixMatch[0] : "";
-
     let upDest = "上行方向"; let downDest = "下行方向";
     switch(prefix) {
         case 'R': upDest = "淡水 / 北投"; downDest = "象山 / 大安"; break;
@@ -88,9 +77,6 @@ function parseOfflineData(stationCode, stationNode, lineData) {
     return results;
 }
 
-/**
- * 查詢單一車站時刻表
- */
 async function fetchSingleStationTime(stationName, type, offlineData, searchMode = 'now') {
     if (!globalStationData || !globalStationData[type]) return { status: "not_found", data: [] };
     const stationObj = globalStationData[type].options.find(s => s.name === stationName);
@@ -110,7 +96,7 @@ async function fetchSingleStationTime(stationName, type, offlineData, searchMode
             const urlTrtc = `/api/get-tdx-data?path=${encodeURIComponent(path)}&$filter=${encodeURIComponent(filter)}&$format=JSON`;
             
             let resTrtc = await fetchWithTimeout(urlTrtc);
-            if (!resTrtc.ok) throw new Error("代理連線失敗");
+            if (!resTrtc.ok) throw new Error("代理伺服器或 TDX 拒絕連線");
             
             let data = await resTrtc.json();
             if (data.length === 0) {
@@ -136,7 +122,7 @@ async function fetchSingleStationTime(stationName, type, offlineData, searchMode
             data.forEach(t => results.push({ destination: t.Direction === 0 ? "左營(南下)" : "南港(北上)", time: t.DepartureTime, source: "即時連線" }));
         }
 
-        if (results.length === 0) throw new Error("查無即時班次");
+        if (results.length === 0) throw new Error("代理回傳查無班次，轉入離線防空洞");
 
         if (searchMode === 'last') {
             let lastTrainsMap = {};
@@ -149,10 +135,12 @@ async function fetchSingleStationTime(stationName, type, offlineData, searchMode
             return { status: "success", data: results };
         } else {
             results = results.filter(r => timeToMinutes(r.time) >= currentMins).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+            if (results.length === 0) throw new Error("今日已無班次，轉入離線驗證");
             return { status: "success", data: results.slice(0, 10) };
         }
 
     } catch (err) {
+        console.warn("網路異常或無資料，啟動離線防空洞:", err.message);
         if (offlineData && offlineData[type]) {
             let targetNode = null; let targetCode = null;
             for (let code in offlineData[type]) {
@@ -178,6 +166,7 @@ function calculateOfflineTime(offlineData, start, end, type) {
         if (offlineData[type][code].name === start) { targetNode = offlineData[type][code]; targetCode = code; break; }
     }
     if (!targetNode) return null;
+    
     const parsedResults = parseOfflineData(targetCode, targetNode, offlineData[type]);
     let maxMins = -1; let latestTimeStr = null;
     parsedResults.forEach(item => { let mins = timeToMinutes(item.time); if (mins > maxMins) { maxMins = mins; latestTimeStr = item.time; } });
@@ -185,14 +174,14 @@ function calculateOfflineTime(offlineData, start, end, type) {
 }
 
 /**
- * 跨系統雙段生存計算 (核心: 雲端優先，超時自動降級為「動態連動」離線字典)
+ * 跨系統雙段生存計算 (核心: 雲端優先，超時自動降級離線字典)
  */
 async function fetchTwoStageSurvivalTime(startType, startId, transferId, transferName, endName, offlineData) {
     let trtcLastTime = calculateOfflineTime(offlineData, transferName, endName, 'trtc');
     if (!trtcLastTime) return { time: null, status: "查無北捷轉乘班次" };
     
-    // 目標抵達轉乘站的時間 (捷運末班車 - 30 分鐘緩衝)
     let targetArrivalMins = timeToMinutes(trtcLastTime) - 30;
+
     if (startId === transferId) return { time: minutesToTime(targetArrivalMins), status: "同站跨系統 (-30分)" };
 
     const today = getOperatingDateString(); 
@@ -203,16 +192,22 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
     const url = `/api/get-tdx-data?path=${encodeURIComponent(path)}&$format=JSON`;
 
     try {
-        // 🌟 雲端連線：給予 7 秒耐心
         const response = await fetchWithTimeout(url, { timeout: 7000 });
         if (response.ok) {
             const data = await response.json(); 
             let validTrains = [];
-            const trains = startType === 'tra' ? (data.TrainTimetables || []) : (data || []);
+            
+            // 🌟 容錯：防止 TDX 結構突然更動導致抓不到火車
+            const rawTrains = startType === 'tra' ? (data.TrainTimetables || data || []) : (data || []);
+            const trains = Array.isArray(rawTrains) ? rawTrains : [];
             
             trains.forEach(t => {
-                if (timeToMinutes(t.DestinationStopTime.ArrivalTime) <= targetArrivalMins) 
-                    validTrains.push(t.OriginStopTime.DepartureTime);
+                let destTime = t.DestinationStopTime?.ArrivalTime || t.ArrivalTime;
+                let originTime = t.OriginStopTime?.DepartureTime || t.DepartureTime;
+                
+                if (destTime && originTime && timeToMinutes(destTime) <= targetArrivalMins) {
+                    validTrains.push(originTime);
+                }
             });
 
             if (validTrains.length > 0) {
@@ -229,23 +224,18 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
     }
 
     // ==========================================
-    // 🛡️ 離線保險字典邏輯 (🌟 升級版：動態連動北捷時間)
+    // 🛡️ 離線保險字典邏輯 (動態連動北捷時間)
     // ==========================================
     if (startType === 'tra' && typeof traOfflineDict !== 'undefined' && traOfflineDict) {
-        let baselineTimeStr = traOfflineDict[startId] || traOfflineDict["DEFAULT"];
+        let baselineTimeStr = traOfflineDict[startId] || traOfflineDict["DEFAULT"] || "22:00";
         let baselineMins = timeToMinutes(baselineTimeStr);
         
-        // 數學逆推：當初字典的基準是 23:30 (1410分鐘) 抵達台北
-        // (1410) - (字典出發時間) = (預估搭車耗時)
         let travelDuration = 1410 - baselineMins;
-        if (travelDuration < 0) travelDuration = 20; // 防呆：車程至少 20 分鐘
+        if (travelDuration < 0) travelDuration = 20; 
         
-        // 最終極限出發時間 = (捷運末班車推算出的目標抵達時間) - (預估搭車耗時)
         let finalMins = targetArrivalMins - travelDuration;
-        
         return { time: minutesToTime(finalMins), status: "離線動態連動" };
     }
 
-    // 如果連字典都失效的最終備案
     return { time: minutesToTime(targetArrivalMins - 60), status: "系統保險預估" };
 }
