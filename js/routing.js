@@ -1,5 +1,5 @@
 // ==========================================
-// 🚀 核心路由引擎 (routing.js) - 最終修正版
+// 🚀 核心路由引擎 (routing.js) - 最終防彈版
 // ==========================================
 window.getSystemTime = function() {
     return new Date(); 
@@ -23,7 +23,7 @@ function normalize(name) {
 function timeToMinutes(timeStr) {
     if (!timeStr || !timeStr.includes(':')) return 0;
     let [h, m] = timeStr.split(':').map(Number);
-    if (h < 4) h += 24;
+    if (h < 4) h += 24; // 凌晨算作隔天
     return h * 60 + m;
 }
 
@@ -32,18 +32,16 @@ function calculateOfflineTime(offlineData, start, end, type) {
     if (!offlineData || !offlineData[type]) return null;
     let startNorm = normalize(start);
     let targetNode = null;
-    let targetCode = null;
 
     for (let code in offlineData[type]) {
         if (normalize(offlineData[type][code].name) === startNorm) {
             targetNode = offlineData[type][code];
-            targetCode = code;
             break;
         }
     }
     if (!targetNode) return null;
 
-    // 這裡簡化處理，抓取該站的最晚發車時間
+    // 抓取該站的最晚發車時間
     let maxMins = -1;
     let latestTimeStr = null;
 
@@ -62,9 +60,9 @@ function calculateOfflineTime(offlineData, start, end, type) {
     return latestTimeStr;
 }
 
-// 🌟 雙段轉乘演算法 - 修正參數與邏輯
-window.fetchTwoStageSurvivalTime = async function(startType, startId, transferId, transferName, endName, offlineData) {
-    // 1. 公車模式
+// 🌟 雙段轉乘演算法 - 邏輯全面修復
+window.fetchTwoStageSurvivalTime = async function(startType, startId, startName, transferName, endName, offlineData) {
+    // 1. 公車模式 (計算動態到達時間)
     if (startType === 'bus') {
         let routeName = startId.split('|')[0];
         let stopName = startId.split('|')[1] || "";
@@ -81,24 +79,31 @@ window.fetchTwoStageSurvivalTime = async function(startType, startId, transferId
                 }
             } catch(e) {}
         }
-        if (maxMins === -1) return { time: null, status: "查無公車動態" };
+        if (maxMins === -1) return { time: null, status: "查無公車動態或已打烊" };
         const now = window.getSystemTime(); now.setMinutes(now.getMinutes() + maxMins);
         return { time: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`, status: "公車即時動態" };
     }
 
     // 2. 捷運/台鐵/高鐵模式
-    // 先找北捷的末班保險
+    // 先找轉乘站(北捷)的末班保險底線
     let trtcLastTime = calculateOfflineTime(offlineData, transferName, endName, 'trtc');
     
     // 如果是純捷運轉捷運
     if (startType === 'trtc') {
-        if (trtcLastTime) return { time: trtcLastTime, status: "北捷時刻表" };
+        if (trtcLastTime) return { time: trtcLastTime, status: "北捷離線時刻表" };
         return { time: null, status: "查無捷運站點資料" };
     }
 
-    // 如果是台鐵/高鐵轉捷運 (這裡需要 TDX API)
-    // 為了解省時間，如果 API 失敗或資料不對，我們直接給出一個邏輯失敗的提示，不再硬塞 22:15
-    return { time: trtcLastTime || null, status: trtcLastTime ? "轉乘保險建議" : "計算失敗，請檢查站名" };
+    // 🌟 核心修正：台鐵/高鐵轉捷運
+    // 抓取台鐵或高鐵起點站的最晚發車時間
+    let startLastTime = calculateOfflineTime(offlineData, startName, transferName, startType);
+    
+    if (startLastTime) {
+        return { time: startLastTime, status: `${startType === 'tra' ? '台鐵' : '高鐵'}離線時刻表` };
+    }
+
+    // 如果連起點站資料都抓不到，才退而求其次給捷運時間防呆
+    return { time: trtcLastTime || null, status: trtcLastTime ? "僅提供捷運轉乘保險建議" : "計算失敗，請檢查站名" };
 };
 
 // 單站檢索 (為了全查詢模式)
