@@ -9,8 +9,70 @@ let offlineTimetableData = null;
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站', 'bus': '' };
 
 // ==========================================
-// 視窗控制 (SPA & Sheets)
+// 🌟 音樂播放器核心 (失而復得的 BGM 系統)
 // ==========================================
+let savedVol = localStorage.getItem('bgmVolume');
+let bgmVolume = savedVol !== null ? parseFloat(savedVol) : 0.3; 
+let savedMuted = localStorage.getItem('isBgmMuted');
+let isBgmMuted = savedMuted !== null ? savedMuted === 'true' : true; 
+let bgmPlaylist = ["/audio/platform_at_midnight.mp3", "/audio/Midnight_at_Platform_Four.mp3", "/audio/Waiting_at_the_Edge.mp3"];
+let currentBgmIndex = 0;
+let audioInitialized = false;
+
+function initAndPlayAudio() {
+    const bgm = document.getElementById('bgm-audio');
+    if (!bgm) return;
+    if (!audioInitialized) {
+        bgm.src = bgmPlaylist[currentBgmIndex];
+        bgm.addEventListener('ended', () => {
+            currentBgmIndex = (currentBgmIndex + 1) % bgmPlaylist.length;
+            bgm.src = bgmPlaylist[currentBgmIndex];
+            bgm.play().catch(e=>console.log(e));
+        });
+        audioInitialized = true;
+    }
+    bgm.volume = bgmVolume;
+    bgm.play().catch(e => console.log("等待互動:", e));
+}
+
+function setupAudioUI() {
+    const icon = isBgmMuted ? '🔇' : '🔊'; 
+    if (document.getElementById('mute-btn')) document.getElementById('mute-btn').innerText = icon; 
+    if (document.getElementById('header-mute-btn')) document.getElementById('header-mute-btn').innerText = icon; 
+    if (document.getElementById('volume-slider')) document.getElementById('volume-slider').value = isBgmMuted ? 0 : bgmVolume;
+}
+
+function toggleMute() {
+    isBgmMuted = !isBgmMuted; 
+    if (!isBgmMuted && bgmVolume === 0) bgmVolume = 0.3; 
+    localStorage.setItem('isBgmMuted', isBgmMuted);
+    localStorage.setItem('bgmVolume', bgmVolume);
+    setupAudioUI();
+    const bgm = document.getElementById('bgm-audio'); 
+    if (bgm) { if (isBgmMuted) bgm.pause(); else initAndPlayAudio(); }
+}
+
+function updateVolume(val) {
+    bgmVolume = parseFloat(val); 
+    isBgmMuted = (bgmVolume === 0);
+    localStorage.setItem('isBgmMuted', isBgmMuted);
+    localStorage.setItem('bgmVolume', bgmVolume);
+    setupAudioUI();
+    const bgm = document.getElementById('bgm-audio'); 
+    if (bgm) { if (isBgmMuted) bgm.pause(); else initAndPlayAudio(); }
+}
+
+// ==========================================
+// 視窗控制 (SPA & UI 選單)
+// ==========================================
+window.addEventListener('load', async () => {
+    setupAudioUI();
+    if (!isBgmMuted) ['touchstart', 'click'].forEach(evt => window.addEventListener(evt, () => { if(!isBgmMuted) initAndPlayAudio(); }, {once:true}));
+    
+    try { const res = await fetch('/data/stations.json'); if(res.ok) globalStationData = await res.json(); } catch(e){}
+    try { const timeRes = await fetch('/data/offline-timetable.json'); if(timeRes.ok) offlineTimetableData = await timeRes.json(); } catch(e){}
+});
+
 window.openPage = function(url) { 
     document.getElementById('spa-frame').src = url; 
     document.getElementById('overlay').classList.add('active'); 
@@ -32,7 +94,6 @@ function closeAllSheets() {
     document.getElementById('overlay').classList.remove('active'); 
 }
 
-// 🌟 之前弄丟的兩個關鍵 UI 函數補回來了！
 function toggleContact() {
     const l = document.getElementById('contact-links');
     if(l) l.style.display = (l.style.display === "flex") ? "none" : "flex";
@@ -41,20 +102,24 @@ function toggleContact() {
 function openSettingsSheet() {
     const overlay = document.getElementById('overlay');
     const sheet = document.getElementById('settings-sheet');
-    if(overlay && sheet) {
-        overlay.classList.add('active');
-        sheet.classList.add('active');
-    }
+    if(overlay && sheet) { overlay.classList.add('active'); sheet.classList.add('active'); }
+}
+
+function shareApp() {
+    if (navigator.share) {
+        navigator.share({ title: '末班車生存', text: '趕不上末班車？開啟極限求生模式！', url: window.location.href }).catch(console.error);
+    } else { alert("您的瀏覽器不支援分享功能，請直接複製網址！"); }
+}
+
+function toggleAppMode() {
+    const modeSurvival = document.getElementById('mode-survival'); const modeSearch = document.getElementById('mode-search');
+    if (currentMode === 'survival') { modeSurvival.style.display = 'none'; modeSearch.style.display = 'block'; currentMode = 'search'; } 
+    else { modeSearch.style.display = 'none'; modeSurvival.style.display = 'block'; currentMode = 'survival'; }
 }
 
 // ==========================================
-// 核心功能邏輯
+// 核心演算法 (公車連動與倒數計時)
 // ==========================================
-window.addEventListener('load', async () => {
-    try { const res = await fetch('/data/stations.json'); if(res.ok) globalStationData = await res.json(); } catch(e){}
-    try { const timeRes = await fetch('/data/offline-timetable.json'); if(timeRes.ok) offlineTimetableData = await timeRes.json(); } catch(e){}
-});
-
 async function updateStationOptions(point) {
     const type = document.getElementById(point + '-type').value;
     const input = document.getElementById(point + '-station-input');
