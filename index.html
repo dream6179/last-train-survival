@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>末班車生存 | 深夜通勤導航</title>
     <script src="/js/guard.js"></script>
-    <link rel="stylesheet" href="/css/style.css?v=20260403_v3">
+    <link rel="stylesheet" href="/css/style.css?v=busUI_update">
 </head>
 <body>
 <div class="container">
@@ -21,6 +21,7 @@
     <div id="mode-survival">
         
         <div id="input-zone">
+            
             <div class="location-block"><label>出發地</label><div class="select-group">
                 <select class="type-select" id="start-type" onchange="updateStationOptions('start')">
                     <option value="trtc">北捷</option><option value="tra">台鐵</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>
@@ -32,17 +33,18 @@
                 </div>
             </div></div>
 
-            <div class="location-block bus-stop-row" id="start-bus-stop-block" style="display: none; margin-top: 4px;"><div class="select-group">
-                <div class="type-select-label">📍 站牌</div>
+            <div class="location-block" id="start-bus-stop-block" style="display: none; margin-top: 4px;"><div class="select-group">
+                <div class="type-select-label">起點站牌</div>
                 <div class="autocomplete-wrapper">
-                    <input type="text" id="start-bus-stop-input" class="station-input" placeholder="輸入站牌名稱">
+                    <input type="text" id="start-bus-stop-input" class="station-input" placeholder="填寫站牌">
+                    <span class="clear-btn" id="start-bus-clear-btn">×</span>
                 </div>
             </div></div>
 
             <div class="location-block" id="transfer-block" style="display: none;">
                 <label style="color:var(--warning);">轉乘北捷站</label>
                 <div class="select-group">
-                    <div class="type-select-label" style="background:#333;">🚉 轉乘</div>
+                    <div class="type-select-label" style="background:#333; color:var(--warning);">🚉 轉乘</div>
                     <div class="autocomplete-wrapper">
                         <select id="transfer-station-input" class="station-input" style="padding-right: 12px;"></select>
                     </div>
@@ -60,10 +62,11 @@
                 </div>
             </div></div>
 
-            <div class="location-block bus-stop-row" id="end-bus-stop-block" style="display: none; margin-top: 4px;"><div class="select-group">
-                <div class="type-select-label">📍 站牌</div>
+            <div class="location-block" id="end-bus-stop-block" style="display: none; margin-top: 4px;"><div class="select-group">
+                <div class="type-select-label">終點站牌</div>
                 <div class="autocomplete-wrapper">
-                    <input type="text" id="end-bus-stop-input" class="station-input" placeholder="輸入站牌名稱">
+                    <input type="text" id="end-bus-stop-input" class="station-input" placeholder="填寫站牌">
+                    <span class="clear-btn" id="end-bus-clear-btn">×</span>
                 </div>
             </div></div>
 
@@ -76,7 +79,6 @@
                 <div id="time-display" class="time-display">00:00:00</div>
                 <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00;">待查驗...</span></div>
             </div>
-            
             <div id="plan-b-container" class="plan-b-container">
                 <a href="https://www.uber.com" class="plan-b-option"><span>呼叫 Uber</span><span>~$300</span></a>
                 <button class="btn-reset" style="display:flex;" onclick="resetPlan()">🔄 重新安排行程</button>
@@ -117,6 +119,9 @@
                 <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.3" style="flex: 1;" oninput="updateVolume(this.value)">
             </div>
         </div>
+        <button class="plan-b-option" onclick="openPage('/collection.html')" style="border: 1px solid var(--warning); margin-top: 10px;">
+            <span style="color: var(--warning); font-weight: bold;">🏆 前往彩蛋與收集冊專區</span>
+        </button>
     </div>
 </div>
 
