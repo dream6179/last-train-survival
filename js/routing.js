@@ -1,5 +1,5 @@
 // ==========================================
-// 🚀 末班車生存戰 核心路由與 API 引擎 (防空洞連動北捷版)
+// 🚀 末班車生存戰 核心路由與 API 引擎 (無情切換離線字典版)
 // ==========================================
 
 function getSystemTime() {
@@ -173,9 +173,6 @@ function calculateOfflineTime(offlineData, start, end, type) {
     return latestTimeStr;
 }
 
-/**
- * 跨系統雙段生存計算 (核心: 雲端優先，超時自動降級離線字典)
- */
 async function fetchTwoStageSurvivalTime(startType, startId, transferId, transferName, endName, offlineData) {
     let trtcLastTime = calculateOfflineTime(offlineData, transferName, endName, 'trtc');
     if (!trtcLastTime) return { time: null, status: "查無北捷轉乘班次" };
@@ -197,7 +194,6 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
             const data = await response.json(); 
             let validTrains = [];
             
-            // 🌟 容錯：防止 TDX 結構突然更動導致抓不到火車
             const rawTrains = startType === 'tra' ? (data.TrainTimetables || data || []) : (data || []);
             const trains = Array.isArray(rawTrains) ? rawTrains : [];
             
@@ -214,13 +210,14 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
                 validTrains.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
                 return { time: validTrains[validTrains.length - 1], status: "雙段精準計算" };
             } else {
-                const nowHours = getSystemTime().getHours();
-                if (nowHours > 6 && nowHours < 21) return { time: null, status: "查無直達轉乘站的班次" };
-                else return { time: null, status: "錯過轉乘末班車" };
+                // 🌟 關鍵修正：TDX 如果回傳空陣列，不要再溫柔提示，直接強制報錯進入防空洞！
+                throw new Error("TDX回傳0筆班次，強制啟動離線字典");
             }
+        } else {
+            throw new Error("TDX伺服器異常或流量限制");
         }
     } catch (err) {
-        console.warn("⚠️ 連線超時或異常，啟動離線動態字典...");
+        console.warn(`⚠️ 連線超時或無資料 (${err.message})，啟動離線動態字典...`);
     }
 
     // ==========================================
