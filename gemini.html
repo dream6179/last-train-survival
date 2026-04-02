@@ -1,0 +1,31 @@
+<style>
+    body { background: #121212; color: white; font-family: sans-serif; padding: 20px; }
+    #chat-box { height: 70vh; overflow-y: auto; border: 1px solid #333; padding: 10px; border-radius: 10px; margin-bottom: 10px; }
+    input { width: 80%; padding: 10px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; }
+    button { padding: 10px; background: #4caf50; border: none; color: white; border-radius: 5px; cursor: pointer; }
+</style>
+
+<div id="chat-box">系統：你好，迷失在月台的旅人。</div>
+<input type="text" id="user-input" placeholder="問問 AI 助手...">
+<button onclick="sendMessage()">傳送</button>
+
+<script>
+async function sendMessage() {
+    const input = document.getElementById('user-input');
+    const chatBox = document.getElementById('chat-box');
+    const userMsg = input.value;
+    if(!userMsg) return;
+
+    chatBox.innerHTML += `<div>👤 你：${userMsg}</div>`;
+    input.value = '';
+
+    const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: userMsg })
+    });
+    const data = await res.json();
+    chatBox.innerHTML += `<div>🤖 導遊：${data.reply}</div>`;
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+</script>
