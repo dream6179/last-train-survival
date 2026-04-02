@@ -5,104 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>開發者資訊 | 末班車生存</title>
     <style>
-        :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --info: #2196F3; --warning: #ffb300; }
-        
-        html, body { overflow-x: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main); -webkit-user-select: none; user-select: none; }
+        :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --success: #4caf50; --warning: #ffb300; --info: #2196F3; }
+        html, body { overflow-x: hidden; height: 100%; width: 100%; margin: 0; padding: 0; background-color: var(--bg-color); font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main); }
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; }
-
-        .container { width: 90%; max-width: 400px; padding: 20px 0 50px 0; margin: 0 auto; }
+        .container { width: 90%; max-width: 400px; margin: 20px auto; padding-bottom: 30px; }
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #333; }
-        .header-row h1 { font-size: 20px; margin: 0; color: var(--text-main); }
-        .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; }
+        .header-row h1 { font-size: 20px; color: var(--success); margin: 0; }
+        /* 🌟 防彈返回鍵樣式 */
+        .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; display: inline-block; }
         .back-btn:active { background: #555; transform: scale(0.95); }
-        .section { background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid #333; }
-        .section h3 { margin-top: 0; border-bottom: 1px dashed #444; padding-bottom: 10px; color: #4caf50; font-size: 16px; }
         
-        /* 基本按鈕樣式 */
-        .link-btn { display: block; background: #1a1a1a; color: white; border: 1px solid #555; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 15px; transition: 0.1s; cursor: pointer; }
-        .link-btn:active { background: #333; transform: scale(0.98); }
-        
-        /* 開發日誌專屬樣式 (加點變化) */
-        .link-btn-secondary { display: block; background: rgba(33, 150, 243, 0.1); color: var(--info); border: 1px dashed var(--info); text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 10px; transition: 0.1s; cursor: pointer; }
-        .link-btn-secondary:active { background: rgba(33, 150, 243, 0.2); transform: scale(0.98); }
-
+        .content-box { background: var(--card-bg); border: 1px solid #333; border-radius: 12px; padding: 20px; font-size: 14px; line-height: 1.6; color: #ccc; text-align: center; }
+        .avatar { font-size: 60px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header-row">
-            <h1>👨‍💻 開發者資訊</h1>
-            <a href="javascript:history.back()" class="back-btn">⬅ 返回</a>
-        </div>
 
-        <div class="section">
-            <h3>👨‍💻 關於作者</h3>
-            <p style="font-size: 14px; color: var(--text-sub); margin-top: 0; line-height: 1.6;">本服務由 <strong>綠茶地瓜</strong> 獨立開發與維護。<br><br>這是一個為了拯救無數在深夜狂奔的社畜與夜貓子而誕生的生存工具。查看最新版本資訊、碎碎念與 App 開發秘辛，歡迎至小屋逛逛：</p>
-            
-            <a href="https://home.gamer.com.tw/artwork.php?sn=6312909" target="_blank" class="link-btn">📝 版本更新日誌 (功能與除錯)</a>
-            
-            <a href="https://home.gamer.com.tw/artwork.php?sn=6312913" target="_blank" class="link-btn-secondary">🧠 App 開發秘辛與日誌</a>
-        </div>
+<div class="container">
+    <div class="header-row">
+        <h1>👨‍💻 開發者資訊</h1>
+        <a href="javascript:void(0)" onclick="if(window.parent && window.parent.closeAllSheets) { window.parent.closeAllSheets(); } else { window.location.href='/'; }" class="back-btn">⬅ 返回主頁</a>
+    </div>
 
-        <div class="section">
-            <h3 style="color: var(--warning);">🛠️ 實驗性功能</h3>
-            <button id="dev-mode-btn" onclick="toggleDevMode()" class="link-btn" style="border-color: var(--warning); color: var(--warning);">
-                🔧 開啟開發者模式
-            </button>
-            <p style="font-size: 11px; color: #888; margin-top: 10px; text-align: center;">鎖定全域時間為 23:30，方便深夜測試末班車邏輯</p>
-        </div>
-    </div> 
-    
-    <script>
-        function updateDevBtn() {
-            try {
-                const btn = document.getElementById('dev-mode-btn');
-                if(!btn) return;
-                if(localStorage.getItem('dev_mode_active') === 'true') {
-                    btn.innerHTML = "🔴 關閉開發者模式";
-                    btn.style.color = "var(--danger)";
-                    btn.style.borderColor = "var(--danger)";
-                } else {
-                    btn.innerHTML = "🔧 開啟開發者模式";
-                    btn.style.color = "var(--warning)";
-                    btn.style.borderColor = "var(--warning)";
-                }
-            } catch (e) { console.log(e); }
-        }
+    <div class="content-box">
+        <div class="avatar">🍠</div>
+        <h3 style="color: white; margin: 5px 0;">綠茶地瓜</h3>
+        <p style="color: var(--warning); font-weight: bold; margin-bottom: 20px;">專案核心維護者</p>
         
-        window.addEventListener('DOMContentLoaded', updateDevBtn);
+        <p style="text-align: left;">這個專案誕生於無數個趕不上末班車的夜晚。致力於打造最直覺、最無壓力的深夜通勤導航系統。</p>
+        
+        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #444; font-size: 12px; color: #888;">
+            Version: 2.0.0 (微服務防彈版)<br>
+            Powered by TDX API & Gemini
+        </div>
+    </div>
+</div>
 
-        async function toggleDevMode() {
-            try {
-                if(localStorage.getItem('dev_mode_active') === 'true') {
-                    localStorage.setItem('dev_mode_active', 'false');
-                    alert("🔴 已關閉開發者模式，恢復現實時間。請重新整理主頁。");
-                    updateDevBtn();
-                } else {
-                    const pwd = prompt("🔒 請輸入工程模式密碼：");
-                    if (pwd === null) return;
-
-                    try {
-                        const res = await fetch('/data/config.json?t=' + new Date().getTime());
-                        const data = await res.json();
-                        
-                        if(pwd === data.dev_key) {
-                            localStorage.setItem('dev_mode_active', 'true');
-                            alert("✅ 密碼正確！已啟用開發者模式 (時間已鎖定為 23:30)。請重新整理主頁。");
-                            updateDevBtn();
-                        } else {
-                            alert("❌ 密碼錯誤！");
-                        }
-                    } catch (e) {
-                        alert("❌ 系統錯誤，無法驗證鑰匙。");
-                    }
-                }
-            } catch (e) { console.log(e); }
-        }
-    </script>
-    
-    <audio id="bgm-audio"></audio>
-    <script src="/js/main.js"></script>
 </body>
 </html>
