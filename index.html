@@ -30,6 +30,11 @@
             </div>
         </div></div>
 
+        <div class="location-block" id="start-bus-stop-block" style="display: none; margin-top: 4px;"><div class="select-group">
+            <div class="type-select" style="font-size:11px; color:var(--warning); display:flex; align-items:center; justify-content:center;">📍 站牌</div>
+            <div class="autocomplete-wrapper"><input type="text" id="start-bus-stop-input" class="station-input" placeholder="輸入站牌名稱"></div>
+        </div></div>
+
         <div class="location-block" id="transfer-block" style="display: none;">
             <label style="color:var(--warning);">轉乘北捷站</label>
             <div class="select-group">
@@ -72,10 +77,41 @@
             <a class="footer-toggle" onclick="toggleContact()">👉 聯絡我們 👈</a>
             <a class="footer-toggle" onclick="openSettingsSheet()">⚙️ 快速設定</a>
         </div>
+        <div id="contact-links" class="contact-links">
+            <a href="mailto:x778888778@gmail.com" class="contact-btn" style="background:#ea4335;">✉️ Gmail</a>
+            <a href="https://discord.gg/vPgU2KaSZr" class="contact-btn" style="background:#5865F2;">💬 Discord</a>
+        </div>
     </div>
 </div>
 
 <div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
+
+<div class="bottom-sheet" id="settings-sheet">
+    <div class="sheet-header">
+        <h3 style="margin:0;">⚙️ 快速設定</h3>
+        <button onclick="closeAllSheets()" style="background:var(--danger); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:bold;">關閉</button>
+    </div>
+    <div class="sheet-content">
+        <button class="plan-b-option" onclick="shareApp()" style="background-color: #333;"><span>🔗 分享這個求生工具給朋友</span></button>
+        <button class="plan-b-option" onclick="openPage('/about.html')"><span>📖 快速使用說明</span></button>
+        <button class="plan-b-option" onclick="openPage('/developer.html')"><span>👨‍💻 開發者資訊</span></button>
+        <div style="margin-top: 10px; background: #222; padding: 15px; border-radius: 15px; border: 1px solid #333;">
+            <h4 style="color: var(--text-sub); margin: 0 0 10px 0; font-size: 13px;">🎵 背景音樂設定</h4>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button id="mute-btn" style="background: none; border: none; font-size: 24px; cursor: pointer;" onclick="toggleMute()">🔇</button>
+                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.3" style="flex: 1;" oninput="updateVolume(this.value)">
+            </div>
+        </div>
+        <button class="plan-b-option" onclick="openPage('/collection.html')" style="border: 1px solid var(--warning); margin-top: 10px;">
+            <span style="color: var(--warning); font-weight: bold;">🏆 前往彩蛋與收集冊專區</span>
+        </button>
+    </div>
+</div>
+
+<div class="bottom-sheet" id="dynamic-sheet" style="padding:0; overflow:hidden;">
+    <iframe id="spa-frame" style="width:100%; height:100%; border:none;"></iframe>
+</div>
+
 <audio id="bgm-audio"></audio>
 <script src="/js/audio.js"></script><script src="/js/ui.js"></script><script src="/js/main.js"></script><script src="/js/routing.js"></script>
 </body>
