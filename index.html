@@ -96,32 +96,38 @@
 <div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
 
 <div class="bottom-sheet" id="settings-sheet">
-    <div class="sheet-header"><h3>⚙️ 快速設定</h3><button onclick="closeAllSheets()" style="background:var(--danger); color:white; border:none; padding:5px 15px; border-radius:5px; cursor:pointer;">關閉</button></div>
+    <div class="sheet-header">
+        <h3 style="margin:0;">⚙️ 快速設定</h3>
+        <button onclick="closeAllSheets()" style="background:var(--danger); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:bold;">關閉</button>
+    </div>
+    
     <div class="sheet-content">
-        <button class="plan-b-option" onclick="shareApp()" style="background-color: #333; justify-content: center; margin-bottom: 5px;">
+        <button class="plan-b-option" onclick="shareApp()" style="background-color: #333;">
             <span>🔗 分享這個求生工具給朋友</span>
         </button>
-        <button class="plan-b-option" onclick="openPage('/about.html')" style="justify-content: center; margin-bottom: 5px;">
+        
+        <button class="plan-b-option" onclick="openPage('/about.html')">
             <span>📖 快速使用說明</span>
         </button>
-        <button class="plan-b-option" onclick="openPage('/developer.html')" style="justify-content: center; margin-bottom: 10px;">
+        
+        <button class="plan-b-option" onclick="openPage('/developer.html')">
             <span>👨‍💻 開發者資訊</span>
         </button>
         
-        <div style="margin-top: 10px; border-top: 1px solid #333; padding-top: 15px;">
-            <h4 style="color: white; margin-top: 0; margin-bottom: 10px; font-size: 14px;">🎵 背景音樂設定</h4>
-            <div style="display: flex; align-items: center; gap: 15px; background: #2c2c2c; padding: 10px; border-radius: 10px;">
-                <button id="mute-btn" style="background: none; border: none; font-size: 20px; cursor: pointer;" onclick="toggleMute()">🔇</button>
-                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.3" style="flex-grow: 1;" oninput="updateVolume(this.value)">
+        <div style="margin-top: 10px; background: #222; padding: 15px; border-radius: 15px; border: 1px solid #333;">
+            <h4 style="color: var(--text-sub); margin: 0 0 10px 0; font-size: 13px;">🎵 背景音樂設定</h4>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button id="mute-btn" style="background: none; border: none; font-size: 24px; cursor: pointer;" onclick="toggleMute()">🔇</button>
+                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.3" style="flex: 1;" oninput="updateVolume(this.value)">
             </div>
         </div>
         
-        <button class="plan-b-option" onclick="openPage('/collection.html')" style="border-color: var(--warning); justify-content: center; margin-top: 15px;">
-            <span style="color: var(--warning);">🏆 前往彩蛋與收集冊專區</span>
+        <button class="plan-b-option" onclick="openPage('/collection.html')" style="border: 1px solid var(--warning); margin-top: 10px;">
+            <span style="color: var(--warning); font-weight: bold;">🏆 前往彩蛋與收集冊專區</span>
         </button>
         
-        <div style="margin-top: 20px; text-align: center; border-top: 1px dashed #333; padding-top: 10px;">
-            <span style="color: #666; font-size: 11px;">目前版本: v2.46</span>
+        <div style="margin-top: auto; padding: 20px 0; text-align: center;">
+            <span style="color: #555; font-size: 11px;">目前版本: v2.47 | 穩定部署版</span>
         </div>
     </div>
 </div>
