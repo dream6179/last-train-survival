@@ -1,9 +1,11 @@
 // ==========================================
-// 🔍 獨立查詢系統 (search.js)
+// 🔍 獨立查詢系統 (search.js) - 真實檢索版
 // ==========================================
 let globalStationData = null;
+let searchOfflineData = null;
 
 window.addEventListener('load', async () => {
+    // 1. 載入車站選單資料
     try { 
         const res = await fetch('/data/stations.json'); 
         if(res.ok) { 
@@ -11,6 +13,12 @@ window.addEventListener('load', async () => {
             initSearchAutocomplete();
         } 
     } catch(e){ console.error("車站載入失敗", e); }
+
+    // 2. 獨立載入離線時刻表 (保證電視機自己有資料庫)
+    try { 
+        const timeRes = await fetch('/data/offline-timetable.json'); 
+        if(timeRes.ok) searchOfflineData = await timeRes.json(); 
+    } catch(e){ console.error("時刻表載入失敗", e); }
 });
 
 function initSearchAutocomplete() {
@@ -73,23 +81,44 @@ window.updateSearchOptions = function() {
     document.getElementById('search-clear-btn').style.display = 'none';
 };
 
-// 🌟 你的檢索核心邏輯寫在這裡
+// 🌟 串接真實 API 與排版邏輯
 window.executeFullSearch = async function() {
     const type = document.getElementById('search-type').value;
     const station = document.getElementById('search-station-input').value.trim();
     const box = document.getElementById('search-result-box');
     
-    if(!station) { box.innerHTML = "⚠️ 請輸入車站名稱"; return; }
-    box.innerHTML = "⏳ 檢索中...";
+    if(!station) { 
+        box.innerHTML = "<div style='color: var(--danger); text-align: center; padding: 20px;'>⚠️ 請輸入車站名稱</div>"; 
+        return; 
+    }
+    
+    box.innerHTML = "<div style='text-align: center; padding: 20px;'>⏳ 正在為您檢索...</div>";
 
     try {
-        // 這裡可以呼叫你原本寫好的檢索 API (例如 fetchSingleStationTime)
-        // 目前先放一個佔位提示
-        box.innerHTML = `
-            <div style="color: white; font-weight: bold; margin-bottom: 10px;">✅ 成功連結 [${station}]</div>
-            <div>系統已獨立！你可以在 search.js 中將 API 查詢結果渲染到這個區塊。</div>
-        `;
+        // 呼叫父視窗 (首頁) 剛剛修好的 routing.js 核心大腦
+        if (window.parent && window.parent.fetchSingleStationTime) {
+            const res = await window.parent.fetchSingleStationTime(station, type, searchOfflineData);
+
+            if (res && res.status === "success" && res.data.length > 0) {
+                // 成功抓到資料，開始排版
+                let html = `<div style="color: var(--success); font-weight: bold; margin-bottom: 15px; font-size: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">✅ [${station}] 發車時刻表</div>`;
+                
+                res.data.forEach(item => {
+                    html += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <span style="color: #ccc;">${item.destination}</span>
+                            <span style="color: var(--warning); font-size: 18px; font-weight: bold;">${item.time}</span>
+                        </div>
+                    `;
+                });
+                box.innerHTML = html;
+            } else {
+                box.innerHTML = `<div style='color: var(--text-sub); text-align: center; padding: 20px;'>❌ 目前查無 [${station}] 的時刻資料。</div>`;
+            }
+        } else {
+             box.innerHTML = "<div style='color: var(--danger); text-align: center; padding: 20px;'>❌ 系統核心未連結，請重整網頁。</div>";
+        }
     } catch(e) {
-        box.innerHTML = "❌ 檢索發生錯誤：" + e.message;
+        box.innerHTML = `<div style='color: var(--danger); text-align: center; padding: 20px;'>❌ 檢索發生錯誤：${e.message}</div>`;
     }
 };
