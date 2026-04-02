@@ -187,13 +187,6 @@ function closeAllSheets() {
 // ==========================================
 // 核心路由與其餘功能
 // ==========================================
-function getSystemTime() {
-    if (localStorage.getItem('dev_mode_active') === 'true') {
-        let d = new Date(); d.setHours(23, 30, 0, 0); return d;
-    }
-    return new Date();
-}
-
 function toggleAppMode() {
     const modeSurvival = document.getElementById('mode-survival'); const modeSearch = document.getElementById('mode-search'); const toggleBtn = document.getElementById('mode-toggle-btn'); const mainTitle = document.getElementById('main-title');
     if (currentMode === 'survival') { 
@@ -316,7 +309,9 @@ async function executeFullSearch() {
     }
 }
 
+// 🌟 全域變數區塊 (新增 traOfflineDict)
 let isCountingDown = false; let timeLeft = 0; let timer; let offlineTimetableData = null; let globalStationData = null; let transferTimetableData = null; let isNotificationEnabled = false; let notificationTriggered = false;
+let traOfflineDict = null; // 🌟 這是我們新增的台鐵離線保險字典全域變數
 let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; let savedStart = localStorage.getItem('lastTrainStart') || '台北車站'; let savedEnd = localStorage.getItem('lastTrainEnd') || '台北車站';
 
 const display = document.getElementById('time-display'); const statusText = document.getElementById('status-text'); const actionBtn = document.getElementById('action-btn'); const cancelBtn = document.getElementById('cancel-btn'); const speedModeText = document.getElementById('speed-mode'); const planBContainer = document.getElementById('plan-b-container'); 
@@ -341,6 +336,12 @@ window.addEventListener('load', async () => {
         if (transferRes.ok) transferTimetableData = await transferRes.json(); 
         else console.warn("⚠️ 找不到 transfer-timetable.json", transferRes.status);
     } catch (e) { console.error("轉乘時刻表讀取失敗:", e); }
+
+    // 🌟 新增：讀取台鐵離線保險字典
+    try {
+        const dictRes = await fetchWithTimeout('/data/tra-last-hub.json', { timeout: 3000 });
+        if (dictRes.ok) traOfflineDict = await dictRes.json();
+    } catch (e) { console.log("離線字典載入跳過"); }
 
     try { 
         const stationRes = await fetchWithTimeout('/data/stations.json', { timeout: 4000 }); 
@@ -510,7 +511,6 @@ async function updateStationOptions(point) {
                 if (res.ok) {
                     const fullTraData = await res.json();
                     
-                    // 🌟 智慧防呆轉換器：不管 JSON 外層包什麼，一律精準抓出陣列
                     if (Array.isArray(fullTraData)) {
                         globalStationData.tra.options = fullTraData;
                     } else if (fullTraData.options && Array.isArray(fullTraData.options)) {
