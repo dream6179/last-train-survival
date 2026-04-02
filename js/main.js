@@ -1,193 +1,52 @@
 // ==========================================
-// 🚀 核心業務、時鐘與車站選單 (main.js)
+// 🚀 核心業務與時鐘 (main.js) - 最終修正版
 // ==========================================
 let isCountingDown = false; 
 let timeLeft = 0;           
 let globalStationData = null;
 let offlineTimetableData = null;
-
-let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; 
-let savedStart = localStorage.getItem('lastTrainStart') || '台北車站'; 
-let savedEnd = localStorage.getItem('lastTrainEnd') || '台北車站';
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站', 'bus': '' };
-
-// 隱藏 iOS 原生下拉箭頭
-const style = document.createElement('style');
-style.innerHTML = `select { -webkit-appearance: none; appearance: none; }`;
-document.head.appendChild(style);
 
 window.addEventListener('load', async () => {
     try { 
         const res = await fetch('/data/stations.json'); 
-        if(res.ok) { 
-            globalStationData = await res.json(); 
-            initCustomAutocomplete();
-            document.getElementById('start-station-input').value = savedStart; 
-            document.getElementById('end-station-input').value = savedEnd; 
-            checkTransferLock();
-        } 
-    } catch(e){ console.log("車站資料載入失敗"); }
-    
+        if(res.ok) {
+            globalStationData = await res.json();
+            if (typeof initCustomAutocomplete === 'function') initCustomAutocomplete();
+            document.getElementById('start-station-input').value = localStorage.getItem('lastTrainStart') || '台北車站';
+            document.getElementById('end-station-input').value = localStorage.getItem('lastTrainEnd') || '台北車站';
+        }
+    } catch(e){}
     try { 
         const timeRes = await fetch('/data/offline-timetable.json'); 
         if(timeRes.ok) offlineTimetableData = await timeRes.json(); 
     } catch(e){}
 });
 
-// ==========================================
-// 車站下拉選單與防呆系統
-// ==========================================
-function checkTransferLock() {
-    const startType = document.getElementById('start-type').value;
-    const transferBlock = document.getElementById('transfer-block');
-    if (startType === 'tra' || startType === 'thsr') {
-        if(transferBlock) transferBlock.style.display = 'flex'; 
-    } else {
-        if(transferBlock) transferBlock.style.display = 'none';
-    }
-}
-
-function renderCustomDropdown(point) {
-    const typeSelect = document.getElementById(point + '-type');
-    if (typeSelect && typeSelect.value === 'bus') return; 
-
-    const inputField = document.getElementById(point + '-station-input');
-    const listContainer = document.getElementById(point + '-autocomplete-list');
-    if(!listContainer) return;
-
-    const selectedType = typeSelect.value;
-    let options = globalStationData?.[selectedType]?.options || [];
-    
-    listContainer.innerHTML = ''; 
-    const filterText = inputField.value.trim().replace(/臺/g, '台').toLowerCase();
-    let favList = []; let otherList = [];
-    
-    options.forEach(station => {
-        const normStationName = station.name.replace(/臺/g, '台').toLowerCase();
-        if (normStationName.includes(filterText) || filterText === '') {
-            if (favoriteStations.includes(station.name)) favList.push(station); else otherList.push(station);
-        }
-    });
-
-    const createItem = (station, isFav) => {
-        const item = document.createElement('div'); item.className = 'dropdown-item';
-        item.innerHTML = `<span>${station.name}</span><span class="star-icon" style="color:${isFav?'#ffca28':'#666'}">${isFav?'★':'☆'}</span>`;
-        
-        item.querySelector('.star-icon').addEventListener('mousedown', (e) => { 
-            e.preventDefault(); e.stopPropagation(); 
-            if (favoriteStations.includes(station.name)) {
-                favoriteStations = favoriteStations.filter(fav => fav !== station.name);
-            } else {
-                favoriteStations.push(station.name);
-            }
-            localStorage.setItem('lastTrainFavs', JSON.stringify(favoriteStations));
-            renderCustomDropdown(point);
-        });
-        
-        item.addEventListener('click', () => { 
-            inputField.value = station.name; 
-            listContainer.style.display = 'none'; 
-            if (point === 'start') {
-                savedStart = station.name; localStorage.setItem('lastTrainStart', savedStart);
-                checkTransferLock(); 
-            }
-            if (point === 'end') {
-                savedEnd = station.name; localStorage.setItem('lastTrainEnd', savedEnd);
-            }
-        });
-        return item;
-    };
-    
-    favList.forEach(s => listContainer.appendChild(createItem(s, true)));
-    if (favList.length > 0 && otherList.length > 0) listContainer.appendChild(document.createElement('div')).className = 'dropdown-divider';
-    otherList.forEach(s => listContainer.appendChild(createItem(s, false)));
-    
-    listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
-}
-
-function initCustomAutocomplete() {
-    ['start', 'end', 'search'].forEach(point => {
-        const inputField = document.getElementById(point + '-station-input');
-        if(inputField) {
-            inputField.addEventListener('input', () => renderCustomDropdown(point));
-            inputField.addEventListener('focus', () => { 
-                if(inputField.disabled) return; 
-                const type = document.getElementById(point + '-type').value; 
-                if(type !== 'bus') { inputField.value = ''; renderCustomDropdown(point); } 
-            });
-        }
-        document.addEventListener('click', (e) => {
-            const listContainer = document.getElementById(point + '-autocomplete-list');
-            const wrapper = inputField?.closest('.autocomplete-wrapper');
-            if (listContainer && wrapper && !wrapper.contains(e.target)) {
-                listContainer.style.display = 'none';
-            }
-        });
-    });
-}
-
-// ==========================================
-// UI 連動與轉乘計算
-// ==========================================
-window.updateStationOptions = async function(point) {
-    const type = document.getElementById(point + '-type').value;
-    const input = document.getElementById(point + '-station-input');
-    const busBlock = document.getElementById(point + '-bus-stop-block');
-    const listContainer = document.getElementById(point + '-autocomplete-list');
-
-    if (type === 'bus') { 
-        input.value = ''; input.placeholder = "輸入路線 (如: 265)"; 
-        if(busBlock) busBlock.style.display = 'flex'; 
-        if(listContainer) listContainer.style.display = 'none';
-    } else { 
-        if(busBlock) busBlock.style.display = 'none'; 
-        input.value = defaultStations[type] || ''; 
-        renderCustomDropdown(point);
-    }
-    if (point === 'start') checkTransferLock();
-};
-
-window.getRealStationObj = function(inputName, type) {
-    if (type === 'bus') return { id: inputName, name: inputName }; 
-    if (!inputName || !globalStationData?.[type]) return null;
-    let found = globalStationData[type].options.find(s => s.name.replace(/臺/g, '台') === inputName.trim().replace(/臺/g, '台'));
-    return found || null;
-};
-
 window.handleAction = async function() {
     const startType = document.getElementById('start-type').value;
     const endType = document.getElementById('end-type').value;
-    let startName = document.getElementById('start-station-input').value.trim();
-    let endName = document.getElementById('end-station-input').value.trim();
+    let startInput = document.getElementById('start-station-input').value.trim();
+    let endInput = document.getElementById('end-station-input').value.trim();
     
-    if (startType === 'bus') { 
-        let stop = document.getElementById('start-bus-stop-input').value.trim(); 
-        if(stop) startName += `|${stop}`; 
+    if (startType === 'bus') {
+        let stop = document.getElementById('start-bus-stop-input').value.trim();
+        if (stop) startInput += `|${stop}`;
     }
-    
-    if (!startName || !endName) return alert("⚠️ 請輸入起訖點");
-    
-    const btn = document.getElementById('action-btn'); 
-    btn.innerHTML = "⏳ 計算中..."; 
-    btn.disabled = true;
-    
-    try {
-        // 🌟 修復點 1：重新把轉乘邏輯找回來！
-        const startObj = window.getRealStationObj(startName, startType) || {id: startName, name: startName};
-        const endObj = window.getRealStationObj(endName, endType) || {id: endName, name: endName};
-        
-        let transferName = startObj.name;
-        let transferId = startObj.id;
 
-        // 如果是台鐵/高鐵，要抓取畫面上的「轉乘站」輸入框
+    if (!startInput || !endInput) return alert("⚠️ 請輸入起訖點");
+    const btn = document.getElementById('action-btn'); btn.innerHTML = "⏳ 計算中..."; btn.disabled = true;
+
+    try {
+        // 抓取轉乘站資訊 (如果是台鐵高鐵)
+        let transferName = startInput;
+        let transferId = startInput;
         if (startType === 'tra' || startType === 'thsr') {
             transferName = document.getElementById('transfer-station-input').value;
-            let tObj = window.getRealStationObj(transferName, 'trtc');
-            if(tObj) transferId = tObj.id; else transferId = transferName;
         }
 
-        // 把正確的參數餵給 routing.js
-        let res = await fetchTwoStageSurvivalTime(startType, startObj.id, transferId, transferName, endObj.name, offlineTimetableData);
+        // 🌟 精準對接 routing.js 的 6 個參數
+        let res = await window.fetchTwoStageSurvivalTime(startType, startInput, transferId, transferName, endInput, offlineTimetableData);
         
         if (res.time) {
             document.getElementById('speed-mode').innerText = res.time;
@@ -195,49 +54,42 @@ window.handleAction = async function() {
             btn.style.display='none';
             isCountingDown = true;
             
-            if (typeof getSystemTime === 'function') {
-                const now = getSystemTime(); let target = getSystemTime();
-                const [hh, mm] = res.time.split(':').map(Number); target.setHours(hh, mm, 0, 0);
-                if (now > target) target.setDate(target.getDate() + 1);
-                timeLeft = Math.floor((target - now) / 1000);
-                if (timeLeft > 28800) timeLeft = 0; 
-            }
-        } else alert(res.status);
-    } catch (e) { alert("計算失敗"); }
+            const now = window.getSystemTime(); let target = window.getSystemTime();
+            const [hh, mm] = res.time.split(':').map(Number); target.setHours(hh, mm, 0, 0);
+            if (now > target) target.setDate(target.getDate() + 1);
+            timeLeft = Math.floor((target - now) / 1000);
+            if (timeLeft > 28800) timeLeft = 0; // 超過 8 小時判定為錯過
+        } else {
+            alert("❌ " + res.status);
+        }
+    } catch (e) { alert("系統計算發生異常"); }
     finally { btn.disabled = false; btn.innerHTML = "開始計算轉乘"; }
 };
 
-window.resetPlan = function() { 
-    isCountingDown = false; 
-    document.getElementById('action-btn').style.display = 'block'; 
-    document.getElementById('cancel-btn').style.display = 'none'; 
-    document.getElementById('plan-b-container').style.display = 'none'; 
-    document.getElementById('speed-mode').innerText = '待查驗...'; 
-    
-    const display = document.getElementById('time-display');
-    if(display) {
-        display.style.fontSize = '50px';
-        if (typeof getSystemTime === 'function') display.innerHTML = getSystemTime().toTimeString().split(' ')[0];
-    }
+window.resetPlan = function() {
+    isCountingDown = false;
+    document.getElementById('action-btn').style.display = 'block';
+    document.getElementById('cancel-btn').style.display = 'none';
+    document.getElementById('plan-b-container').style.display = 'none';
+    document.getElementById('speed-mode').innerText = '待查驗...';
+    const disp = document.getElementById('time-display');
+    if(disp) disp.style.fontSize = '50px';
 };
 
 function updateClock() {
     const display = document.getElementById('time-display');
-    if (!display || typeof getSystemTime !== 'function') return;
-    const now = getSystemTime();
-    
+    if (!display || typeof window.getSystemTime !== 'function') return;
+    const now = window.getSystemTime();
     if (!isCountingDown) { 
         display.style.fontSize = '50px';
         display.innerHTML = now.toTimeString().split(' ')[0]; 
     } else {
         if (timeLeft <= 0) { 
-            // 🌟 修復點 2：字體縮小到 32px，確保「來不及了 💸」乖乖待在同一行
-            display.style.fontSize = '32px'; 
+            display.style.fontSize = '32px'; // 防破版
             display.innerHTML = "來不及了 💸"; 
             document.getElementById('plan-b-container').style.display = 'flex'; 
             return; 
         }
-        display.style.fontSize = '50px';
         timeLeft--;
         let h = Math.floor(timeLeft / 3600), m = Math.floor((timeLeft % 3600) / 60), s = timeLeft % 60;
         display.innerHTML = h > 0 ? `${h<10?'0':''}${h}:${m<10?'0':''}${m}:${s<10?'0':''}${s}` : `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
