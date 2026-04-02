@@ -3,7 +3,7 @@ let timeLeft = 0;
 let globalStationData = null; 
 let offlineTimetableData = null;
 
-// 🌟 1. 找回我的最愛星星功能
+// 找回最愛星星功能
 let favoriteStations = JSON.parse(localStorage.getItem('lastTrainFavs')) || []; 
 const defaultStations = { 'trtc': '台北車站', 'tra': '台北車站', 'thsr': '台北車站', 'bus': '' };
 
@@ -40,7 +40,7 @@ function renderCustomDropdown(point) {
     const options = globalStationData?.[typeSelect.value]?.options || [];
     listContainer.innerHTML = '';
     
-    // 🌟 2. 找回「台/臺」防呆轉換
+    // 台/臺 防呆轉換
     const filterText = inputField.value.trim().replace(/臺/g, '台').toLowerCase();
     
     options.forEach(station => {
@@ -50,7 +50,7 @@ function renderCustomDropdown(point) {
             const item = document.createElement('div'); 
             item.className = 'dropdown-item';
             
-            // 🌟 渲染星星 UI
+            // 渲染星星 UI
             item.innerHTML = `<span>${station.name}</span><span class="star-icon" style="color:${isFav?'#ffca28':'#666'}; padding:0 10px; font-size:18px;">${isFav?'★':'☆'}</span>`;
             
             // 星星點擊事件
@@ -100,7 +100,7 @@ window.handleAction = async function() {
     
     const btn = document.getElementById('action-btn'); btn.innerHTML = "⏳ 計算中..."; btn.disabled = true;
     try {
-        // 🌟 3. 修復 Uber 幽靈：每次計算前，強制隱藏 Uber 備案
+        // 修復 Uber 幽靈：每次計算前強制隱藏
         const planB = document.getElementById('plan-b-container');
         if (planB) planB.style.display = 'none';
         const disp = document.getElementById('time-display');
@@ -115,10 +115,19 @@ window.handleAction = async function() {
             btn.style.display = 'none';
             document.querySelector('.time-area .status').innerText = "剩餘時間";
             isCountingDown = true;
+            
             const now = new Date(); let target = new Date();
             const [hh, mm] = res.time.split(':').map(Number); target.setHours(hh, mm, 0, 0);
+            
+            // 🌟 核心跨日邏輯
             if (now > target) target.setDate(target.getDate() + 1);
             timeLeft = Math.floor((target - now) / 1000);
+            
+            // 🌟 找回遺失的防呆機制：如果倒數時間超過 12 小時 (43200 秒)，代表錯過今晚的車了，不准等明天
+            if (timeLeft > 43200) {
+                timeLeft = 0; 
+            }
+
         } else alert(res.status);
     } catch (e) { alert("計算失敗"); }
     finally { btn.disabled = false; btn.innerHTML = "開始計算轉乘"; }
@@ -142,7 +151,7 @@ setInterval(() => {
     if (!isCountingDown) { display.innerHTML = new Date().toTimeString().split(' ')[0]; } 
     else {
         if (timeLeft <= 0) { 
-            // 🌟 4. 修復破版：縮小字體並隱藏打架的取消按鈕
+            // 縮小字體防止破版，並叫出 Uber
             display.style.fontSize = '35px'; 
             display.innerHTML = "來不及了 💸"; 
             document.getElementById('plan-b-container').style.display = 'flex'; 
