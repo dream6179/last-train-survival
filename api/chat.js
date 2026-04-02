@@ -10,11 +10,12 @@ export default async function handler(req, res) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
 
-            const payload = {
+               const payload = {
         contents: [{
-            parts: [{ text: `你是一個聰明、幽默、懂台灣網路迷因的 AI 夥伴。請務必使用「繁體中文（台灣習慣用語）」來跟我聊天，就像老朋友一樣自然即可。以下是我的話：\n\n${prompt}` }]
+            parts: [{ text: `你是一個聰明、幽默且有禮貌的 AI 夥伴。請務必使用「繁體中文」來回答，語氣要自然、溫暖、像個可靠的好朋友。以下是我的話：\n\n${prompt}` }]
         }]
     };
+
 
 
 
