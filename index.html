@@ -19,56 +19,62 @@
     </div>
 
     <div id="mode-survival">
-        <div class="location-block"><label>出發地</label><div class="select-group">
-            <select class="type-select" id="start-type" onchange="updateStationOptions('start')">
-                <option value="trtc">北捷</option><option value="tra">台鐵</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>
-            </select>
-            <div class="autocomplete-wrapper">
-                <input type="text" id="start-station-input" class="station-input" placeholder="選擇車站">
-                <span class="clear-btn" id="start-clear-btn">×</span>
-                <div id="start-autocomplete-list" class="autocomplete-list"></div>
-            </div>
-        </div></div>
-
-        <div class="location-block" id="start-bus-stop-block" style="display: none; margin-top: 4px;"><div class="select-group">
-            <div class="type-select" style="font-size:11px; color:var(--warning); display:flex; align-items:center; justify-content:center;">📍 站牌</div>
-            <div class="autocomplete-wrapper"><input type="text" id="start-bus-stop-input" class="station-input" placeholder="輸入站牌名稱"></div>
-        </div></div>
-
-        <div class="location-block" id="transfer-block" style="display: none;">
-            <label style="color:var(--warning);">轉乘北捷站</label>
-            <div class="select-group">
-                <div class="type-select" style="font-size:11px; display:flex; align-items:center; justify-content:center; background:#333; border-radius:10px;">🚉 轉乘</div>
+        
+        <div id="input-zone">
+            <div class="location-block"><label>出發地</label><div class="select-group">
+                <select class="type-select" id="start-type" onchange="updateStationOptions('start')">
+                    <option value="trtc">北捷</option><option value="tra">台鐵</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>
+                </select>
                 <div class="autocomplete-wrapper">
-                    <select id="transfer-station-input" class="station-input" style="padding-right: 12px;"></select>
+                    <input type="text" id="start-station-input" class="station-input" placeholder="選擇車站">
+                    <span class="clear-btn" id="start-clear-btn">×</span>
+                    <div id="start-autocomplete-list" class="autocomplete-list"></div>
+                </div>
+            </div></div>
+
+            <div class="location-block" id="start-bus-stop-block" style="display: none; margin-top: 4px;"><div class="select-group">
+                <div class="type-select" style="font-size:11px; color:var(--warning); display:flex; align-items:center; justify-content:center;">📍 站牌</div>
+                <div class="autocomplete-wrapper"><input type="text" id="start-bus-stop-input" class="station-input" placeholder="輸入站牌名稱"></div>
+            </div></div>
+
+            <div class="location-block" id="transfer-block" style="display: none;">
+                <label style="color:var(--warning);">轉乘北捷站</label>
+                <div class="select-group">
+                    <div class="type-select" style="font-size:11px; display:flex; align-items:center; justify-content:center; background:#333; border-radius:10px;">🚉 轉乘</div>
+                    <div class="autocomplete-wrapper">
+                        <select id="transfer-station-input" class="station-input" style="padding-right: 12px;"></select>
+                    </div>
                 </div>
             </div>
+
+            <div class="location-block"><label>目的地</label><div class="select-group">
+                <select class="type-select" id="end-type" onchange="updateStationOptions('end')">
+                    <option value="trtc">北捷</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>
+                </select>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="end-station-input" class="station-input" placeholder="選擇車站">
+                    <span class="clear-btn" id="end-clear-btn">×</span>
+                    <div id="end-autocomplete-list" class="autocomplete-list"></div>
+                </div>
+            </div></div>
+
+            <button id="action-btn" class="main-action-btn" onclick="handleAction()">開始計算轉乘</button>
         </div>
 
-        <div class="location-block"><label>目的地</label><div class="select-group">
-            <select class="type-select" id="end-type" onchange="updateStationOptions('end')">
-                <option value="trtc">北捷</option><option value="thsr">高鐵</option><option value="bus">公車客運</option>
-            </select>
-            <div class="autocomplete-wrapper">
-                <input type="text" id="end-station-input" class="station-input" placeholder="選擇車站">
-                <span class="clear-btn" id="end-clear-btn">×</span>
-                <div id="end-autocomplete-list" class="autocomplete-list"></div>
+        <div id="result-zone">
+            <div class="time-area">
+                <div class="status">現在時間</div>
+                <div id="time-display" class="time-display">00:00:00</div>
+                <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00;">待查驗...</span></div>
             </div>
-        </div></div>
-
-        <div class="time-area">
-            <div class="status">現在時間</div>
-            <div id="time-display" class="time-display">00:00:00</div>
-            <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00;">待查驗...</span></div>
+            
+            <div id="plan-b-container" class="plan-b-container">
+                <a href="https://www.uber.com" class="plan-b-option"><span>呼叫 Uber</span><span>~$300</span></a>
+                <button class="btn-reset" style="display:flex;" onclick="resetPlan()">🔄 重新安排行程</button>
+            </div>
+            <button id="cancel-btn" class="btn-reset" onclick="resetPlan()">🔄 中止求生</button>
         </div>
 
-        <button id="action-btn" class="main-action-btn" onclick="handleAction()">開始計算轉乘</button>
-        
-        <div id="plan-b-container" class="plan-b-container">
-            <a href="https://www.uber.com" class="plan-b-option"><span>呼叫 Uber</span><span>~$300</span></a>
-            <button class="btn-reset" style="display:flex;" onclick="resetPlan()">🔄 重新安排行程</button>
-        </div>
-        <button id="cancel-btn" class="btn-reset" onclick="resetPlan()">🔄 中止求生</button>
     </div>
 
     <div class="footer">
