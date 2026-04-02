@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>系統提示 | 末班車生存</title>
+    <style>
+        :root { --bg-color: #121212; --card-bg: #1e1e1e; --warning: #ffb300; }
+        body { margin: 0; padding: 0; background-color: var(--bg-color); color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; }
+        .container { background: var(--card-bg); padding: 30px 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); max-width: 320px; width: 90%; border: 1px solid #333; display: none; }
+        .icon { font-size: 50px; margin-bottom: 15px; }
+        h2 { margin: 0 0 10px 0; color: var(--warning); font-size: 20px; }
+        p { color: #ccc; font-size: 14px; line-height: 1.6; margin-bottom: 25px; }
+        button { background: #333; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 15px; transition: 0.2s; }
+        button:active { transform: scale(0.95); background: #555; }
+        .dev-btn { background: transparent; border: 1px dashed #555; color: #888; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="hard-lock">
+    <div class="icon">🚧</div>
+    <h2>系統重大升級中</h2>
+    <p id="hard-msg">工程師正在替末班車系統更換全新引擎。<br>為了避免資料異常，目前暫停查詢服務。</p>
+    <button class="dev-btn" onclick="checkDevPassword()">進入工程模式 (開發者專用)</button>
+</div>
+
+<div class="container" id="soft-lock" style="border-color: var(--warning);">
+    <div class="icon">⚠️</div>
+    <h2>系統臨時微調中</h2>
+    <p id="soft-msg">系統目前正在進行微調作業。<br>各項功能仍可使用，若遭遇查詢結果異常，請稍後再試！</p>
+    <button style="background: var(--warning); color: #121212;" onclick="agreeAndPass()">我知道了，繼續使用</button>
+</div>
+
+<script>
+    // 取得網址上的參數，決定要顯示哪一種畫面
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+
+    // 載入 config 以顯示後台設定的文字
+    fetch('/data/config.json?t=' + new Date().getTime())
+        .then(res => res.json())
+        .then(data => {
+            if (mode === '1') {
+                document.getElementById('hard-lock').style.display = 'block';
+                if (data.message) document.getElementById('hard-msg').innerHTML = data.message;
+                window.devKey = data.dev_key; // 把密碼存起來等一下驗證用
+            } else if (mode === '2') {
+                document.getElementById('soft-lock').style.display = 'block';
+                if (data.warning) document.getElementById('soft-msg').innerHTML = data.warning;
+            } else {
+                window.location.href = '/'; // 沒事跑來這頁，直接踢回去
+            }
+        });
+
+    function checkDevPassword() {
+        const pwd = prompt("🔒 請輸入工程模式密碼：");
+        if (pwd === window.devKey) {
+            sessionStorage.setItem('dev_mode_bypass', 'true');
+            alert("✅ 密碼正確，為您放行！");
+            window.location.href = '/'; // 跳轉回首頁
+        } else if (pwd !== null) {
+            alert("❌ 密碼錯誤");
+        }
+    }
+
+    function agreeAndPass() {
+        sessionStorage.setItem('soft_warning_agreed', 'true'); // 記住他點過同意了
+        window.location.href = '/'; // 跳轉回首頁
+    }
+</script>
+</body>
+</html>
