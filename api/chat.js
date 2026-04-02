@@ -1,14 +1,14 @@
 export default async function handler(req, res) {
     const apiKey = process.env.GEMINI_API_KEY;
     
-    // 防呆：如果沒讀到鑰匙，直接在畫面上警告
     if (!apiKey) {
         return res.status(200).json({ reply: '⚠️ 系統警告：找不到 API Key！請確認 Vercel 有設定 GEMINI_API_KEY 並已重新部署。' });
     }
 
     const { prompt } = req.body;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
+    
+    // 🌟 核心引擎升級：換上 Gemini 3.0 Flash 晶片
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-flash:generateContent?key=${apiKey}`;
 
     const payload = {
         contents: [{
@@ -19,13 +19,11 @@ export default async function handler(req, res) {
     try {
         const response = await fetch(url, {
             method: 'POST',
-            // 🌟 關鍵修正：補上這個標頭，Google 才會收下包裹
             headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify(payload)
         });
         const data = await response.json();
         
-        // 防呆：如果 Google 說你鑰匙錯了或權限不足
         if (data.error) {
             return res.status(200).json({ reply: `⚠️ API 拒絕連線：${data.error.message}` });
         }
