@@ -5,62 +5,134 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>深夜導遊</title>
     <style>
-        body { background: var(--bg-color, #121212); color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box;}
-        h3 { margin-top: 0; color: #4caf50; border-bottom: 1px dashed #333; padding-bottom: 10px; }
+        :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --success: #4caf50; --info: #2196F3; }
+        
+        body { background: var(--bg-color); color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #333; }
+        .header-row h3 { margin: 0; color: var(--success); font-size: 18px; }
+        
+        /* 返回按鈕樣式 */
+        .back-btn { background: #333; color: white; border: none; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .back-btn:active { background: #555; transform: scale(0.95); }
+
+        /* 鎖定介面樣式 */
+        #lock-screen { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .lock-icon { font-size: 50px; margin-bottom: 20px; }
+        .lock-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        .lock-desc { font-size: 13px; color: var(--text-sub); margin-bottom: 20px; line-height: 1.6; }
+        
+        /* 聊天介面樣式 */
+        #chat-interface { flex-grow: 1; display: none; flex-direction: column; overflow: hidden; }
         #chat-box { flex-grow: 1; overflow-y: auto; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 15px; background: #1a1a1a; font-size: 14px; line-height: 1.6; }
+        
         .input-area { display: flex; gap: 10px; }
         input { flex-grow: 1; padding: 12px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 14px; outline: none; }
-        input:focus { border-color: #4caf50; }
-        button { padding: 0 20px; background: #4caf50; border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        button:active { transform: scale(0.95); background: #388e3c; }
-        .msg-user { color: #2196F3; margin-bottom: 10px; }
+        input:focus { border-color: var(--success); }
+        
+        .btn-main { padding: 0 20px; background: var(--success); border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-main:active { transform: scale(0.95); }
+        
+        .msg-user { color: var(--info); margin-bottom: 10px; }
         .msg-ai { color: #e0e0e0; margin-bottom: 15px; }
+        
+        /* 隱藏滾動條 */
+        #chat-box::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
 
-    <h3>🤖 避難所語音助手</h3>
-    <div id="chat-box">
-        <div class="msg-ai">系統：你好，迷失在月台的旅人。有什麼我能幫你的嗎？</div>
+    <div class="header-row">
+        <h3>🤖 避難所語音助手</h3>
+        <button class="back-btn" onclick="closeMe()">⬅ 返回</button>
     </div>
-    <div class="input-area">
-        <input type="text" id="user-input" placeholder="問問導遊...">
-        <button id="send-btn" onclick="sendMessage()">傳送</button>
+
+    <div id="lock-screen">
+        <div class="lock-icon">🔒</div>
+        <div class="lock-title">測試資格驗證</div>
+        <div class="lock-desc">此功能目前僅開放給獲取<br>「深夜生存測試資格」的開發者。</div>
+        <div class="input-area" style="width: 100%; max-width: 280px;">
+            <input type="text" id="auth-code" placeholder="請輸入啟用代碼...">
+            <button class="btn-main" onclick="verifyCode()">啟用</button>
+        </div>
+    </div>
+
+    <div id="chat-interface">
+        <div id="chat-box">
+            <div class="msg-ai">導遊：你好，迷失在月台的旅人。我是這個避難所的語音助手，有什麼我能幫你的嗎？</div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="問問導遊...">
+            <button id="send-btn" class="btn-main" onclick="sendMessage()">傳送</button>
+        </div>
     </div>
 
     <script>
-    const input = document.getElementById('user-input');
-    input.addEventListener("keypress", function(event) {
-        if (event.key === "Enter") sendMessage();
-    });
+        const lockScreen = document.getElementById('lock-screen');
+        const chatInterface = document.getElementById('chat-interface');
+        const input = document.getElementById('user-input');
 
-    async function sendMessage() {
-        const chatBox = document.getElementById('chat-box');
-        const sendBtn = document.getElementById('send-btn');
-        const userMsg = input.value.trim();
-        if(!userMsg) return;
+        // 檢查是否已經解鎖過
+        window.onload = () => {
+            if (localStorage.getItem('gemini_unlocked') === 'true') {
+                showChat();
+            }
+        };
 
-        chatBox.innerHTML += `<div class="msg-user">👤 你：${userMsg}</div>`;
-        input.value = '';
-        sendBtn.disabled = true;
-        sendBtn.innerHTML = '⏳';
-
-        try {
-            const res = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: userMsg })
-            });
-            const data = await res.json();
-            chatBox.innerHTML += `<div class="msg-ai">🤖 導遊：${data.reply || '無回應'}</div>`;
-        } catch (e) {
-            chatBox.innerHTML += `<div class="msg-ai" style="color:#ff5252;">⚠️ 系統：網路斷線或後端無回應。</div>`;
+        function closeMe() {
+            if (window.parent && typeof window.parent.closeDynamicSheet === 'function') {
+                window.parent.closeDynamicSheet();
+            } else {
+                window.history.back();
+            }
         }
-        
-        sendBtn.disabled = false;
-        sendBtn.innerHTML = '傳送';
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
+
+        function verifyCode() {
+            const code = document.getElementById('auth-code').value.trim();
+            // 🌟 這裡設定你的測試代碼
+            if (code === 'SURVIVOR2026') {
+                localStorage.setItem('gemini_unlocked', 'true');
+                alert('✅ 驗證成功！導遊已就緒。');
+                showChat();
+            } else {
+                alert('❌ 代碼錯誤，無法取得測試資格。');
+            }
+        }
+
+        function showChat() {
+            lockScreen.style.display = 'none';
+            chatInterface.style.display = 'flex';
+        }
+
+        input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
+
+        async function sendMessage() {
+            const chatBox = document.getElementById('chat-box');
+            const sendBtn = document.getElementById('send-btn');
+            const userMsg = input.value.trim();
+            if(!userMsg) return;
+
+            chatBox.innerHTML += `<div class="msg-user">👤 你：${userMsg}</div>`;
+            input.value = '';
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '⏳';
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: userMsg })
+                });
+                const data = await res.json();
+                chatBox.innerHTML += `<div class="msg-ai">🤖 導遊：${data.reply || '... (無回應)'}</div>`;
+            } catch (e) {
+                chatBox.innerHTML += `<div class="msg-ai" style="color:var(--danger);">⚠️ 系統：連線中斷。</div>`;
+            }
+            
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '傳送';
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
     </script>
 </body>
 </html>
