@@ -185,12 +185,13 @@ function calculateOfflineTime(offlineData, start, end, type) {
 }
 
 /**
- * 跨系統雙段生存計算 (核心: 雲端優先，超時自動降級離線字典)
+ * 跨系統雙段生存計算 (核心: 雲端優先，超時自動降級為「動態連動」離線字典)
  */
 async function fetchTwoStageSurvivalTime(startType, startId, transferId, transferName, endName, offlineData) {
     let trtcLastTime = calculateOfflineTime(offlineData, transferName, endName, 'trtc');
     if (!trtcLastTime) return { time: null, status: "查無北捷轉乘班次" };
     
+    // 目標抵達轉乘站的時間 (捷運末班車 - 30 分鐘緩衝)
     let targetArrivalMins = timeToMinutes(trtcLastTime) - 30;
     if (startId === transferId) return { time: minutesToTime(targetArrivalMins), status: "同站跨系統 (-30分)" };
 
@@ -202,7 +203,7 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
     const url = `/api/get-tdx-data?path=${encodeURIComponent(path)}&$format=JSON`;
 
     try {
-        // 🌟 對於跨段查詢給予 7 秒耐心，超時則放棄連線發動離線字典
+        // 🌟 雲端連線：給予 7 秒耐心
         const response = await fetchWithTimeout(url, { timeout: 7000 });
         if (response.ok) {
             const data = await response.json(); 
@@ -224,16 +225,27 @@ async function fetchTwoStageSurvivalTime(startType, startId, transferId, transfe
             }
         }
     } catch (err) {
-        console.warn("⚠️ 連線超時或異常，啟動離線保險字典...");
+        console.warn("⚠️ 連線超時或異常，啟動離線動態字典...");
     }
 
     // ==========================================
-    // 🛡️ 離線保險字典邏輯 (最後的避難所)
+    // 🛡️ 離線保險字典邏輯 (🌟 升級版：動態連動北捷時間)
     // ==========================================
     if (startType === 'tra' && typeof traOfflineDict !== 'undefined' && traOfflineDict) {
-        let safeTime = traOfflineDict[startId] || traOfflineDict["DEFAULT"];
-        return { time: safeTime, status: "離線保險估算" };
+        let baselineTimeStr = traOfflineDict[startId] || traOfflineDict["DEFAULT"];
+        let baselineMins = timeToMinutes(baselineTimeStr);
+        
+        // 數學逆推：當初字典的基準是 23:30 (1410分鐘) 抵達台北
+        // (1410) - (字典出發時間) = (預估搭車耗時)
+        let travelDuration = 1410 - baselineMins;
+        if (travelDuration < 0) travelDuration = 20; // 防呆：車程至少 20 分鐘
+        
+        // 最終極限出發時間 = (捷運末班車推算出的目標抵達時間) - (預估搭車耗時)
+        let finalMins = targetArrivalMins - travelDuration;
+        
+        return { time: minutesToTime(finalMins), status: "離線動態連動" };
     }
 
-    return { time: "22:15", status: "系統保險預估" };
+    // 如果連字典都失效的最終備案
+    return { time: minutesToTime(targetArrivalMins - 60), status: "系統保險預估" };
 }
