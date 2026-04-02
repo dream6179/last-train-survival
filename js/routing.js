@@ -1,5 +1,5 @@
 // ==========================================
-// 🚀 核心路由引擎 (routing.js) - 最終防彈版
+// 🚀 核心路由引擎 (routing.js) - 最終防彈版 + TDX 全網檢索
 // ==========================================
 window.getSystemTime = function() {
     return new Date(); 
@@ -60,7 +60,7 @@ function calculateOfflineTime(offlineData, start, end, type) {
     return latestTimeStr;
 }
 
-// 🌟 雙段轉乘演算法 - 邏輯全面修復
+// 🌟 雙段轉乘演算法
 window.fetchTwoStageSurvivalTime = async function(startType, startId, startName, transferName, endName, offlineData) {
     // 1. 公車模式 (計算動態到達時間)
     if (startType === 'bus') {
@@ -85,31 +85,72 @@ window.fetchTwoStageSurvivalTime = async function(startType, startId, startName,
     }
 
     // 2. 捷運/台鐵/高鐵模式
-    // 先找轉乘站(北捷)的末班保險底線
     let trtcLastTime = calculateOfflineTime(offlineData, transferName, endName, 'trtc');
     
-    // 如果是純捷運轉捷運
     if (startType === 'trtc') {
         if (trtcLastTime) return { time: trtcLastTime, status: "北捷離線時刻表" };
         return { time: null, status: "查無捷運站點資料" };
     }
 
-    // 🌟 核心修正：台鐵/高鐵轉捷運
-    // 抓取台鐵或高鐵起點站的最晚發車時間
     let startLastTime = calculateOfflineTime(offlineData, startName, transferName, startType);
-    
     if (startLastTime) {
         return { time: startLastTime, status: `${startType === 'tra' ? '台鐵' : '高鐵'}離線時刻表` };
     }
 
-    // 如果連起點站資料都抓不到，才退而求其次給捷運時間防呆
     return { time: trtcLastTime || null, status: trtcLastTime ? "僅提供捷運轉乘保險建議" : "計算失敗，請檢查站名" };
 };
 
-// 單站檢索 (為了全查詢模式)
+// 🌟 單站檢索 (全查詢系統專用：接回 TDX API)
 window.fetchSingleStationTime = async function(stationName, type, offlineData) {
     let results = [];
-    let lastTime = calculateOfflineTime(offlineData, stationName, "", type);
-    if (lastTime) results.push({ destination: "末班往終點", time: lastTime });
-    return { status: "success", data: results };
+
+    // 1. 北捷：直接查離線資料最快
+    if (type === 'trtc') {
+        let lastTime = calculateOfflineTime(offlineData, stationName, "", type);
+        if (lastTime) results.push({ destination: "末班往終點", time: lastTime });
+        return { status: "success", data: results };
+    }
+
+    // 2. 台鐵 / 高鐵：接回 TDX 即時連線
+    if (type === 'tra' || type === 'thsr') {
+        let railType = type === 'tra' ? 'TRA' : 'THSR';
+        
+        // 嘗試透過 TDX v3 API 用站名抓取今日時刻表
+        let path = `/v3/Rail/${railType}/DailyStationTimetable/Today/StationName/${encodeURIComponent(stationName)}`;
+        try {
+            const res = await fetchWithTimeout(`/api/get-tdx-data?path=${encodeURIComponent(path)}&$format=JSON`);
+            if (res.ok) {
+                let data = await res.json();
+                // 解析 TDX 回傳的時刻表
+                if (data && data.StationTimetables && data.StationTimetables.length > 0) {
+                    let timetables = data.StationTimetables[0].TimeTables || [];
+                    if (timetables.length > 0) {
+                        // 依照時間排序，並抓取當天最後發車的班次
+                        timetables.sort((a, b) => (a.DepartureTime > b.DepartureTime ? 1 : -1));
+                        let lastTrain = timetables[timetables.length - 1];
+                        let dest = lastTrain.DestinationStationName ? lastTrain.DestinationStationName.Zh_tw : "終點";
+                        
+                        results.push({
+                            destination: `末班往 ${dest}`,
+                            // 取前5個字元，把 "23:59:00" 變成 "23:59"
+                            time: lastTrain.DepartureTime.substring(0, 5) 
+                        });
+                    }
+                }
+            }
+        } catch (e) {
+            console.log("TDX 連線失敗，嘗試使用離線資料保底", e);
+        }
+
+        // 如果 API 剛好掛了，或者查無資料，退回離線檔案尋找保險時間
+        if (results.length === 0) {
+            let fallbackTime = calculateOfflineTime(offlineData, stationName, "", type);
+            if (fallbackTime) {
+                results.push({ destination: "末班往終點 (離線保險)", time: fallbackTime });
+            }
+        }
+        return { status: "success", data: results };
+    }
+
+    return { status: "success", data: [] };
 };
