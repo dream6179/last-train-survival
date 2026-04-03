@@ -13,16 +13,20 @@
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; }
 
-        .container { width: 90%; max-width: 400px; margin: 20px auto; padding-bottom: 30px; }
+        /* 🌟 防止黑屏專屬佈局 */
+        body { display: flex; flex-direction: column; align-items: flex-start; overflow-y: auto; }
+
+        .container { width: 90%; max-width: 400px; margin: 20px auto; padding-bottom: 30px; width: 100%; box-sizing: border-box; }
         
-        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #333; }
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #333; width: 100%; }
         .header-row h1 { font-size: 20px; color: var(--warning); margin: 0; }
         
+        /* 🌟 返回按鈕 */
         .back-btn { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; display: inline-block; }
         .back-btn:active { background: #555; transform: scale(0.95); }
 
         .section-title { font-size: 16px; color: var(--text-sub); margin: 20px 0 10px 0; font-weight: bold; border-left: 4px solid var(--info); padding-left: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .game-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+        .game-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; width: 100%; }
         .game-card { background: var(--card-bg); border: 1px solid #333; border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.1s; }
         .game-card:active { transform: scale(0.98); filter: brightness(1.2); }
         .game-card.locked { opacity: 0.5; cursor: not-allowed; border-style: dashed; }
@@ -50,7 +54,7 @@
 <div class="container">
     <div class="header-row">
         <h1>🏆 彩蛋與收集冊</h1>
-        <a href="javascript:void(0)" onclick="if(window.parent && window.parent.closePageOnly) { window.parent.closePageOnly(); } else { window.location.href='/'; }" class="back-btn">⬅ 返回設定</a>
+        <a href="javascript:void(0)" onclick="if(window.parent && window.parent.closeAllSheets) { window.parent.closeAllSheets(); } else { window.location.href='/'; }" class="back-btn">⬅ 返回主頁</a>
     </div>
 
     <div class="section-title">🕹️ 隱藏遊戲機台 <button id="dev-reset-btn" class="dev-reset-btn" onclick="resetEasterEggs()">清零</button></div>
@@ -116,7 +120,7 @@
         }
         list.innerHTML = html;
 
-        // --- 🌟 被我弄丟的特殊成就補回來了 ---
+        // --- 渲染成就 ---
         let achHtml = '';
         
         if (uk) { 
@@ -165,7 +169,6 @@
         setTimeout(renderGames, 300);
     }
 
-    // 🌟 關鍵修復：放棄所有 load 事件傲嬌判定，網頁讀到這裡就立刻給我畫出來！
     renderGames();
 </script>
 
