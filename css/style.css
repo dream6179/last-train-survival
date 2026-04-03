@@ -95,3 +95,29 @@ select, .station-input {
     transform: scale(0.92) !important;
     opacity: 0.7 !important;
 }
+/* ==========================================
+   🌟 去白條魔法 (客製化暗黑捲軸)
+   ========================================== */
+/* 針對 Firefox 的設定 */
+.autocomplete-list {
+    max-height: 250px; /* 限制高度讓它出現捲軸 */
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #555 #222;
+}
+
+/* 針對 Chrome, Edge, Safari 的暗黑捲軸 */
+.autocomplete-list::-webkit-scrollbar {
+    width: 6px;
+}
+.autocomplete-list::-webkit-scrollbar-track {
+    background: #1e1e1e; /* 軌道顏色融入背景 */
+    border-radius: 4px;
+}
+.autocomplete-list::-webkit-scrollbar-thumb {
+    background: #555; /* 捲軸本體顏色 */
+    border-radius: 4px;
+}
+.autocomplete-list::-webkit-scrollbar-thumb:hover {
+    background: #777; /* 滑鼠移過去亮一點 */
+}
