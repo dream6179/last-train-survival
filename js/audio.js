@@ -8,11 +8,12 @@ let bgmVolume = (savedVol !== null && !isNaN(parseFloat(savedVol))) ? parseFloat
 let savedMuted = localStorage.getItem('isBgmMuted');
 let isBgmMuted = savedMuted !== null ? savedMuted === 'true' : true;
 
+// 在 audio.js 頂部修改
 let bgmPlaylist = [
-    "/audio/platform_at_midnight.mp3", 
-    "/audio/Midnight_at_Platform_Four.mp3", 
-    "/audio/Waiting_at_the_Edge.mp3", 
-    "/audio/The_Three_AM_Wait.mp3"
+    { title: "深夜的月台", path: "/audio/platform_at_midnight.mp3" }, 
+    { title: "四號月台的午夜", path: "/audio/Midnight_at_Platform_Four.mp3" },
+    { title: "邊緣的等待", path: "/audio/Waiting_at_the_Edge.mp3" },
+    { title: "凌晨三點的守候", path: "/audio/The_Three_AM_Wait.mp3" }
 ];
 let savedIndex = localStorage.getItem('bgmIndex');
 let currentBgmIndex = (savedIndex !== null && !isNaN(parseInt(savedIndex))) ? parseInt(savedIndex) : Math.floor(Math.random() * bgmPlaylist.length);
@@ -143,3 +144,9 @@ window.addEventListener('load', () => {
     // 綁定所有可能的觸控事件
     ['touchstart', 'touchend', 'click'].forEach(e => document.body.addEventListener(e, globalWakeUp, { once: true }));
 });
+window.updateBgmTitleDisplay = function() {
+    const titleElement = document.getElementById('current-bgm-title');
+    if (titleElement && bgmPlaylist[currentBgmIndex]) {
+        titleElement.innerText = `🎵 正在播放：${bgmPlaylist[currentBgmIndex].title}`;
+    }
+};
