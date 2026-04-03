@@ -1,5 +1,5 @@
 // ==========================================
-// 🟢 輸入槽專屬大腦 (survival-ui.js) - 鄉民防禦版
+// 🟢 輸入槽專屬大腦 (survival-ui.js) - 全查詢支援與台鐵載入版
 // ==========================================
 
 let globalStationData = null;
@@ -14,7 +14,8 @@ window.addEventListener('load', async () => {
 });
 
 function initCustomAutocomplete() {
-    ['start', 'end'].forEach(point => {
+    // 🌟 這裡加上了 'search'，讓全查詢模式的輸入框也能吃到自動完成！
+    ['start', 'end', 'search'].forEach(point => {
         const inputField = document.getElementById(point + '-station-input');
         const clearBtn = document.getElementById(point + '-clear-btn');
         if(!inputField) return;
@@ -37,12 +38,12 @@ function initCustomAutocomplete() {
         inputField.addEventListener('focus', (e) => { e.stopPropagation(); renderCustomDropdown(point); });
         inputField.addEventListener('click', (e) => { e.stopPropagation(); renderCustomDropdown(point); });
         
-        // 🌟 離開焦點時的黃金防禦：自動校正鄉民用語
         inputField.addEventListener('blur', () => {
             let val = inputField.value.trim().replace(/臺/g, '台');
-            if (val === '北車') inputField.value = '台北車站'; // 瞬間洗白
+            if (val === '北車') inputField.value = '台北車站'; 
             
-            if (point === 'start') setTimeout(() => window.updateStationOptions('start'), 150);
+            // 離開焦點時觸發選項更新
+            if (point === 'start' || point === 'search') setTimeout(() => window.updateStationOptions(point), 150);
         });
         
         document.addEventListener('click', (e) => {
@@ -70,7 +71,6 @@ function renderCustomDropdown(point) {
     const options = globalStationData?.[typeSelect.value]?.options || [];
     listContainer.innerHTML = '';
     
-    // 🌟 搜尋時的黃金防禦：打「北車」直接幫他找「台北車站」
     let rawFilterText = inputField.value.trim().replace(/臺/g, '台');
     if (rawFilterText === '北車') rawFilterText = '台北車站';
     const filterText = rawFilterText.toLowerCase();
@@ -90,7 +90,6 @@ function renderCustomDropdown(point) {
         const item = document.createElement('div');
         item.className = 'dropdown-item';
         
-        // 🌟 復活：如月車站專屬紅字渲染
         if (station.name === '如月車站') {
             item.innerHTML = `<span style="color:#ff5252; font-weight:bold; letter-spacing:2px;">${station.name}</span>`;
         } else {
@@ -110,7 +109,7 @@ function renderCustomDropdown(point) {
             listContainer.style.display = 'none';
             const clearBtn = document.getElementById(point + '-clear-btn');
             if(clearBtn) clearBtn.style.display = 'flex';
-            if(point === 'start') window.updateStationOptions('start'); 
+            if(point === 'start' || point === 'search') window.updateStationOptions(point); 
         });
         return item;
     };
@@ -124,11 +123,27 @@ function renderCustomDropdown(point) {
     listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
 }
 
-window.updateStationOptions = function(point) {
+window.updateStationOptions = async function(point) {
     const type = document.getElementById(point + '-type').value;
     const input = document.getElementById(point + '-station-input');
     const busBlock = document.getElementById(point + '-bus-stop-block');
     
+    // 🌟 復活：台鐵站點懶載入機制
+    if (type === 'tra' && globalStationData && !globalStationData.tra.isFullLoaded) {
+        input.placeholder = "⏳ 載入台鐵站點中...";
+        try {
+            const res = await fetch('/data/tra-stations.json');
+            if (res.ok) {
+                const fullTraData = await res.json();
+                globalStationData.tra.options = Array.isArray(fullTraData) ? fullTraData : (fullTraData.options || fullTraData.tra?.options || []);
+                globalStationData.tra.isFullLoaded = true;
+                // 資料回來後，如果選單還開著，就重新渲染畫面
+                renderCustomDropdown(point);
+            }
+        } catch (e) { console.error("台鐵載入失敗", e); }
+        input.placeholder = "選擇或輸入車站";
+    }
+
     if(busBlock) {
         if (type === 'bus') { busBlock.style.display = 'flex'; input.placeholder = '選擇路線'; } 
         else { busBlock.style.display = 'none'; input.placeholder = '選擇車站'; }
@@ -143,10 +158,8 @@ window.updateStationOptions = function(point) {
             if (type === 'tra' || type === 'thsr') {
                 const tStations = globalStationData?.[type]?.transferStations || [];
                 if (tStations.length > 0) {
-                    // 🌟 萬華 -> 龍山寺 UI 提示
                     transSelect.innerHTML = tStations.map(s => `<option value="${s.name}">${s.name === '萬華' ? '萬華 (轉乘龍山寺)' : s.name}</option>`).join('');
                     
-                    // 🌟 轉乘站智慧鎖定邏輯
                     const startInputVal = input.value.trim();
                     const isOriginTransferStation = tStations.some(s => s.name === startInputVal);
                     if (isOriginTransferStation) {
