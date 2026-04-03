@@ -1,5 +1,5 @@
 // ==========================================
-// 🚀 核心路由引擎 (routing.js) - v3.1 終極字首查表版
+// 🚀 核心路由引擎 (routing.js) - v3.1 終極完整版 (含全查詢)
 // ==========================================
 
 window.getSystemTime = function() {
@@ -9,7 +9,6 @@ window.getSystemTime = function() {
     return new Date(); 
 };
 
-// 🌟 獲取今天日期的 TDX 格式 (YYYY-MM-DD)
 function getOperatingDateString() {
     const now = window.getSystemTime();
     if (now.getHours() < 4) now.setDate(now.getDate() - 1);
@@ -47,7 +46,7 @@ function minutesToTime(mins) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-// 🌟 修改點 1：參數加上 transferData，並安插字首查表邏輯
+// 🌟 核心：離線時間算繪
 function calculateOfflineTime(offlineData, transferData, start, end, type) {
     if (!offlineData || !offlineData[type]) return null;
     let startNorm = normalize(start);
@@ -62,36 +61,17 @@ function calculateOfflineTime(offlineData, transferData, start, end, type) {
     }
     if (startNodes.length === 0) return null;
 
-    // 抽出英文字首判斷是否跨線
     const startPrefixes = startNodes.map(n => n.code.match(/^([A-Z]+)/)[1]);
     const endPrefixes = endNodes.map(n => n.code.match(/^([A-Z]+)/)[1]);
     const isCrossLine = !startPrefixes.some(p => endPrefixes.includes(p));
 
-    // ==========================================
-    // 🚀 v1.4 遺產：跨線轉乘優先查閱保命手冊 (增強相容版)
-    // ==========================================
     if (isCrossLine && type === 'trtc') {
-        if (!transferData) {
-            console.warn("🚨 警告：系統判定需要跨線轉乘，但沒有收到 transfer-timetable 轉乘手冊！");
-        } else {
-            // 🌟 智慧相容：不管你的 JSON 是扁平的，還是包在 trtc 裡面，都抓得到！
+        if (transferData) {
             const routes = transferData[startNorm] || (transferData[type] && transferData[type][startNorm]);
-            
-            if (!routes) {
-                console.warn(`🚨 警告：轉乘手冊內找不到起點站【${startNorm}】的資料！`);
-            } else {
-                // 1. 點名道姓的特例站點直接命中 (新北投、小碧潭)
-                if (routes[endNorm]) {
-                    console.log(`🎯 命中專屬站點轉乘死線：${startNorm} -> ${endNorm} = ${routes[endNorm]}`);
-                    return routes[endNorm];
-                }
-                
-                // 2. 去找終點站的路線字首（例如找 "BR", "O", "BL"）
+            if (routes) {
+                if (routes[endNorm]) return routes[endNorm];
                 for (let p of endPrefixes) {
-                    if (routes[p]) {
-                        console.log(`🎯 命中字首轉乘死線：${startNorm} -> 路線 ${p} = ${routes[p]}`);
-                        return routes[p]; 
-                    }
+                    if (routes[p]) return routes[p]; 
                 }
             }
         }
@@ -129,7 +109,6 @@ function calculateOfflineTime(offlineData, transferData, start, end, type) {
     }
     if (selectedTimeStr) return selectedTimeStr;
 
-    // 跨線或無明確終點的保底防禦
     let minMins = Infinity;
     let safeTimeStr = null;
     const checkSafeTime = (timeData) => {
@@ -151,14 +130,11 @@ function calculateOfflineTime(offlineData, transferData, start, end, type) {
     return safeTimeStr;
 }
 
-// 🌟 修改點 2：引擎主函數增加 transferData 參數，並同步修改所有呼叫點
+// 🌟 核心：雙段生存時間計算 (首頁使用)
 window.fetchTwoStageSurvivalTime = async function(startType, endType, startId, startName, transferName, endName, offlineData, transferData) {
     const today = getOperatingDateString(); 
     let currentMins = timeToMinutes(`${window.getSystemTime().getHours()}:${window.getSystemTime().getMinutes()}`);
 
-    // ==========================================
-    // 🚨 終極挑戰：捷運 ➡️ 公車 (10分鐘狂奔法)
-    // ==========================================
     if (endType === 'bus' && startType === 'trtc') {
         let routeName = endName.split('|')[0];
         let stopName = endName.split('|')[1] || "";
@@ -186,8 +162,6 @@ window.fetchTwoStageSurvivalTime = async function(startType, endType, startId, s
         let targetTimeStr = minutesToTime(targetTimeMins);
 
         let mrtTransferName = stopName.replace(/捷運/g, '').replace(/站/g, ''); 
-        
-        // 🌟 修改點 3-1：補上 transferData 參數
         let mrtLastTime = calculateOfflineTime(offlineData, transferData, startName, mrtTransferName, 'trtc');
         
         if (!mrtLastTime) return { time: targetTimeStr, status: `公車動態回推 (需於 ${targetTimeStr} 前上捷運)` };
@@ -199,12 +173,7 @@ window.fetchTwoStageSurvivalTime = async function(startType, endType, startId, s
         }
     }
 
-    // ==========================================
-    // 🚨 經典回歸：台鐵/高鐵 ➡️ 捷運 (30分鐘緩衝法)
-    // ==========================================
     let trtcTransferName = (transferName === '萬華') ? '龍山寺' : transferName;
-    
-    // 🌟 修改點 3-2：補上 transferData 參數
     let trtcLastTime = calculateOfflineTime(offlineData, transferData, trtcTransferName, endName, 'trtc');
     
     if (startType === 'trtc') {
@@ -213,7 +182,6 @@ window.fetchTwoStageSurvivalTime = async function(startType, endType, startId, s
     }
 
     if (!trtcLastTime) {
-        // 🌟 修改點 3-3：補上 transferData 參數
         let fallback = calculateOfflineTime(offlineData, transferData, startName, transferName, startType);
         return { time: fallback, status: fallback ? "僅提供第一段時刻" : "計算失敗" };
     }
@@ -252,8 +220,52 @@ window.fetchTwoStageSurvivalTime = async function(startType, endType, startId, s
         return { time: validTrains[validTrains.length - 1], status: "雙段精準計算 (-30分緩衝)" };
         
     } catch (err) { 
-        // 🌟 修改點 3-4：補上 transferData 參數
         let offlineStartLastTime = calculateOfflineTime(offlineData, transferData, startName, transferName, startType);
         return { time: offlineStartLastTime || trtcLastTime, status: "網路無回應，啟用離線保險" }; 
     }
+};
+
+// ==========================================
+// 🔍 單站全時刻表檢索演算法 (供 search.html 專用)
+// ==========================================
+window.fetchSingleStationTime = async function(stationName, type, offlineData) {
+    let results = [];
+    
+    if (offlineData && offlineData[type]) {
+        const table = offlineData[type];
+        const normSearchName = normalize(stationName);
+        
+        for (let code in table) {
+            if (normalize(table[code].name) === normSearchName) {
+                if (table[code].up) {
+                    if (typeof table[code].up === 'string' && table[code].up !== "00:00") {
+                        results.push({ destination: "上行 / 北上", time: table[code].up });
+                    } else if (typeof table[code].up === 'object') {
+                        for (let dest in table[code].up) {
+                            if (table[code].up[dest] !== "00:00") results.push({ destination: `專屬月台 (${dest})`, time: table[code].up[dest] });
+                        }
+                    }
+                }
+                if (table[code].down) {
+                    if (typeof table[code].down === 'string' && table[code].down !== "00:00") {
+                        results.push({ destination: "下行 / 南下", time: table[code].down });
+                    } else if (typeof table[code].down === 'object') {
+                        for (let dest in table[code].down) {
+                            if (table[code].down[dest] !== "00:00") results.push({ destination: `專屬月台 (${dest})`, time: table[code].down[dest] });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    let uniqueResults = [];
+    let seen = new Set();
+    results.forEach(r => {
+        let k = r.destination + r.time;
+        if(!seen.has(k)) { seen.add(k); uniqueResults.push(r); }
+    });
+    
+    uniqueResults.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+    return { status: uniqueResults.length > 0 ? "success" : "not_found", data: uniqueResults };
 };
