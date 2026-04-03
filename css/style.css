@@ -25,14 +25,30 @@ body { font-family: 'Segoe UI', Roboto, sans-serif; color: var(--text-main); dis
 .location-block label { font-size: 11px; color: var(--text-sub); margin-bottom: 4px; font-weight: bold; }
 .select-group { display: flex; gap: 8px; position: relative; width: 100%; margin-bottom: 4px; align-items: stretch; }
 
+/* 🌟 1. 將選單與輸入框的基礎設定分開，拔除下拉選單無效的 35px 右邊距 */
 select, .station-input { 
     background-color: #2c2c2c; color: white; border: 1px solid #444; 
-    padding: 12px; padding-right: 35px; 
+    padding: 12px; 
     border-radius: 10px; font-size: 15px; outline: none; box-sizing: border-box; width: 100%; 
 }
-.type-select, .type-select-label { 
-    width: 30% !important; flex-shrink: 0; box-sizing: border-box; height: 46px; 
+
+/* 🌟 2. 專屬輸入框設定：保留右側 35px 空間給「清除 (×)」按鈕 */
+.station-input {
+    padding-right: 35px;
 }
+
+/* 🌟 3. 左側選單設定：微調撐開至 35%，並徹底釋放被擠壓的文字空間 */
+.type-select, .type-select-label { 
+    width: 35% !important; /* 原本 30%，微調放大 */
+    flex-shrink: 0; box-sizing: border-box; height: 46px; 
+}
+
+.type-select {
+    padding-left: 10px;  /* 縮減左側留白 */
+    padding-right: 20px; /* 縮減右側留白 (20px 足夠容納原生的下拉箭頭) */
+    font-size: 14px;     /* 在小螢幕上稍微縮小字體，確保四個字穩如泰山 */
+}
+
 .type-select-label {
     background: #2a2a2a; border: 1px solid #333; border-radius: 10px;
     font-size: 12px; color: #888; font-weight: bold;
@@ -40,7 +56,8 @@ select, .station-input {
     white-space: nowrap;
 }
 
-.autocomplete-wrapper { position: relative; width: 70%; flex-grow: 1; }
+/* 🌟 4. 右側容器退讓：配合左側放大，這裡縮減至 65% */
+.autocomplete-wrapper { position: relative; width: 65%; flex-grow: 1; }
 .clear-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; background: rgba(255, 255, 255, 0.15); color: #fff; border-radius: 50%; display: none; justify-content: center; align-items: center; cursor: pointer; font-size: 14px; z-index: 5; }
 .clear-btn:active { background: rgba(255, 255, 255, 0.4); }
 
