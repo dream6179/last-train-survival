@@ -128,17 +128,25 @@ window.executeFullSearch = async function() {
     box.innerHTML = "<div style='text-align: center; padding: 20px;'>⏳ 正在為您檢索...</div>";
 
     try {
-        // 🌟 修復重點 2：因為 search.html 已經載入 routing.js 了，直接呼叫就好，不用去找 window.parent！
         if (typeof window.fetchSingleStationTime === 'function') {
-            const res = await window.fetchSingleStationTime(station, type, searchOfflineData);
+            // 🌟 升級：多傳一個 globalStationData 過去，讓演算法能查 ID
+            const res = await window.fetchSingleStationTime(station, type, searchOfflineData, globalStationData);
 
             if (res && res.status === "success" && res.data.length > 0) {
-                let html = `<div style="color: var(--success); font-weight: bold; margin-bottom: 15px; font-size: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">✅ [${station}] 發車時刻表</div>`;
+                let html = `<div style="color: var(--success); font-weight: bold; margin-bottom: 15px; font-size: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">✅ [${station}] 末班發車時刻</div>`;
+                
                 res.data.forEach(item => {
+                    // 🌟 判斷資料來源給予不同顏色的標籤
+                    let badgeColor = item.source === "即時連線" ? "var(--success)" : "var(--warning)";
+                    let badgeBg = item.source === "即時連線" ? "rgba(76, 175, 80, 0.1)" : "rgba(255, 152, 0, 0.1)";
+
                     html += `
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                            <span style="color: #ccc;">${item.destination}</span>
-                            <span style="color: var(--warning); font-size: 18px; font-weight: bold;">${item.time}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <div style="display:flex; flex-direction:column;">
+                                <span style="color: #eee; font-size:14px;">往 ${item.destination}</span>
+                                <span style="font-size: 10px; margin-top:4px; padding: 2px 6px; border-radius: 4px; background: ${badgeBg}; color: ${badgeColor}; width: fit-content;">${item.source}</span>
+                            </div>
+                            <span style="color: var(--warning); font-size: 20px; font-weight: bold;">${item.time}</span>
                         </div>
                     `;
                 });
@@ -152,4 +160,3 @@ window.executeFullSearch = async function() {
     } catch(e) {
         box.innerHTML = `<div style='color: var(--danger); text-align: center; padding: 20px;'>❌ 檢索發生錯誤：${e.message}</div>`;
     }
-};
