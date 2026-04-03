@@ -125,27 +125,35 @@ window.updateStationOptions = function(point) {
     const input = document.getElementById(point + '-station-input');
     const busBlock = document.getElementById(point + '-bus-stop-block');
     
-    // 🌟 核心動態調整：切換 Placeholder 與顯示站牌區塊
+    // 切換 Placeholder 與顯示站牌區塊
     if(busBlock) {
         if (type === 'bus') {
             busBlock.style.display = 'flex';
-            input.placeholder = '選擇路線'; // 切換成公車時的提示
+            input.placeholder = '選擇路線';
         } else {
             busBlock.style.display = 'none';
-            input.placeholder = '選擇車站'; // 非公車時的提示
+            input.placeholder = '選擇車站';
         }
     }
 
-    // 出發地的轉乘站邏輯
+    // 🌟 出發地的轉乘站邏輯 (動態讀取 JSON)
     if (point === 'start') {
         const transBlock = document.getElementById('transfer-block');
         const transSelect = document.getElementById('transfer-station-input');
         if(transBlock) {
             transBlock.style.display = (type === 'tra' || type === 'thsr') ? 'flex' : 'none';
-            if (type === 'tra') {
-                transSelect.innerHTML = '<option value="台北車站">台北車站</option><option value="板橋">板橋</option><option value="龍山寺">龍山寺</option><option value="松山">松山</option><option value="南港">南港</option>';
-            } else if (type === 'thsr') {
-                transSelect.innerHTML = '<option value="台北車站">台北車站</option><option value="板橋">板橋</option><option value="松山">松山</option><option value="南港">南港</option>';
+            
+            if (type === 'tra' || type === 'thsr') {
+                // 從 globalStationData 抓取 transferStations 陣列
+                const tStations = globalStationData?.[type]?.transferStations || [];
+                
+                if (tStations.length > 0) {
+                    // 動態生成 option
+                    transSelect.innerHTML = tStations.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+                } else {
+                    // 如果 JSON 剛好沒載入到的防呆保底
+                    transSelect.innerHTML = '<option value="台北車站">台北車站</option><option value="板橋">板橋</option><option value="南港">南港</option>';
+                }
             }
         }
     }
