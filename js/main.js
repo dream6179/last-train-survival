@@ -162,52 +162,58 @@ window.updateStationOptions = function(point) {
 
 window.handleAction = async function() {
     const startType = document.getElementById('start-type').value;
-    let startName = document.getElementById('start-station-input').value.trim();
+    const startName = document.getElementById('start-station-input').value.trim();
     const endName = document.getElementById('end-station-input').value.trim();
-    if(startType === 'bus') { let stop = document.getElementById('start-bus-stop-input').value.trim(); if(stop) startName += `|${stop}`; }
     
     const btn = document.getElementById('action-btn'); 
     btn.innerHTML = "⏳ 計算中..."; 
     btn.disabled = true;
 
+    let finalTime = "23:59";
+    let isOffline = false;
+
     try {
-        let transferName = (startType === 'tra' || startType === 'thsr') ? document.getElementById('transfer-station-input').value : startName;
-        
-        // 🌟 關鍵改動：這裡我們可以給 API 呼叫一個時限 (例如 5 秒)
-        // 注意：這裡假設 fetchTwoStageSurvivalTime 內部會用到 fetch
-        // 如果該函式是你寫在 routing.js 的，建議去裡面把 fetch 改成 fetchWithTimeout
-        
+        let transferName = (startType === 'tra' || startType === 'thsr') ? 
+                           document.getElementById('transfer-station-input').value : startName;
+
         let res = await fetchTwoStageSurvivalTime(startType, startName, startName, transferName, endName, offlineTimetableData);
         
         if (res && res.time) {
-            // ... 原本的 UI 更新邏輯 ...
-            document.getElementById('speed-mode').innerText = res.time;
-            document.getElementById('cancel-btn').style.display = 'flex';
-            btn.style.display = 'none';
-            document.querySelector('.time-area .status').innerText = "剩餘時間";
-            isCountingDown = true;
-            
-            const now = new Date(); let target = new Date();
-            const [hh, mm] = res.time.split(':').map(Number); target.setHours(hh, mm, 0, 0);
-            if (now > target) target.setDate(target.getDate() + 1);
-            timeLeft = Math.floor((target - now) / 1000);
-            if (timeLeft > 43200) timeLeft = 0; 
+            finalTime = res.time;
         } else {
-            alert(res.status || "找不到合適的班次");
+            throw new Error("API 無回傳時間");
         }
-    } catch (e) { 
-        // 🌟 如果超時，就會跑到這裡
-        if (e.name === 'AbortError') {
-            alert("⚠️ 網路連線過慢，建議切換至全查詢模式或稍後再試。");
-        } else {
-            alert("計算失敗，請檢查站名輸入是否正確。");
-        }
-    } finally { 
-        btn.disabled = false; 
-        btn.innerHTML = "開始計算轉乘"; 
-    }
-};
 
+    } catch (e) {
+        // 🌟 修正：更精準的報錯與紀錄
+        const isTimeout = e.name === 'AbortController' || e.name === 'AbortError';
+        console.warn(isTimeout ? "連線超時，啟動離線模式" : `API 異常 (${e.message})，啟動離線模式`);
+        
+        finalTime = calculateOfflineTime(offlineTimetableData, startName, endName, startType);
+        isOffline = true;
+    }
+
+    // 更新介面
+    if (finalTime) {
+        document.getElementById('speed-mode').innerHTML = 
+            `${finalTime} ${isOffline ? '<span style="color:var(--warning); font-size:10px;">(離線模式)</span>' : ''}`;
+        
+        // ... (計時器邏輯不變) ...
+        document.getElementById('cancel-btn').style.display = 'flex';
+        btn.style.display = 'none';
+        document.querySelector('.time-area .status').innerText = "剩餘時間";
+        isCountingDown = true;
+        
+        const now = new Date(); let target = new Date();
+        const [hh, mm] = finalTime.split(':').map(Number); target.setHours(hh, mm, 0, 0);
+        if (now > target) target.setDate(target.getDate() + 1);
+        timeLeft = Math.floor((target - now) / 1000);
+        if (timeLeft > 43200) timeLeft = 0;
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = "開始計算轉乘";
+};
 window.resetPlan = function() {
     isCountingDown = false;
     document.querySelector('.time-area .status').innerText = "現在時間";
@@ -229,3 +235,47 @@ setInterval(() => {
         display.innerHTML = h > 0 ? `${h}:${m<10?'0':''}${m}:${s<10?'0':''}${s}` : `${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
     }
 }, 1000);
+/**
+ * 🌟 離線時間搜尋引擎
+ * 作用：當 API 沒反應時，直接從 JSON 裡面抓時間
+ */
+function calculateOfflineTime(data, startName, endName, type) {
+    if (!data || !data[type]) return "23:59";
+
+    // 1. 先從 globalStationData 找出這兩個站的 ID (例如 R10)
+    const options = globalStationData[type]?.options || [];
+    const startStation = options.find(s => s.name === startName);
+    const endStation = options.find(s => s.name === endName);
+
+    if (!startStation || !endStation) return "23:59";
+
+    const startId = startStation.id;
+    const endId = endStation.id;
+
+    // 2. 判斷方向 (up 還是 down)
+    // 根據你的 JSON，編號小的往編號大的通常是 up (如 G01 -> G19)
+    // 這裡我們用簡單的字串比對判斷索引位置
+    const stationKeys = Object.keys(data[type]);
+    // 在 calculateOfflineTime 函式內修改
+const startIndex = stationKeys.indexOf(startId);
+const endIndex = stationKeys.indexOf(endId);
+
+// 🌟 修正：如果找不到站點 ID 或起訖站相同，回傳預設值
+if (startIndex === -1 || endIndex === -1 || startIndex === endIndex) return "23:59";
+
+const direction = (startIndex < endIndex) ? 'up' : 'down';
+
+    // 3. 從 JSON 抓時間
+    const timeInfo = data[type][startId];
+    if (!timeInfo) return "23:59";
+
+    let finalTime = timeInfo[direction];
+
+    // 4. 處理特殊分支 (如北投 R22 的物件格式)
+    if (typeof finalTime === 'object') {
+        // 這裡簡單抓第一個，或是你可以根據 endId 判斷要走哪條分支
+        finalTime = Object.values(finalTime)[0];
+    }
+
+    return finalTime || "23:59";
+}
