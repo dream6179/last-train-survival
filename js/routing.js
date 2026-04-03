@@ -67,12 +67,33 @@ function calculateOfflineTime(offlineData, transferData, start, end, type) {
     const endPrefixes = endNodes.map(n => n.code.match(/^([A-Z]+)/)[1]);
     const isCrossLine = !startPrefixes.some(p => endPrefixes.includes(p));
 
-    // 🚀 植入 v1.4 遺產：跨線轉乘優先查閱保命手冊
-    if (isCrossLine && type === 'trtc' && transferData && transferData[startNorm]) {
-        const routes = transferData[startNorm];
-        if (routes[endNorm]) return routes[endNorm];
-        for (let p of endPrefixes) {
-            if (routes[p]) return routes[p]; 
+    // ==========================================
+    // 🚀 v1.4 遺產：跨線轉乘優先查閱保命手冊 (增強相容版)
+    // ==========================================
+    if (isCrossLine && type === 'trtc') {
+        if (!transferData) {
+            console.warn("🚨 警告：系統判定需要跨線轉乘，但沒有收到 transfer-timetable 轉乘手冊！");
+        } else {
+            // 🌟 智慧相容：不管你的 JSON 是扁平的，還是包在 trtc 裡面，都抓得到！
+            const routes = transferData[startNorm] || (transferData[type] && transferData[type][startNorm]);
+            
+            if (!routes) {
+                console.warn(`🚨 警告：轉乘手冊內找不到起點站【${startNorm}】的資料！`);
+            } else {
+                // 1. 點名道姓的特例站點直接命中 (新北投、小碧潭)
+                if (routes[endNorm]) {
+                    console.log(`🎯 命中專屬站點轉乘死線：${startNorm} -> ${endNorm} = ${routes[endNorm]}`);
+                    return routes[endNorm];
+                }
+                
+                // 2. 去找終點站的路線字首（例如找 "BR", "O", "BL"）
+                for (let p of endPrefixes) {
+                    if (routes[p]) {
+                        console.log(`🎯 命中字首轉乘死線：${startNorm} -> 路線 ${p} = ${routes[p]}`);
+                        return routes[p]; 
+                    }
+                }
+            }
         }
     }
 
