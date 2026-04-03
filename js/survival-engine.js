@@ -69,24 +69,29 @@ window.handleAction = async function() {
     const startType = document.getElementById('start-type').value;
     const endType = document.getElementById('end-type').value; 
     
-    let rawStartInput = document.getElementById('start-station-input').value.trim();
-    let rawEndInput = document.getElementById('end-station-input').value.trim();
+    // 獲取使用者輸入的原始字串
+    let rawStartName = document.getElementById('start-station-input').value.trim();
+    let rawEndName = document.getElementById('end-station-input').value.trim();
 
-    // 🌟 智慧翻譯：從剛剛下載的 busMapData 找，找不到就用原輸入
-    let startName = busMapData[rawStartInput] || rawStartInput;
-    let endName = busMapData[rawEndInput] || rawEndInput;
+    let startName = busMapData[rawStartName] || rawStartName;
+    let endName = busMapData[rawEndName] || rawEndName;
 
-    // ... (後面的空值檢查、如月車站攔截邏輯完全不變)
-    
     // 🌟 1. 攔截如月車站查詢
     if (endName === '如月車站' || endName.toUpperCase() === 'KISARAGI') {
         window.triggerKisaragiEvent();
         return;
     }
 
-    // 🌟 2. 基礎空值防禦：檢查路線或車站是否為空
+    // 🌟 2. 基礎空值防禦
     if (!startName || !endName) {
         alert("🚨 求生警告：你還沒輸入起點或目的地！\n導遊沒辦法帶你去一個不存在的地方。");
+        return;
+    }
+    
+    // 🌟 2.5 【新增】原地打轉防禦 (同系統 + 同站名)
+    // 只有在交通工具與站名完全一致時才攔截，放行「台鐵北車 -> 北捷北車」的跨系統轉乘
+    if (startType === endType && startName === endName) {
+        alert("🚨 系統提示：你已經在目的地了！\n難道你打算在月台搭帳篷過夜嗎？\n(註：若要計算跨系統轉乘，請更改交通工具)");
         return;
     }
     
