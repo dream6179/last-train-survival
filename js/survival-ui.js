@@ -14,11 +14,21 @@ window.addEventListener('load', async () => {
 });
 
 function initCustomAutocomplete() {
-    // 🌟 這裡加上了 'search'，讓全查詢模式的輸入框也能吃到自動完成！
     ['start', 'end', 'search'].forEach(point => {
         const inputField = document.getElementById(point + '-station-input');
         const clearBtn = document.getElementById(point + '-clear-btn');
+        const typeSelect = document.getElementById(point + '-type'); // 🌟 新增：抓取交通工具下拉選單
+        
         if(!inputField) return;
+
+        // 🌟 關鍵修復：主動監聽下拉選單切換，強制發動台鐵懶載入
+        if (typeSelect) {
+            typeSelect.addEventListener('change', () => {
+                inputField.value = ''; // 切換交通工具時，貼心地清空舊站名
+                if(clearBtn) clearBtn.style.display = 'none';
+                window.updateStationOptions(point); // 立刻觸發載入資料與更新選單！
+            });
+        }
 
         inputField.addEventListener('input', () => {
             if(clearBtn) clearBtn.style.display = inputField.value ? 'flex' : 'none';
@@ -41,8 +51,6 @@ function initCustomAutocomplete() {
         inputField.addEventListener('blur', () => {
             let val = inputField.value.trim().replace(/臺/g, '台');
             if (val === '北車') inputField.value = '台北車站'; 
-            
-            // 離開焦點時觸發選項更新
             if (point === 'start' || point === 'search') setTimeout(() => window.updateStationOptions(point), 150);
         });
         
