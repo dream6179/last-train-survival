@@ -1,8 +1,7 @@
 // ==========================================
-// 🎵 音樂播放器核心 (audio.js) - 終極縫合版
+// 🎵 音樂播放器核心 (audio.js) - 終極 iOS 破壁版
 // ==========================================
 
-// 🌟 預設靜音防護：沒紀錄就預設為 true (靜音)
 let savedVol = localStorage.getItem('bgmVolume');
 let bgmVolume = (savedVol !== null && !isNaN(parseFloat(savedVol))) ? parseFloat(savedVol) : 0.3; 
 let savedMuted = localStorage.getItem('isBgmMuted');
@@ -13,7 +12,7 @@ let savedIndex = localStorage.getItem('bgmIndex');
 let currentBgmIndex = (savedIndex !== null && !isNaN(parseInt(savedIndex))) ? parseInt(savedIndex) : Math.floor(Math.random() * bgmPlaylist.length);
 let audioInitialized = false;
 
-// 每秒記憶播放進度 (你原本的神級功能，保留！)
+// 每秒記憶播放進度
 setInterval(() => {
     const bgm = document.getElementById('bgm-audio');
     if (bgm && !bgm.paused && bgm.currentTime > 0) {
@@ -22,17 +21,24 @@ setInterval(() => {
     }
 }, 1000);
 
-window.initAndPlayAudio = function() {
+// 🌟 升級：加入 silentWakeup (靜音喚醒) 參數，專門用來騙過蘋果
+window.initAndPlayAudio = function(silentWakeup = false) {
     const bgm = document.getElementById('bgm-audio');
-    if (!bgm) return;
+    if (!bgm) return Promise.resolve();
+
     if (!audioInitialized) {
         bgm.removeAttribute('loop'); 
         bgm.src = bgmPlaylist[currentBgmIndex];
+        
+        // 恢復秒數邏輯
         bgm.addEventListener('loadedmetadata', () => {
             let savedTime = localStorage.getItem('bgmTime');
-            if (savedTime && parseFloat(savedTime) > 0 && parseFloat(savedTime) < bgm.duration) bgm.currentTime = parseFloat(savedTime);
+            if (savedTime && parseFloat(savedTime) > 0 && parseFloat(savedTime) < bgm.duration) {
+                bgm.currentTime = parseFloat(savedTime);
+            }
         }, { once: true });
-        bgm.load();
+
+        // 切歌邏輯
         bgm.addEventListener('ended', () => {
             currentBgmIndex = Math.floor(Math.random() * bgmPlaylist.length);
             bgm.src = bgmPlaylist[currentBgmIndex]; 
@@ -40,10 +46,20 @@ window.initAndPlayAudio = function() {
             bgm.load(); 
             bgm.play().catch(e => console.log(e));
         });
+        
+        bgm.load();
         audioInitialized = true;
     }
-    bgm.volume = bgmVolume; 
-    bgm.play().catch(e => console.log(e));
+    
+    // 如果是為了騙許可證的靜音喚醒，音量設為 0；否則給正常音量
+    bgm.volume = silentWakeup ? 0 : bgmVolume; 
+    
+    // 回傳 Promise 讓外面可以接續動作
+    let playPromise = bgm.play();
+    if (playPromise !== undefined) {
+        playPromise.catch(e => console.warn("播放狀態:", e));
+    }
+    return playPromise;
 };
 
 window.setupAudioUI = function() {
@@ -61,8 +77,11 @@ window.toggleMute = function() {
     window.setupAudioUI();
     const bgm = document.getElementById('bgm-audio'); 
     if (bgm) { 
-        if (isBgmMuted) bgm.pause(); 
-        else window.initAndPlayAudio(); 
+        if (isBgmMuted) {
+            bgm.pause(); 
+        } else {
+            window.initAndPlayAudio(false); // 正常播放
+        }
     }
 };
 
@@ -73,38 +92,41 @@ window.updateVolume = function(val) {
     window.setupAudioUI();
     const bgm = document.getElementById('bgm-audio'); 
     if (bgm) { 
-        if (isBgmMuted) bgm.pause(); 
-        else window.initAndPlayAudio(); 
+        if (isBgmMuted) {
+            bgm.pause(); 
+        } else {
+            window.initAndPlayAudio(false); // 正常播放
+        }
     }
 };
 
-// 🌟 核心修改區：iPhone 喚醒機制大升級
 window.addEventListener('load', () => {
     window.setupAudioUI();
     
-    // 全域喚醒器 (偷偷上膛版)
+    // 🌟 核心：偷天換日的全域喚醒器
     const globalWakeUp = () => {
         if (!isBgmMuted) {
-            // 如果原本就開著聲音，直接播
-            window.initAndPlayAudio(); 
+            // 老客人原本就有開聲音，直接正常播
+            window.initAndPlayAudio(false); 
         } else {
-            // 🌟 即使靜音，也利用這次點擊把音檔塞進記憶體
-            const bgm = document.getElementById('bgm-audio');
-            if (bgm && !audioInitialized) {
-                bgm.src = bgmPlaylist[currentBgmIndex];
-                // 順便把時間也恢復好，這樣解鎖靜音時就是無縫接軌
-                bgm.addEventListener('loadedmetadata', () => {
-                    let savedTime = localStorage.getItem('bgmTime');
-                    if (savedTime && parseFloat(savedTime) > 0 && parseFloat(savedTime) < bgm.duration) bgm.currentTime = parseFloat(savedTime);
-                }, { once: true });
-                bgm.load();
-                audioInitialized = true;
+            // 🍏 專治 iPhone 16e：以音量 0% 強制播放，騙取 iOS 播放許可
+            let p = window.initAndPlayAudio(true);
+            if (p !== undefined) {
+                p.then(() => {
+                    // 拿到許可證了！立刻暫停，並把音量推桿還原，等使用者自己按喇叭
+                    const bgm = document.getElementById('bgm-audio');
+                    if (bgm && isBgmMuted) {
+                        bgm.pause();
+                        bgm.volume = bgmVolume; 
+                    }
+                }).catch(e => console.log("喚醒遭攔截:", e));
             }
         }
-        // 解鎖成功後立刻移除監聽，保持效能乾淨
-        ['touchstart', 'click'].forEach(e => window.removeEventListener(e, globalWakeUp));
+        
+        // 解鎖完成，解除監聽
+        ['touchend', 'click'].forEach(e => window.removeEventListener(e, globalWakeUp));
     };
     
-    // 無論是否靜音，都掛上喚醒器！
-    ['touchstart', 'click'].forEach(e => window.addEventListener(e, globalWakeUp, { once: true }));
+    // ⚠️ 蘋果 Safari 對 touchstart 很感冒，改用 touchend 判定更精準
+    ['touchend', 'click'].forEach(e => window.addEventListener(e, globalWakeUp, { once: true }));
 });
