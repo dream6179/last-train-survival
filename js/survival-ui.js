@@ -1,5 +1,5 @@
 // ==========================================
-// 🟢 輸入槽專屬大腦 (survival-ui.js)
+// 🟢 輸入槽專屬大腦 (survival-ui.js) - 鄉民防禦版
 // ==========================================
 
 let globalStationData = null;
@@ -37,8 +37,11 @@ function initCustomAutocomplete() {
         inputField.addEventListener('focus', (e) => { e.stopPropagation(); renderCustomDropdown(point); });
         inputField.addEventListener('click', (e) => { e.stopPropagation(); renderCustomDropdown(point); });
         
-        // 離開焦點時，檢查是否需要鎖定轉乘站
+        // 🌟 離開焦點時的黃金防禦：自動校正鄉民用語
         inputField.addEventListener('blur', () => {
+            let val = inputField.value.trim().replace(/臺/g, '台');
+            if (val === '北車') inputField.value = '台北車站'; // 瞬間洗白
+            
             if (point === 'start') setTimeout(() => window.updateStationOptions('start'), 150);
         });
         
@@ -66,7 +69,11 @@ function renderCustomDropdown(point) {
 
     const options = globalStationData?.[typeSelect.value]?.options || [];
     listContainer.innerHTML = '';
-    const filterText = inputField.value.trim().replace(/臺/g, '台').toLowerCase();
+    
+    // 🌟 搜尋時的黃金防禦：打「北車」直接幫他找「台北車站」
+    let rawFilterText = inputField.value.trim().replace(/臺/g, '台');
+    if (rawFilterText === '北車') rawFilterText = '台北車站';
+    const filterText = rawFilterText.toLowerCase();
     
     let favItems = [];
     let otherItems = [];
@@ -103,7 +110,7 @@ function renderCustomDropdown(point) {
             listContainer.style.display = 'none';
             const clearBtn = document.getElementById(point + '-clear-btn');
             if(clearBtn) clearBtn.style.display = 'flex';
-            if(point === 'start') window.updateStationOptions('start'); // 更新鎖定狀態
+            if(point === 'start') window.updateStationOptions('start'); 
         });
         return item;
     };
@@ -139,7 +146,7 @@ window.updateStationOptions = function(point) {
                     // 🌟 萬華 -> 龍山寺 UI 提示
                     transSelect.innerHTML = tStations.map(s => `<option value="${s.name}">${s.name === '萬華' ? '萬華 (轉乘龍山寺)' : s.name}</option>`).join('');
                     
-                    // 🌟 復活：轉乘站智慧鎖定邏輯
+                    // 🌟 轉乘站智慧鎖定邏輯
                     const startInputVal = input.value.trim();
                     const isOriginTransferStation = tStations.some(s => s.name === startInputVal);
                     if (isOriginTransferStation) {
