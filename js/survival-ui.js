@@ -1,5 +1,5 @@
 // ==========================================
-// 🟢 輸入槽專屬大腦 (survival-ui.js) - 公車專精版
+// 🟢 輸入槽專屬大腦 (survival-ui.js)
 // ==========================================
 
 let globalStationData = null;
@@ -14,7 +14,6 @@ window.addEventListener('load', async () => {
 });
 
 function initCustomAutocomplete() {
-    // 1. 處理主站點 (北捷/台鐵/高鐵/客運主路線)
     ['start', 'end'].forEach(point => {
         const inputField = document.getElementById(point + '-station-input');
         const clearBtn = document.getElementById(point + '-clear-btn');
@@ -38,26 +37,23 @@ function initCustomAutocomplete() {
         inputField.addEventListener('focus', (e) => { e.stopPropagation(); renderCustomDropdown(point); });
         inputField.addEventListener('click', (e) => { e.stopPropagation(); renderCustomDropdown(point); });
         
+        // 離開焦點時，檢查是否需要鎖定轉乘站
+        inputField.addEventListener('blur', () => {
+            if (point === 'start') setTimeout(() => window.updateStationOptions('start'), 150);
+        });
+        
         document.addEventListener('click', (e) => {
             const list = document.getElementById(point + '-autocomplete-list');
             if (list && !inputField.contains(e.target)) list.style.display = 'none';
         });
     });
 
-    // 🌟 2. 處理公車站牌的專屬 × 清除按鈕
     ['start', 'end'].forEach(point => {
         const busInput = document.getElementById(point + '-bus-stop-input');
         const busClearBtn = document.getElementById(point + '-bus-clear-btn');
         if(busInput && busClearBtn) {
-            busInput.addEventListener('input', () => {
-                busClearBtn.style.display = busInput.value ? 'flex' : 'none';
-            });
-            busClearBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                busInput.value = '';
-                busClearBtn.style.display = 'none';
-                busInput.focus();
-            });
+            busInput.addEventListener('input', () => { busClearBtn.style.display = busInput.value ? 'flex' : 'none'; });
+            busClearBtn.addEventListener('click', (e) => { e.stopPropagation(); busInput.value = ''; busClearBtn.style.display = 'none'; busInput.focus(); });
         }
     });
 }
@@ -86,18 +82,20 @@ function renderCustomDropdown(point) {
     const createItem = (station, isFav) => {
         const item = document.createElement('div');
         item.className = 'dropdown-item';
-        item.innerHTML = `<span>${station.name}</span><span class="star-btn" style="color:${isFav?'#ffca28':'#666'}">${isFav?'★':'☆'}</span>`;
         
-        item.querySelector('.star-btn').addEventListener('mousedown', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            if (favoriteStations.includes(station.name)) {
-                favoriteStations = favoriteStations.filter(fav => fav !== station.name);
-            } else {
-                favoriteStations.push(station.name);
-            }
-            localStorage.setItem('lastTrainFavs', JSON.stringify(favoriteStations));
-            renderCustomDropdown(point);
-        });
+        // 🌟 復活：如月車站專屬紅字渲染
+        if (station.name === '如月車站') {
+            item.innerHTML = `<span style="color:#ff5252; font-weight:bold; letter-spacing:2px;">${station.name}</span>`;
+        } else {
+            item.innerHTML = `<span>${station.name}</span><span class="star-btn" style="color:${isFav?'#ffca28':'#666'}">${isFav?'★':'☆'}</span>`;
+            item.querySelector('.star-btn').addEventListener('mousedown', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if (favoriteStations.includes(station.name)) favoriteStations = favoriteStations.filter(fav => fav !== station.name);
+                else favoriteStations.push(station.name);
+                localStorage.setItem('lastTrainFavs', JSON.stringify(favoriteStations));
+                renderCustomDropdown(point);
+            });
+        }
 
         item.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -105,15 +103,14 @@ function renderCustomDropdown(point) {
             listContainer.style.display = 'none';
             const clearBtn = document.getElementById(point + '-clear-btn');
             if(clearBtn) clearBtn.style.display = 'flex';
+            if(point === 'start') window.updateStationOptions('start'); // 更新鎖定狀態
         });
         return item;
     };
 
     favItems.forEach(s => listContainer.appendChild(createItem(s, true)));
     if(favItems.length > 0 && otherItems.length > 0) {
-        const divider = document.createElement('div');
-        divider.style.height = "1px"; divider.style.background = "#444"; divider.style.margin = "4px 10px";
-        listContainer.appendChild(divider);
+        const divider = document.createElement('div'); divider.style.height = "1px"; divider.style.background = "#444"; divider.style.margin = "4px 10px"; listContainer.appendChild(divider);
     }
     otherItems.forEach(s => listContainer.appendChild(createItem(s, false)));
 
@@ -125,18 +122,11 @@ window.updateStationOptions = function(point) {
     const input = document.getElementById(point + '-station-input');
     const busBlock = document.getElementById(point + '-bus-stop-block');
     
-    // 切換 Placeholder 與顯示站牌區塊
     if(busBlock) {
-        if (type === 'bus') {
-            busBlock.style.display = 'flex';
-            input.placeholder = '選擇路線';
-        } else {
-            busBlock.style.display = 'none';
-            input.placeholder = '選擇車站';
-        }
+        if (type === 'bus') { busBlock.style.display = 'flex'; input.placeholder = '選擇路線'; } 
+        else { busBlock.style.display = 'none'; input.placeholder = '選擇車站'; }
     }
 
-    // 🌟 出發地的轉乘站邏輯 (動態讀取 JSON)
     if (point === 'start') {
         const transBlock = document.getElementById('transfer-block');
         const transSelect = document.getElementById('transfer-station-input');
@@ -144,21 +134,24 @@ window.updateStationOptions = function(point) {
             transBlock.style.display = (type === 'tra' || type === 'thsr') ? 'flex' : 'none';
             
             if (type === 'tra' || type === 'thsr') {
-                // 從 globalStationData 抓取 transferStations 陣列
                 const tStations = globalStationData?.[type]?.transferStations || [];
-                
                 if (tStations.length > 0) {
-                    // 動態生成 option
-                    transSelect.innerHTML = tStations.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
-                } else {
-                    // 如果 JSON 剛好沒載入到的防呆保底
-                    transSelect.innerHTML = '<option value="台北車站">台北車站</option><option value="板橋">板橋</option><option value="南港">南港</option>';
+                    // 🌟 萬華 -> 龍山寺 UI 提示
+                    transSelect.innerHTML = tStations.map(s => `<option value="${s.name}">${s.name === '萬華' ? '萬華 (轉乘龍山寺)' : s.name}</option>`).join('');
+                    
+                    // 🌟 復活：轉乘站智慧鎖定邏輯
+                    const startInputVal = input.value.trim();
+                    const isOriginTransferStation = tStations.some(s => s.name === startInputVal);
+                    if (isOriginTransferStation) {
+                        transSelect.value = startInputVal;
+                        transSelect.disabled = true;
+                        transSelect.style.opacity = '0.5';
+                    } else {
+                        transSelect.disabled = false;
+                        transSelect.style.opacity = '1';
+                    }
                 }
             }
         }
     }
-    
-    input.value = defaultStations[type] || '';
-    const clearBtn = document.getElementById(point + '-clear-btn');
-    if(clearBtn) clearBtn.style.display = input.value ? 'flex' : 'none';
 };
