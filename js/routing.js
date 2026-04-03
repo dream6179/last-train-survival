@@ -1,5 +1,5 @@
 // ==========================================
-// 🚀 核心路由引擎 (routing.js) - v3.1 終極完整版 (含全查詢)
+// 🚀 核心路由引擎 (routing.js) - 終極 TDX 雙核版
 // ==========================================
 
 window.getSystemTime = function() {
@@ -173,7 +173,9 @@ window.fetchTwoStageSurvivalTime = async function(startType, endType, startId, s
         }
     }
 
-    let trtcTransferName = (transferName === '萬華') ? '龍山寺' : transferName;
+    let trtcTransferName = (transferName === '萬華') ? '龙山寺' : transferName; // 修正繁體
+    trtcTransferName = (trtcTransferName === '龍山寺') ? '龍山寺' : trtcTransferName;
+    
     let trtcLastTime = calculateOfflineTime(offlineData, transferData, trtcTransferName, endName, 'trtc');
     
     if (startType === 'trtc') {
@@ -232,7 +234,6 @@ window.fetchSingleStationTime = async function(stationName, type, offlineData, s
     let results = [];
     let isOnline = false;
 
-    // 🌟 第一階段：嘗試連線 TDX 抓取今日所有班次
     try {
         if (!stationData || !stationData[type]) throw new Error("無車站代碼表，無法連線 TDX");
         
@@ -240,17 +241,15 @@ window.fetchSingleStationTime = async function(stationName, type, offlineData, s
         if (!stationObj) throw new Error("找不到對應的車站代碼");
         
         const stationId = stationObj.id;
-        const today = getOperatingDateString(); // 使用我們寫好的換日邏輯
+        const today = getOperatingDateString();
 
         if (type === 'trtc') {
-            // 北捷 API
             const path = '/v2/Rail/Metro/StationTimeTable/TRTC';
             const filter = `StationName/Zh_tw eq '${stationName}'`;
             let res = await fetchWithTimeout(`/api/get-tdx-data?path=${encodeURIComponent(path)}&$filter=${encodeURIComponent(filter)}&$format=JSON`);
             if (!res.ok) throw new Error("北捷 API 拒絕連線");
             let data = await res.json();
             
-            // 如果北捷沒資料，嘗試查新北捷運 (例如環狀線 Y)
             if (data.length === 0) {
                  const pathNtmc = '/v2/Rail/Metro/StationTimeTable/NTMC';
                  let resNtmc = await fetchWithTimeout(`/api/get-tdx-data?path=${encodeURIComponent(pathNtmc)}&$filter=${encodeURIComponent(filter)}&$format=JSON`);
@@ -266,7 +265,6 @@ window.fetchSingleStationTime = async function(stationName, type, offlineData, s
             });
         } 
         else if (type === 'tra') {
-            // 台鐵 API
             const path = `/v3/Rail/TRA/DailyStationTimetable/Today/Station/${stationId}`;
             let res = await fetchWithTimeout(`/api/get-tdx-data?path=${encodeURIComponent(path)}&$format=JSON`);
             if (!res.ok) throw new Error("台鐵 API 拒絕連線");
@@ -278,7 +276,6 @@ window.fetchSingleStationTime = async function(stationName, type, offlineData, s
             }
         } 
         else if (type === 'thsr') {
-            // 高鐵 API
             const path = `/v2/Rail/THSR/DailyTimetable/Station/${stationId}/${today}`;
             let res = await fetchWithTimeout(`/api/get-tdx-data?path=${encodeURIComponent(path)}&$format=JSON`);
             if (!res.ok) throw new Error("高鐵 API 拒絕連線");
@@ -293,25 +290,21 @@ window.fetchSingleStationTime = async function(stationName, type, offlineData, s
         console.warn("🌐 TDX 連線失敗或無資料，啟動防空洞降級:", e.message);
     }
 
-    // 🌟 處理資料：如果是線上資料，我們只過濾出「各目的地的末班車」
     if (isOnline && results.length > 0) {
         let lastTrainsMap = {};
         results.forEach(r => {
             let currentMins = timeToMinutes(r.time);
-            // 只要時間比目前紀錄的還要晚，就蓋過去
             if (!lastTrainsMap[r.destination] || currentMins > lastTrainsMap[r.destination].mins) {
                 lastTrainsMap[r.destination] = { time: r.time, mins: currentMins };
             }
         });
         
-        // 把 Map 轉回陣列，並加上來源標籤
         results = Object.keys(lastTrainsMap).map(dest => ({
             destination: dest,
             time: lastTrainsMap[dest].time,
             source: "即時連線"
         }));
     } 
-    // 🌟 第二階段：如果 API 失敗，直接無縫接軌離線字典
     else if (offlineData && offlineData[type]) {
         const table = offlineData[type];
         const normSearchName = normalize(stationName);
@@ -339,7 +332,6 @@ window.fetchSingleStationTime = async function(stationName, type, offlineData, s
             }
         }
         
-        // 離線資料去重複
         let uniqueResults = [];
         let seen = new Set();
         results.forEach(r => {
@@ -349,7 +341,6 @@ window.fetchSingleStationTime = async function(stationName, type, offlineData, s
         results = uniqueResults;
     }
 
-    // 依照時間遠近排序
     results.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
     return { status: results.length > 0 ? "success" : "not_found", data: results };
 };
