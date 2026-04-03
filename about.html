@@ -50,7 +50,7 @@
     <div class="container">
         <div class="header-row">
             <h1>⚙️ 設定與說明</h1>
-            <a href="javascript:void(0)" onclick="if(window.parent && window.parent.closeDynamicSheet) { window.parent.closeDynamicSheet(); } else { window.location.href='/'; }" class="back-btn">⬅ 返回</a>
+            <a href="javascript:void(0)" onclick="if(window.parent && window.parent.closePageOnly) { window.parent.closePageOnly(); } else { window.history.back(); }" class="back-btn">⬅ 返回設定</a>
         </div>
 
         <div class="section">
@@ -62,19 +62,9 @@
                 <li><span style="color: var(--warning); font-weight: bold;">【轉乘防禦機制】</span>只要偵測到需要跨線轉乘，系統為求安全，一律會自動篩選出「最嚴格（最早）」的發車死線。</li>
             </ul>
         </div>
-
-        <div class="section">
-            <h3>👨‍💻 開發者資訊</h3>
-            <p style="font-size: 14px; color: var(--text-sub); margin-top: 0; line-height: 1.6;">本服務由 <strong>綠茶地瓜</strong> 開發與維護。<br>查看最新版本資訊、碎碎念與 App 開發秘辛：</p>
-            <a href="https://home.gamer.com.tw/artwork.php?sn=6310367" target="_blank" class="link-btn">📝 綠茶地瓜的開發日誌 (巴哈姆特)</a>
-        </div>
-
         <div class="version-text">
             當前版本：v2.21 (SPA 無縫版)
         </div>
     </div>
-
-    <audio id="bgm-audio"></audio>
-    <script src="/js/main.js"></script>
 </body>
 </html>
