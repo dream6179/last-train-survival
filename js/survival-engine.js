@@ -5,9 +5,20 @@
 let isCountingDown = false; 
 let timeLeft = 0; 
 let offlineTimetableData = null;
+let busMapData = {}; // 🌟 新增：用來存放公車字典
 
 window.addEventListener('load', async () => {
-    try { const timeRes = await fetch('/data/offline-timetable.json'); if(timeRes.ok) offlineTimetableData = await timeRes.json(); } catch(e){}
+    try { 
+        // 載入離線時刻表
+        const timeRes = await fetch('/data/offline-timetable.json'); 
+        if(timeRes.ok) offlineTimetableData = await timeRes.json(); 
+
+        // 🌟 新增：載入公車翻譯字典
+        const busMapRes = await fetch('/data/bus-map.json');
+        if(busMapRes.ok) busMapData = await busMapRes.json();
+    } catch(e){
+        console.error("資料載入失敗", e);
+    }
 });
 
 // 🌟 復活：如月車站全域事件
