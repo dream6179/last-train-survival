@@ -46,7 +46,7 @@ function calculateOfflineTime(offlineData, start, end, type) {
     return latestTimeStr;
 }
 
-window.fetchTwoStageSurvivalTime = async function(startType, startId, startName, transferName, endName, offlineData) {
+window.fetchTwoStageSurvivalTime = async function(startType, endType, startId, startName, transferName, endName, offlineData) {
     if (startType === 'bus') {
         let routeName = startId.split('|')[0]; let stopName = startId.split('|')[1] || "";
         const paths = [`/v2/Bus/EstimatedTimeOfArrival/City/Taipei/${encodeURIComponent(routeName)}`, `/v2/Bus/EstimatedTimeOfArrival/City/NewTaipei/${encodeURIComponent(routeName)}` ];
