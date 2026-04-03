@@ -129,8 +129,8 @@ window.executeFullSearch = async function() {
 
     try {
         // 🌟 修復重點 2：因為 search.html 已經載入 routing.js 了，直接呼叫就好，不用去找 window.parent！
-        if (typeof fetchSingleStationTime === 'function') {
-            const res = await fetchSingleStationTime(station, type, searchOfflineData);
+        if (typeof window.fetchSingleStationTime === 'function') {
+            const res = await window.fetchSingleStationTime(station, type, searchOfflineData);
 
             if (res && res.status === "success" && res.data.length > 0) {
                 let html = `<div style="color: var(--success); font-weight: bold; margin-bottom: 15px; font-size: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">✅ [${station}] 發車時刻表</div>`;
