@@ -7,21 +7,24 @@
     <style>
         :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #aaaaaa; --danger: #ff5252; --success: #4caf50; --info: #2196F3; }
         
-        /* 🌟 SPA 專用：究極去白條與物理隔離排版 */
-        html, body { 
-            overflow: hidden; 
-            height: 100%; 
-            width: 100%; 
-            margin: 0; 
-            padding: 0; 
-            background-color: var(--bg-color); 
-            font-family: 'Segoe UI', Roboto, sans-serif; 
-            color: var(--text-main); 
-            -webkit-user-select: none; 
-            user-select: none;
-            display: flex;
-            flex-direction: column;
-        }
+        /* 🌟 SPA 專用：究極去白條與物理隔離排版 (v3.0 黑屏防禦完全體) */
+html, body { 
+    /* 移除 overflow: hidden; 改為 v3.0 規定的 auto */
+    overflow-y: auto; 
+    height: 100%; 
+    width: 100%; 
+    margin: 0; 
+    padding: 0; 
+    background-color: var(--bg-color); 
+    font-family: 'Segoe UI', Roboto, sans-serif; 
+    color: var(--text-main); 
+    -webkit-user-select: none; 
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    /* 補上 v3.0 規定的 flex-start，防止高度塌陷 */
+    align-items: flex-start; 
+}
         
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; }
@@ -57,7 +60,7 @@
 
     <div class="header-row">
         <h3>🤖 避難所語音助手 v3.0</h3>
-        <button class="back-btn" onclick="if(window.parent && window.parent.closeDynamicSheet) { window.parent.closeDynamicSheet(); } else { window.history.back(); }">⬅ 返回</button>
+        <button class="back-btn" onclick="if(window.parent && window.parent.closePageOnly) { window.parent.closePageOnly(); } else if(window.parent && window.parent.closeAllSheets) { window.parent.closeAllSheets(); }">⬅ 返回</button>
     </div>
 
     <div id="lock-screen">
@@ -135,7 +138,5 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
     </script>
-    
-    <script src="/js/main.js"></script>
 </body>
 </html>
