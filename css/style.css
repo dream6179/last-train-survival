@@ -68,3 +68,13 @@ select, .station-input {
 /* 🌟 核心修正：設定面板的頭部對齊與內容間距 */
 .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
 .sheet-content { flex: 1; display: flex; flex-direction: column; align-items: stretch; gap: 15px; overflow-y: auto; }
+
+/* 🌟 彩蛋專屬避震彈簧 (點擊回饋感) */
+.egg-trigger {
+    transition: transform 0.1s ease, opacity 0.1s ease !important;
+    cursor: pointer;
+}
+.egg-trigger:active {
+    transform: scale(0.92) !important;
+    opacity: 0.7 !important;
+}
