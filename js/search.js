@@ -1,5 +1,5 @@
 // ==========================================
-// 🔍 獨立查詢系統 (search.js)
+// 🔍 獨立查詢系統 (search.js) - 滿血復活版
 // ==========================================
 let globalStationData = null;
 let searchOfflineData = null;
@@ -26,11 +26,22 @@ function initSearchAutocomplete() {
     });
 
     if(clearBtn) {
-        clearBtn.addEventListener('click', () => { inputField.value = ''; clearBtn.style.display = 'none'; renderSearchDropdown(); });
+        clearBtn.addEventListener('click', () => { 
+            inputField.value = ''; 
+            clearBtn.style.display = 'none'; 
+            renderSearchDropdown(); 
+            inputField.focus(); // 清除後保持焦點
+        });
     }
 
     inputField.addEventListener('focus', renderSearchDropdown);
     inputField.addEventListener('click', renderSearchDropdown);
+    
+    // 🌟 新增：離開焦點時的鄉民防禦 (北車自動翻譯)
+    inputField.addEventListener('blur', () => {
+        let val = inputField.value.trim().replace(/臺/g, '台');
+        if (val === '北車') inputField.value = '台北車站';
+    });
     
     document.addEventListener('click', (e) => {
         const list = document.getElementById('search-autocomplete-list');
@@ -46,7 +57,11 @@ function renderSearchDropdown() {
 
     const options = globalStationData?.[type]?.options || [];
     listContainer.innerHTML = '';
-    const filterText = inputField.value.trim().replace(/臺/g, '台').toLowerCase();
+    
+    // 🌟 搜尋時也能防禦「北車」
+    let rawFilterText = inputField.value.trim().replace(/臺/g, '台');
+    if (rawFilterText === '北車') rawFilterText = '台北車站';
+    const filterText = rawFilterText.toLowerCase();
 
     options.forEach(station => {
         const normName = station.name.replace(/臺/g, '台').toLowerCase();
@@ -54,7 +69,6 @@ function renderSearchDropdown() {
             const item = document.createElement('div');
             item.className = 'dropdown-item';
             
-            // 🌟 復活：查詢系統如月車站紅字渲染
             if (station.name === '如月車站') {
                 item.innerHTML = `<span style="color:#ff5252; font-weight:bold; letter-spacing:2px;">${station.name}</span>`;
             } else {
@@ -73,9 +87,27 @@ function renderSearchDropdown() {
     listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
 }
 
-window.updateSearchOptions = function() {
-    document.getElementById('search-station-input').value = '';
+// 🌟 修復重點 1：補上台鐵懶載入邏輯！
+window.updateSearchOptions = async function() {
+    const type = document.getElementById('search-type').value;
+    const inputField = document.getElementById('search-station-input');
+    
+    inputField.value = '';
     document.getElementById('search-clear-btn').style.display = 'none';
+    
+    if (type === 'tra' && globalStationData && !globalStationData.tra.isFullLoaded) {
+        inputField.placeholder = "⏳ 載入台鐵站點中...";
+        try {
+            const res = await fetch('/data/tra-stations.json');
+            if (res.ok) {
+                const fullTraData = await res.json();
+                globalStationData.tra.options = Array.isArray(fullTraData) ? fullTraData : (fullTraData.options || fullTraData.tra?.options || []);
+                globalStationData.tra.isFullLoaded = true;
+                renderSearchDropdown(); // 資料載好後立刻渲染選單
+            }
+        } catch (e) { console.error("台鐵載入失敗", e); }
+        inputField.placeholder = "輸入車站名稱";
+    }
 };
 
 window.executeFullSearch = async function() {
@@ -83,7 +115,6 @@ window.executeFullSearch = async function() {
     const station = document.getElementById('search-station-input').value.trim();
     const box = document.getElementById('search-result-box');
     
-    // 🌟 復活：攔截如月車站查詢
     if (station === '如月車站' || station.toUpperCase() === 'KISARAGI') {
         if(window.parent && window.parent.triggerKisaragiEvent) {
             window.parent.triggerKisaragiEvent();
@@ -97,8 +128,9 @@ window.executeFullSearch = async function() {
     box.innerHTML = "<div style='text-align: center; padding: 20px;'>⏳ 正在為您檢索...</div>";
 
     try {
-        if (window.parent && window.parent.fetchSingleStationTime) {
-            const res = await window.parent.fetchSingleStationTime(station, type, searchOfflineData);
+        // 🌟 修復重點 2：因為 search.html 已經載入 routing.js 了，直接呼叫就好，不用去找 window.parent！
+        if (typeof fetchSingleStationTime === 'function') {
+            const res = await fetchSingleStationTime(station, type, searchOfflineData);
 
             if (res && res.status === "success" && res.data.length > 0) {
                 let html = `<div style="color: var(--success); font-weight: bold; margin-bottom: 15px; font-size: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">✅ [${station}] 發車時刻表</div>`;
@@ -114,6 +146,8 @@ window.executeFullSearch = async function() {
             } else {
                 box.innerHTML = `<div style='color: var(--text-sub); text-align: center; padding: 20px;'>❌ 目前查無 [${station}] 的時刻資料。</div>`;
             }
+        } else {
+            throw new Error("找不到演算法引擎 (routing.js 未載入)");
         }
     } catch(e) {
         box.innerHTML = `<div style='color: var(--danger); text-align: center; padding: 20px;'>❌ 檢索發生錯誤：${e.message}</div>`;
