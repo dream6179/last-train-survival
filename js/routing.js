@@ -226,12 +226,93 @@ window.fetchTwoStageSurvivalTime = async function(startType, endType, startId, s
 };
 
 // ==========================================
-// 🔍 單站全時刻表檢索演算法 (供 search.html 專用)
+// 🔍 單站末班車檢索演算法 (TDX 即時優先 + 離線保底)
 // ==========================================
-window.fetchSingleStationTime = async function(stationName, type, offlineData) {
+window.fetchSingleStationTime = async function(stationName, type, offlineData, stationData) {
     let results = [];
-    
-    if (offlineData && offlineData[type]) {
+    let isOnline = false;
+
+    // 🌟 第一階段：嘗試連線 TDX 抓取今日所有班次
+    try {
+        if (!stationData || !stationData[type]) throw new Error("無車站代碼表，無法連線 TDX");
+        
+        const stationObj = stationData[type].options.find(s => s.name === stationName);
+        if (!stationObj) throw new Error("找不到對應的車站代碼");
+        
+        const stationId = stationObj.id;
+        const today = getOperatingDateString(); // 使用我們寫好的換日邏輯
+
+        if (type === 'trtc') {
+            // 北捷 API
+            const path = '/v2/Rail/Metro/StationTimeTable/TRTC';
+            const filter = `StationName/Zh_tw eq '${stationName}'`;
+            let res = await fetchWithTimeout(`/api/get-tdx-data?path=${encodeURIComponent(path)}&$filter=${encodeURIComponent(filter)}&$format=JSON`);
+            if (!res.ok) throw new Error("北捷 API 拒絕連線");
+            let data = await res.json();
+            
+            // 如果北捷沒資料，嘗試查新北捷運 (例如環狀線 Y)
+            if (data.length === 0) {
+                 const pathNtmc = '/v2/Rail/Metro/StationTimeTable/NTMC';
+                 let resNtmc = await fetchWithTimeout(`/api/get-tdx-data?path=${encodeURIComponent(pathNtmc)}&$filter=${encodeURIComponent(filter)}&$format=JSON`);
+                 if (resNtmc.ok) data = await resNtmc.json();
+            }
+            
+            data.forEach(route => {
+                if (route.Timetables) {
+                    route.Timetables.forEach(t => {
+                        results.push({ destination: t.DestinationStationName.Zh_tw, time: t.DepartureTime });
+                    });
+                }
+            });
+        } 
+        else if (type === 'tra') {
+            // 台鐵 API
+            const path = `/v3/Rail/TRA/DailyStationTimetable/Today/Station/${stationId}`;
+            let res = await fetchWithTimeout(`/api/get-tdx-data?path=${encodeURIComponent(path)}&$format=JSON`);
+            if (!res.ok) throw new Error("台鐵 API 拒絕連線");
+            let data = await res.json();
+            if (data.StationTimetables) {
+                data.StationTimetables.forEach(dir => dir.TimeTables.forEach(t => {
+                    results.push({ destination: t.DestinationStationName.Zh_tw, time: t.DepartureTime });
+                }));
+            }
+        } 
+        else if (type === 'thsr') {
+            // 高鐵 API
+            const path = `/v2/Rail/THSR/DailyTimetable/Station/${stationId}/${today}`;
+            let res = await fetchWithTimeout(`/api/get-tdx-data?path=${encodeURIComponent(path)}&$format=JSON`);
+            if (!res.ok) throw new Error("高鐵 API 拒絕連線");
+            let data = await res.json();
+            data.forEach(t => {
+                results.push({ destination: t.Direction === 0 ? "左營(南下)" : "南港(北上)", time: t.DepartureTime });
+            });
+        }
+
+        if (results.length > 0) isOnline = true;
+    } catch (e) {
+        console.warn("🌐 TDX 連線失敗或無資料，啟動防空洞降級:", e.message);
+    }
+
+    // 🌟 處理資料：如果是線上資料，我們只過濾出「各目的地的末班車」
+    if (isOnline && results.length > 0) {
+        let lastTrainsMap = {};
+        results.forEach(r => {
+            let currentMins = timeToMinutes(r.time);
+            // 只要時間比目前紀錄的還要晚，就蓋過去
+            if (!lastTrainsMap[r.destination] || currentMins > lastTrainsMap[r.destination].mins) {
+                lastTrainsMap[r.destination] = { time: r.time, mins: currentMins };
+            }
+        });
+        
+        // 把 Map 轉回陣列，並加上來源標籤
+        results = Object.keys(lastTrainsMap).map(dest => ({
+            destination: dest,
+            time: lastTrainsMap[dest].time,
+            source: "即時連線"
+        }));
+    } 
+    // 🌟 第二階段：如果 API 失敗，直接無縫接軌離線字典
+    else if (offlineData && offlineData[type]) {
         const table = offlineData[type];
         const normSearchName = normalize(stationName);
         
@@ -239,33 +320,36 @@ window.fetchSingleStationTime = async function(stationName, type, offlineData) {
             if (normalize(table[code].name) === normSearchName) {
                 if (table[code].up) {
                     if (typeof table[code].up === 'string' && table[code].up !== "00:00") {
-                        results.push({ destination: "上行 / 北上", time: table[code].up });
+                        results.push({ destination: "上行 / 北上", time: table[code].up, source: "離線備用" });
                     } else if (typeof table[code].up === 'object') {
                         for (let dest in table[code].up) {
-                            if (table[code].up[dest] !== "00:00") results.push({ destination: `專屬月台 (${dest})`, time: table[code].up[dest] });
+                            if (table[code].up[dest] !== "00:00") results.push({ destination: `專屬月台 (${dest})`, time: table[code].up[dest], source: "離線備用" });
                         }
                     }
                 }
                 if (table[code].down) {
                     if (typeof table[code].down === 'string' && table[code].down !== "00:00") {
-                        results.push({ destination: "下行 / 南下", time: table[code].down });
+                        results.push({ destination: "下行 / 南下", time: table[code].down, source: "離線備用" });
                     } else if (typeof table[code].down === 'object') {
                         for (let dest in table[code].down) {
-                            if (table[code].down[dest] !== "00:00") results.push({ destination: `專屬月台 (${dest})`, time: table[code].down[dest] });
+                            if (table[code].down[dest] !== "00:00") results.push({ destination: `專屬月台 (${dest})`, time: table[code].down[dest], source: "離線備用" });
                         }
                     }
                 }
             }
         }
+        
+        // 離線資料去重複
+        let uniqueResults = [];
+        let seen = new Set();
+        results.forEach(r => {
+            let k = r.destination + r.time;
+            if(!seen.has(k)) { seen.add(k); uniqueResults.push(r); }
+        });
+        results = uniqueResults;
     }
-    
-    let uniqueResults = [];
-    let seen = new Set();
-    results.forEach(r => {
-        let k = r.destination + r.time;
-        if(!seen.has(k)) { seen.add(k); uniqueResults.push(r); }
-    });
-    
-    uniqueResults.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-    return { status: uniqueResults.length > 0 ? "success" : "not_found", data: uniqueResults };
+
+    // 依照時間遠近排序
+    results.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+    return { status: results.length > 0 ? "success" : "not_found", data: results };
 };
