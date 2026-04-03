@@ -1,5 +1,5 @@
 // ==========================================
-// 🔍 獨立查詢系統 (search.js) - 滿血復活版
+// 🔍 獨立查詢系統 (search.js) - 雙核心滿血版
 // ==========================================
 let globalStationData = null;
 let searchOfflineData = null;
@@ -18,17 +18,16 @@ window.addEventListener('load', async () => {
 function initSearchAutocomplete() {
     const inputField = document.getElementById('search-station-input');
     const clearBtn = document.getElementById('search-clear-btn');
-    const typeSelect = document.getElementById('search-type'); // 🌟 新增：抓出下拉選單的耳朵！
+    const typeSelect = document.getElementById('search-type');
 
     if(!inputField) return;
     
-    // 🌟 新增：監聽交通工具下拉選單的切換
     if (typeSelect) {
         typeSelect.addEventListener('change', () => {
-            inputField.value = ''; // 切換時清空舊站名
+            inputField.value = ''; 
             if(clearBtn) clearBtn.style.display = 'none';
-            window.updateSearchOptions(); // 立刻觸發更新，如果是台鐵就會去下載資料！
-            renderSearchDropdown(); // 重新渲染底下的列表
+            window.updateSearchOptions(); 
+            renderSearchDropdown(); 
         });
     }
 
@@ -69,7 +68,6 @@ function renderSearchDropdown() {
     const options = globalStationData?.[type]?.options || [];
     listContainer.innerHTML = '';
     
-    // 🌟 搜尋時也能防禦「北車」
     let rawFilterText = inputField.value.trim().replace(/臺/g, '台');
     if (rawFilterText === '北車') rawFilterText = '台北車站';
     const filterText = rawFilterText.toLowerCase();
@@ -98,7 +96,6 @@ function renderSearchDropdown() {
     listContainer.style.display = listContainer.children.length > 0 ? 'block' : 'none';
 }
 
-// 🌟 修復重點 1：補上台鐵懶載入邏輯！
 window.updateSearchOptions = async function() {
     const type = document.getElementById('search-type').value;
     const inputField = document.getElementById('search-station-input');
@@ -114,7 +111,7 @@ window.updateSearchOptions = async function() {
                 const fullTraData = await res.json();
                 globalStationData.tra.options = Array.isArray(fullTraData) ? fullTraData : (fullTraData.options || fullTraData.tra?.options || []);
                 globalStationData.tra.isFullLoaded = true;
-                renderSearchDropdown(); // 資料載好後立刻渲染選單
+                renderSearchDropdown(); 
             }
         } catch (e) { console.error("台鐵載入失敗", e); }
         inputField.placeholder = "輸入車站名稱";
@@ -140,14 +137,13 @@ window.executeFullSearch = async function() {
 
     try {
         if (typeof window.fetchSingleStationTime === 'function') {
-            // 🌟 升級：多傳一個 globalStationData 過去，讓演算法能查 ID
+            // 將 globalStationData 傳給演算法以查詢 ID
             const res = await window.fetchSingleStationTime(station, type, searchOfflineData, globalStationData);
 
             if (res && res.status === "success" && res.data.length > 0) {
                 let html = `<div style="color: var(--success); font-weight: bold; margin-bottom: 15px; font-size: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">✅ [${station}] 末班發車時刻</div>`;
                 
                 res.data.forEach(item => {
-                    // 🌟 判斷資料來源給予不同顏色的標籤
                     let badgeColor = item.source === "即時連線" ? "var(--success)" : "var(--warning)";
                     let badgeBg = item.source === "即時連線" ? "rgba(76, 175, 80, 0.1)" : "rgba(255, 152, 0, 0.1)";
 
@@ -171,3 +167,4 @@ window.executeFullSearch = async function() {
     } catch(e) {
         box.innerHTML = `<div style='color: var(--danger); text-align: center; padding: 20px;'>❌ 檢索發生錯誤：${e.message}</div>`;
     }
+};
