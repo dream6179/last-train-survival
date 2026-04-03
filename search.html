@@ -8,9 +8,9 @@
     <style>
         /* 🌟 電視機專屬疫苗：解除首頁的置中與鎖死捲軸限制 */
         html, body { 
-            overflow-y: auto !important; /* 允許上下滑動 */
+            overflow-y: auto !important; 
             height: 100% !important; 
-            display: block !important;   /* 取消垂直置中，讓內容從最上面開始排 */
+            display: block !important;   
             background: transparent !important;
         }
         body { padding: 20px; box-sizing: border-box; }
@@ -18,7 +18,6 @@
             max-width: 400px; margin: 0 auto; min-height: 100%; 
             display: flex; flex-direction: column; 
         }
-        /* 讓結果框自己往下長，填滿剩下的空間 */
         #search-result-box { flex-grow: 1; margin-bottom: 20px; }
     </style>
 </head>
@@ -27,7 +26,7 @@
         
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px;">
             <h2 style="color: var(--info); margin: 0; font-size: 20px;">🔍 班次時刻檢索</h2>
-            <button onclick="window.parent.closeDynamicSheet()" style="background: var(--danger); color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-weight: bold;">關閉</button>
+            <button onclick="if(window.parent && window.parent.closePageOnly) { window.parent.closePageOnly(); } else { window.location.href='/'; }" style="background: var(--danger); color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-weight: bold;">關閉</button>
         </div>
         
         <div class="location-block">
