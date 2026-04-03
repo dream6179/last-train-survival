@@ -56,30 +56,39 @@ window.escapeKisaragi = function() {
 
 window.handleAction = async function() {
     const startType = document.getElementById('start-type').value;
+    const endType = document.getElementById('end-type').value; // 🌟 抓取終點的交通工具類型
     let startName = document.getElementById('start-station-input').value.trim();
     const endName = document.getElementById('end-station-input').value.trim();
     
-    // 🌟 1. 攔截如月車站查詢 (保留你原本的帥氣邏輯)
+    // 🌟 1. 攔截如月車站查詢
     if (endName === '如月車站' || endName.toUpperCase() === 'KISARAGI') {
         window.triggerKisaragiEvent();
         return;
     }
 
-    // 🌟 2. 【新增】防彈驗票閘門：檢查是否為空值
-    // 如果是公車模式，start-station-input 填的是路線；如果是軌道模式，填的是車站
+    // 🌟 2. 基礎空值防禦：檢查路線或車站是否為空
     if (!startName || !endName) {
         alert("🚨 求生警告：你還沒輸入起點或目的地！\n導遊沒辦法帶你去一個不存在的地方。");
         return;
     }
     
-    // 如果是公車，且沒填站牌 (可選，但建議也擋一下)
+    // 🌟 3. 公車專屬檢查 (起點)
     if (startType === 'bus') {
-        let stop = document.getElementById('start-bus-stop-input').value.trim();
-        if (!stop) {
+        let startStop = document.getElementById('start-bus-stop-input').value.trim();
+        if (!startStop) {
             alert("🚌 請輸入起點站牌！\n沒站牌，司機不知道要在哪裡接你喔。");
             return;
         }
-        startName += `|${stop}`;
+        startName += `|${startStop}`;
+    }
+
+    // 🌟 4. 【新增】公車專屬檢查 (終點)
+    if (endType === 'bus') {
+        let endStop = document.getElementById('end-bus-stop-input').value.trim();
+        if (!endStop) {
+            alert("🚌 請輸入終點站牌！\n沒站牌，系統不知道你到底要在哪裡下車喔。");
+            return;
+        }
     }
     
     const btn = document.getElementById('action-btn'); btn.innerHTML = "⏳ 計算中..."; btn.disabled = true;
