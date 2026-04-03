@@ -10,7 +10,7 @@
 <body>
 <div class="container">
     <div class="header-row">
-        <h1 id="main-title" onclick="this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_runner', 'true'); alert('🎉 發現彩蛋！隱藏機台【社畜的最後衝刺】已永久解鎖！'); openPage('/collection.html'); }">末班車生存</h1>
+        <h1 id="main-title" class="egg-trigger" onclick="this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; if(localStorage.getItem('unlock_runner') !== 'true') { localStorage.setItem('unlock_runner', 'true'); alert('🎉 發現彩蛋！隱藏機台【社畜的最後衝刺】已永久解鎖！'); } openPage('/collection.html'); }">末班車生存</h1>
         <div style="display: flex; gap: 8px;">
             <button class="mode-toggle-btn" onclick="openPage('/gemini.html')">🤖</button>
             <button class="mode-toggle-btn" id="header-mute-btn" onclick="toggleMute()">🔇</button>
@@ -76,7 +76,7 @@
         <div id="result-zone">
             <div class="time-area">
                 <div class="status">現在時間</div>
-                <div id="time-display" class="time-display" style="cursor: pointer;" onclick="this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_diver', 'true'); alert('🎉 發現彩蛋！隱藏機台【直奔最深月台】已永久解鎖！'); openPage('/collection.html'); }">00:00:00</div>
+                <div id="time-display" class="time-display egg-trigger" onclick="this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; if(localStorage.getItem('unlock_diver') !== 'true') { localStorage.setItem('unlock_diver', 'true'); alert('🎉 發現彩蛋！隱藏機台【直奔最深月台】已永久解鎖！'); } openPage('/collection.html'); }">00:00:00</div>
                 <div class="status">目標發車：<span id="speed-mode" style="color: #ffea00;">待查驗...</span></div>
             </div>
             <div id="plan-b-container" class="plan-b-container">
@@ -125,7 +125,7 @@
             <span style="color: var(--warning); font-weight: bold;">🏆 前往彩蛋與收集冊專區</span>
         </button>
 
-        <div onclick="this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; localStorage.setItem('unlock_password', 'true'); alert('🎉 發現彩蛋！隱藏機台【終極密碼】已永久解鎖！'); openPage('/collection.html'); }" style="text-align: center; color: #555; font-size: 11px; margin-top: auto; padding-top: 15px; cursor: pointer;">
+        <div class="egg-trigger" onclick="this.clicks = (this.clicks || 0) + 1; if(this.clicks >= 5) { this.clicks = 0; if(localStorage.getItem('unlock_password') !== 'true') { localStorage.setItem('unlock_password', 'true'); alert('🎉 發現彩蛋！隱藏機台【終極密碼】已永久解鎖！'); } openPage('/collection.html'); }" style="text-align: center; color: #555; font-size: 11px; margin-top: auto; padding-top: 15px;">
     v2.0.0 - 微服務防彈版
 </div>
     </div>
