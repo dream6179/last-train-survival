@@ -18,8 +18,20 @@ window.addEventListener('load', async () => {
 function initSearchAutocomplete() {
     const inputField = document.getElementById('search-station-input');
     const clearBtn = document.getElementById('search-clear-btn');
+    const typeSelect = document.getElementById('search-type'); // 🌟 新增：抓出下拉選單的耳朵！
+
     if(!inputField) return;
     
+    // 🌟 新增：監聽交通工具下拉選單的切換
+    if (typeSelect) {
+        typeSelect.addEventListener('change', () => {
+            inputField.value = ''; // 切換時清空舊站名
+            if(clearBtn) clearBtn.style.display = 'none';
+            window.updateSearchOptions(); // 立刻觸發更新，如果是台鐵就會去下載資料！
+            renderSearchDropdown(); // 重新渲染底下的列表
+        });
+    }
+
     inputField.addEventListener('input', () => {
         if(clearBtn) clearBtn.style.display = inputField.value ? 'flex' : 'none';
         renderSearchDropdown();
@@ -30,14 +42,13 @@ function initSearchAutocomplete() {
             inputField.value = ''; 
             clearBtn.style.display = 'none'; 
             renderSearchDropdown(); 
-            inputField.focus(); // 清除後保持焦點
+            inputField.focus(); 
         });
     }
 
     inputField.addEventListener('focus', renderSearchDropdown);
     inputField.addEventListener('click', renderSearchDropdown);
     
-    // 🌟 新增：離開焦點時的鄉民防禦 (北車自動翻譯)
     inputField.addEventListener('blur', () => {
         let val = inputField.value.trim().replace(/臺/g, '台');
         if (val === '北車') inputField.value = '台北車站';
