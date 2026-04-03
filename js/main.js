@@ -77,7 +77,12 @@ function renderCustomDropdown(point) {
     const typeSelect = document.getElementById(point + '-type') || { value: 'trtc' };
     const inputField = document.getElementById(point + '-station-input');
     const listContainer = document.getElementById(point + '-autocomplete-list');
-    if(!inputField || !listContainer || typeSelect.value === 'bus') return;
+    
+    // 🌟 修正：把 globalStationData 的防呆也加進來，避免網路慢時點擊輸入框報錯
+    if(!inputField || !listContainer || typeSelect.value === 'bus' || !globalStationData) return;
+
+    const options = globalStationData[typeSelect.value]?.options || [];
+    listContainer.innerHTML = '';
 
     const options = globalStationData?.[typeSelect.value]?.options || [];
     listContainer.innerHTML = '';
