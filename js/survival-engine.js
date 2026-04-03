@@ -67,9 +67,16 @@ window.escapeKisaragi = function() {
 
 window.handleAction = async function() {
     const startType = document.getElementById('start-type').value;
-    const endType = document.getElementById('end-type').value; // 🌟 抓取終點的交通工具類型
-    let startName = document.getElementById('start-station-input').value.trim();
-    const endName = document.getElementById('end-station-input').value.trim();
+    const endType = document.getElementById('end-type').value; 
+    
+    let rawStartInput = document.getElementById('start-station-input').value.trim();
+    let rawEndInput = document.getElementById('end-station-input').value.trim();
+
+    // 🌟 智慧翻譯：從剛剛下載的 busMapData 找，找不到就用原輸入
+    let startName = busMapData[rawStartInput] || rawStartInput;
+    let endName = busMapData[rawEndInput] || rawEndInput;
+
+    // ... (後面的空值檢查、如月車站攔截邏輯完全不變)
     
     // 🌟 1. 攔截如月車站查詢
     if (endName === '如月車站' || endName.toUpperCase() === 'KISARAGI') {
@@ -105,7 +112,7 @@ window.handleAction = async function() {
     const btn = document.getElementById('action-btn'); btn.innerHTML = "⏳ 計算中..."; btn.disabled = true;
     try {
         let transferName = (startType === 'tra' || startType === 'thsr') ? document.getElementById('transfer-station-input').value : startName;
-        let res = await fetchTwoStageSurvivalTime(startType, startName, startName, transferName, endName, offlineTimetableData);
+        let res = await fetchTwoStageSurvivalTime(startType, endType, startName, startName, transferName, endName, offlineTimetableData);
         
         if (res.time) {
             document.getElementById('speed-mode').innerText = res.time;
